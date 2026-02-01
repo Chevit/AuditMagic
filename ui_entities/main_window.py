@@ -5,6 +5,7 @@ from ui_entities.inventory_item import InventoryItem
 from ui_entities.inventory_list_view import InventoryListView
 from ui_entities.item_details_dialog import ItemDetailsDialog
 from ui_entities.add_item_dialog import AddItemDialog
+from ui_entities.translations import tr
 
 
 class MainWindow(QMainWindow):
@@ -12,9 +13,16 @@ class MainWindow(QMainWindow):
         super().__init__()
         uic.loadUi("ui/MainWindow.ui", self)
 
+        self._setup_ui()
         self._setup_inventory_list()
         self._load_sample_data()
         self._connect_signals()
+
+    def _setup_ui(self):
+        """Set up UI with localized strings."""
+        self.setWindowTitle(tr("app.title"))
+        if hasattr(self, 'addButton'):
+            self.addButton.setText(tr("main.add_item"))
 
     def _setup_inventory_list(self):
         """Replace the placeholder widget with the custom inventory list view."""
@@ -44,11 +52,11 @@ class MainWindow(QMainWindow):
     def _load_sample_data(self):
         """Load sample inventory items for demonstration."""
         sample_items = [
-            InventoryItem(id=1, item_type="Electronics", sub_type="Laptop", quantity=5, serial_number="EL-001-2024"),
-            InventoryItem(id=2, item_type="Electronics", sub_type="Monitor", quantity=10, serial_number="EL-002-2024"),
-            InventoryItem(id=3, item_type="Furniture", sub_type="Desk", quantity=8, serial_number="FN-001-2024"),
-            InventoryItem(id=4, item_type="Furniture", sub_type="Chair", quantity=15, serial_number="FN-002-2024"),
-            InventoryItem(id=5, item_type="Office Supplies", sub_type="Printer Paper", quantity=100, serial_number="OS-001-2024"),
+            InventoryItem(id=1, item_type="Електроніка", sub_type="Ноутбук", quantity=5, serial_number="EL-001-2024"),
+            InventoryItem(id=2, item_type="Електроніка", sub_type="Монітор", quantity=10, serial_number="EL-002-2024"),
+            InventoryItem(id=3, item_type="Меблі", sub_type="Стіл", quantity=8, serial_number="FN-001-2024"),
+            InventoryItem(id=4, item_type="Меблі", sub_type="Крісло", quantity=15, serial_number="FN-002-2024"),
+            InventoryItem(id=5, item_type="Канцтовари", sub_type="Папір для принтера", quantity=100, serial_number="OS-001-2024"),
         ]
 
         for item in sample_items:
@@ -67,12 +75,11 @@ class MainWindow(QMainWindow):
         """Handle edit request for an inventory item."""
         QMessageBox.information(
             self,
-            "Edit Item",
-            f"Edit item at row {row}:\n"
-            f"Type: {item.item_type}\n"
-            f"Sub-type: {item.sub_type}\n"
-            f"Quantity: {item.quantity}\n"
-            f"Serial Number: {item.serial_number}"
+            tr("dialog.edit.title"),
+            f"{tr('field.type')}: {item.item_type}\n"
+            f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
+            f"{tr('field.quantity')}: {item.quantity}\n"
+            f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}"
         )
 
     def _on_show_details(self, row: int, item: InventoryItem):
@@ -84,11 +91,11 @@ class MainWindow(QMainWindow):
         """Handle delete request for an inventory item."""
         reply = QMessageBox.question(
             self,
-            "Confirm Delete",
-            f"Are you sure you want to delete this item?\n\n"
-            f"Type: {item.item_type}\n"
-            f"Sub-type: {item.sub_type}\n"
-            f"Serial Number: {item.serial_number}",
+            tr("dialog.confirm_delete.title"),
+            f"{tr('message.confirm_delete')}\n\n"
+            f"{tr('field.type')}: {item.item_type}\n"
+            f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
+            f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )

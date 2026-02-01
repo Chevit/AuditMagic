@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 from ui_entities.inventory_item import InventoryItem
+from ui_entities.translations import tr
 
 
 class ItemDetailsDialog(QDialog):
@@ -17,7 +18,7 @@ class ItemDetailsDialog(QDialog):
 
     def _setup_ui(self):
         """Set up the dialog UI."""
-        self.setWindowTitle("Item Details")
+        self.setWindowTitle(tr("dialog.details.title"))
         self.setMinimumWidth(400)
         self.setModal(True)
 
@@ -25,7 +26,10 @@ class ItemDetailsDialog(QDialog):
         layout.setSpacing(15)
 
         # Header
-        header_label = QLabel(f"{self._item.item_type} - {self._item.sub_type}")
+        header_text = self._item.item_type
+        if self._item.sub_type:
+            header_text += f" - {self._item.sub_type}"
+        header_label = QLabel(header_text)
         header_font = QFont()
         header_font.setPointSize(14)
         header_font.setBold(True)
@@ -52,37 +56,37 @@ class ItemDetailsDialog(QDialog):
 
         # ID
         if self._item.id is not None:
-            id_label = QLabel("ID:")
+            id_label = QLabel(tr("label.id"))
             id_label.setFont(label_font)
             id_value = QLabel(str(self._item.id))
             id_value.setFont(value_font)
             form_layout.addRow(id_label, id_value)
 
         # Type
-        type_label = QLabel("Type:")
+        type_label = QLabel(tr("label.type"))
         type_label.setFont(label_font)
         type_value = QLabel(self._item.item_type)
         type_value.setFont(value_font)
         form_layout.addRow(type_label, type_value)
 
         # Sub-type
-        subtype_label = QLabel("Sub-type:")
+        subtype_label = QLabel(tr("label.subtype"))
         subtype_label.setFont(label_font)
-        subtype_value = QLabel(self._item.sub_type)
+        subtype_value = QLabel(self._item.sub_type if self._item.sub_type else "-")
         subtype_value.setFont(value_font)
         form_layout.addRow(subtype_label, subtype_value)
 
         # Quantity
-        quantity_label = QLabel("Quantity:")
+        quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
         quantity_value = QLabel(str(self._item.quantity))
         quantity_value.setFont(value_font)
         form_layout.addRow(quantity_label, quantity_value)
 
         # Serial Number
-        serial_label = QLabel("Serial Number:")
+        serial_label = QLabel(tr("label.serial_number"))
         serial_label.setFont(label_font)
-        serial_value = QLabel(self._item.serial_number)
+        serial_value = QLabel(self._item.serial_number if self._item.serial_number else "-")
         serial_value.setFont(value_font)
         form_layout.addRow(serial_label, serial_value)
 
@@ -95,7 +99,7 @@ class ItemDetailsDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        close_button = QPushButton("Close")
+        close_button = QPushButton(tr("button.close"))
         close_button.setMinimumWidth(100)
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)

@@ -3,6 +3,7 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QListView, QMenu
 from ui_entities.inventory_delegate import InventoryItemDelegate
 from ui_entities.inventory_item import InventoryItem
+from ui_entities.translations import tr
 
 
 class InventoryListView(QListView):
@@ -45,17 +46,17 @@ class InventoryListView(QListView):
 
         menu = QMenu(self)
 
-        edit_action = QAction("Edit", self)
+        edit_action = QAction(tr("menu.edit"), self)
         edit_action.triggered.connect(lambda: self.edit_requested.emit(row, item))
         menu.addAction(edit_action)
 
-        details_action = QAction("See Details", self)
+        details_action = QAction(tr("menu.details"), self)
         details_action.triggered.connect(lambda: self.details_requested.emit(row, item))
         menu.addAction(details_action)
 
         menu.addSeparator()
 
-        delete_action = QAction("Delete", self)
+        delete_action = QAction(tr("menu.delete"), self)
         delete_action.triggered.connect(lambda: self.delete_requested.emit(row, item))
         menu.addAction(delete_action)
 

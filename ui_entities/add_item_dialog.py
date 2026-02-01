@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 from ui_entities.inventory_item import InventoryItem
+from ui_entities.translations import tr
 
 
 class AddItemDialog(QDialog):
@@ -18,7 +19,7 @@ class AddItemDialog(QDialog):
 
     def _setup_ui(self):
         """Set up the dialog UI."""
-        self.setWindowTitle("Add New Item")
+        self.setWindowTitle(tr("dialog.add_item.title"))
         self.setMinimumWidth(400)
         self.setModal(True)
 
@@ -26,7 +27,7 @@ class AddItemDialog(QDialog):
         layout.setSpacing(15)
 
         # Header
-        header_label = QLabel("Add New Inventory Item")
+        header_label = QLabel(tr("dialog.add_item.header"))
         header_font = QFont()
         header_font.setPointSize(14)
         header_font.setBold(True)
@@ -49,20 +50,20 @@ class AddItemDialog(QDialog):
         label_font.setBold(True)
 
         # Type
-        type_label = QLabel("Type:")
+        type_label = QLabel(tr("label.type"))
         type_label.setFont(label_font)
         self.type_edit = QLineEdit()
-        self.type_edit.setPlaceholderText("Enter item type...")
+        self.type_edit.setPlaceholderText(tr("placeholder.type"))
         form_layout.addRow(type_label, self.type_edit)
 
         # Sub-type (optional)
-        subtype_label = QLabel("Sub-type:")
+        subtype_label = QLabel(tr("label.subtype"))
         self.subtype_edit = QLineEdit()
-        self.subtype_edit.setPlaceholderText("Enter item sub-type (optional)...")
+        self.subtype_edit.setPlaceholderText(tr("placeholder.subtype"))
         form_layout.addRow(subtype_label, self.subtype_edit)
 
         # Quantity
-        quantity_label = QLabel("Quantity:")
+        quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
         self.quantity_spin = QSpinBox()
         self.quantity_spin.setMinimum(0)
@@ -71,9 +72,9 @@ class AddItemDialog(QDialog):
         form_layout.addRow(quantity_label, self.quantity_spin)
 
         # Serial Number (optional)
-        serial_label = QLabel("Serial Number:")
+        serial_label = QLabel(tr("label.serial_number"))
         self.serial_edit = QLineEdit()
-        self.serial_edit.setPlaceholderText("Enter serial number (optional)...")
+        self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
         form_layout.addRow(serial_label, self.serial_edit)
 
         layout.addLayout(form_layout)
@@ -85,12 +86,12 @@ class AddItemDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        cancel_button = QPushButton("Cancel")
+        cancel_button = QPushButton(tr("button.cancel"))
         cancel_button.setMinimumWidth(100)
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
 
-        add_button = QPushButton("Add")
+        add_button = QPushButton(tr("button.add"))
         add_button.setMinimumWidth(100)
         add_button.setDefault(True)
         add_button.clicked.connect(self._on_add_clicked)
@@ -108,13 +109,13 @@ class AddItemDialog(QDialog):
         # Validation - only Type is required
         errors = []
         if not item_type:
-            errors.append("Type is required")
+            errors.append(tr("message.type_required"))
 
         if errors:
             QMessageBox.warning(
                 self,
-                "Validation Error",
-                "Please fix the following errors:\n\n" + "\n".join(f"• {e}" for e in errors)
+                tr("message.validation_error"),
+                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors)
             )
             return
 

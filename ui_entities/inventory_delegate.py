@@ -2,6 +2,7 @@ from PyQt6.QtCore import Qt, QSize, QRect
 from PyQt6.QtGui import QPainter, QFont, QColor, QPen
 from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
 from ui_entities.inventory_model import InventoryItemRole
+from ui_entities.translations import tr
 
 
 class InventoryItemDelegate(QStyledItemDelegate):
@@ -58,12 +59,12 @@ class InventoryItemDelegate(QStyledItemDelegate):
         col_width = (rect.width() - 3 * self.PADDING) // 2
         row_height = self.LABEL_HEIGHT + self.LABEL_SPACING
 
-        # Labels and values
+        # Labels and values with translations
         labels_data = [
-            ("Type:", item_type, 0, 0),
-            ("Sub-type:", sub_type, 1, 0),
-            ("Quantity:", quantity_str, 0, 1),
-            ("Serial Number:", serial_number, 1, 1),
+            (tr("label.type"), item_type, 0, 0),
+            (tr("label.subtype"), sub_type if sub_type else "-", 1, 0),
+            (tr("label.quantity"), quantity_str, 0, 1),
+            (tr("label.serial_number"), serial_number if serial_number else "-", 1, 1),
         ]
 
         for label, value, col, row in labels_data:
