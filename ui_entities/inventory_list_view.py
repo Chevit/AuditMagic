@@ -1,0 +1,77 @@
+from PyQt6.QtCore import Qt, pyqtSignal, QModelIndex
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QListView, QMenu
+from ui_entities.inventory_delegate import InventoryItemDelegate
+from ui_entities.inventory_item import InventoryItem
+
+
+class InventoryListView(QListView):
+    """Custom QListView for displaying inventory items with context menu support."""
+
+    edit_requested = pyqtSignal(int, InventoryItem)
+    details_requested = pyqtSignal(int, InventoryItem)
+    delete_requested = pyqtSignal(int, InventoryItem)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+        self._setup_context_menu()
+
+    def _setup_ui(self):
+        """Configure the list view appearance and behavior."""
+        self.setItemDelegate(InventoryItemDelegate(self))
+        self.setMouseTracking(True)
+        self.setSelectionMode(QListView.SelectionMode.SingleSelection)
+        self.setVerticalScrollMode(QListView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setSpacing(0)
+        self.setUniformItemSizes(True)
+
+    def _setup_context_menu(self):
+        """Set up the context menu with edit, details, and delete actions."""
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+
+    def _show_context_menu(self, position):
+        """Show context menu at the given position."""
+        index = self.indexAt(position)
+        if not index.isValid():
+            return
+
+        row = index.row()
+        item = self._get_item_from_index(index)
+        if item is None:
+            return
+
+        menu = QMenu(self)
+
+        edit_action = QAction("Edit", self)
+        edit_action.triggered.connect(lambda: self.edit_requested.emit(row, item))
+        menu.addAction(edit_action)
+
+        details_action = QAction("See Details", self)
+        details_action.triggered.connect(lambda: self.details_requested.emit(row, item))
+        menu.addAction(details_action)
+
+        menu.addSeparator()
+
+        delete_action = QAction("Delete", self)
+        delete_action.triggered.connect(lambda: self.delete_requested.emit(row, item))
+        menu.addAction(delete_action)
+
+        menu.exec(self.viewport().mapToGlobal(position))
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click to open details."""
+        index = self.indexAt(event.pos())
+        if index.isValid():
+            row = index.row()
+            item = self._get_item_from_index(index)
+            if item is not None:
+                self.details_requested.emit(row, item)
+        super().mouseDoubleClickEvent(event)
+
+    def _get_item_from_index(self, index: QModelIndex) -> InventoryItem:
+        """Get the InventoryItem from the model at the given index."""
+        from ui_entities.inventory_model import InventoryItemRole
+        return index.data(InventoryItemRole.ItemData)
