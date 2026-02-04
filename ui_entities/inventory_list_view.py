@@ -12,6 +12,9 @@ class InventoryListView(QListView):
     edit_requested = pyqtSignal(int, InventoryItem)
     details_requested = pyqtSignal(int, InventoryItem)
     delete_requested = pyqtSignal(int, InventoryItem)
+    add_quantity_requested = pyqtSignal(int, InventoryItem)
+    remove_quantity_requested = pyqtSignal(int, InventoryItem)
+    transactions_requested = pyqtSignal(int, InventoryItem)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -53,6 +56,24 @@ class InventoryListView(QListView):
         details_action = QAction(tr("menu.details"), self)
         details_action.triggered.connect(lambda: self.details_requested.emit(row, item))
         menu.addAction(details_action)
+
+        menu.addSeparator()
+
+        # Quantity actions
+        add_qty_action = QAction(tr("menu.add_quantity"), self)
+        add_qty_action.triggered.connect(lambda: self.add_quantity_requested.emit(row, item))
+        menu.addAction(add_qty_action)
+
+        remove_qty_action = QAction(tr("menu.remove_quantity"), self)
+        remove_qty_action.triggered.connect(lambda: self.remove_quantity_requested.emit(row, item))
+        menu.addAction(remove_qty_action)
+
+        menu.addSeparator()
+
+        # Transactions action
+        transactions_action = QAction(tr("menu.transactions"), self)
+        transactions_action.triggered.connect(lambda: self.transactions_requested.emit(row, item))
+        menu.addAction(transactions_action)
 
         menu.addSeparator()
 

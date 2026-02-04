@@ -10,6 +10,7 @@ class InventoryItemRole:
     Quantity = Qt.ItemDataRole.UserRole + 3
     SerialNumber = Qt.ItemDataRole.UserRole + 4
     ItemData = Qt.ItemDataRole.UserRole + 5
+    Notes = Qt.ItemDataRole.UserRole + 6
 
 
 class InventoryModel(QAbstractListModel):
@@ -48,6 +49,9 @@ class InventoryModel(QAbstractListModel):
         if role == InventoryItemRole.ItemData:
             return item
 
+        if role == InventoryItemRole.Notes:
+            return item.notes
+
         return None
 
     def setData(self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole) -> bool:
@@ -69,6 +73,8 @@ class InventoryModel(QAbstractListModel):
             item.quantity = value
         elif role == InventoryItemRole.SerialNumber:
             item.serial_number = value
+        elif role == InventoryItemRole.Notes:
+            item.notes = value
         else:
             return False
 

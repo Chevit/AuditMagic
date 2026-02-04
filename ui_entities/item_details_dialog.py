@@ -90,6 +90,14 @@ class ItemDetailsDialog(QDialog):
         serial_value.setFont(value_font)
         form_layout.addRow(serial_label, serial_value)
 
+        # Notes
+        notes_label = QLabel(tr("label.notes"))
+        notes_label.setFont(label_font)
+        notes_value = QLabel(self._item.notes if self._item.notes else "-")
+        notes_value.setFont(value_font)
+        notes_value.setWordWrap(True)
+        form_layout.addRow(notes_label, notes_value)
+
         layout.addLayout(form_layout)
 
         # Spacer

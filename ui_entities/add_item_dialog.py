@@ -2,7 +2,7 @@ from typing import Optional
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QLineEdit, QSpinBox, QPushButton, QFrame, QMessageBox
+    QLabel, QLineEdit, QSpinBox, QPushButton, QFrame, QMessageBox, QTextEdit
 )
 from PyQt6.QtGui import QFont
 from ui_entities.inventory_item import InventoryItem
@@ -77,6 +77,13 @@ class AddItemDialog(QDialog):
         self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
         form_layout.addRow(serial_label, self.serial_edit)
 
+        # Notes (optional)
+        notes_label = QLabel(tr("label.notes"))
+        self.notes_edit = QTextEdit()
+        self.notes_edit.setPlaceholderText(tr("placeholder.notes"))
+        self.notes_edit.setMaximumHeight(80)
+        form_layout.addRow(notes_label, self.notes_edit)
+
         layout.addLayout(form_layout)
 
         # Spacer
@@ -105,6 +112,7 @@ class AddItemDialog(QDialog):
         sub_type = self.subtype_edit.text().strip()
         quantity = self.quantity_spin.value()
         serial_number = self.serial_edit.text().strip()
+        notes = self.notes_edit.toPlainText().strip()
 
         # Validation - only Type is required
         errors = []
@@ -123,7 +131,8 @@ class AddItemDialog(QDialog):
             item_type=item_type,
             sub_type=sub_type,
             quantity=quantity,
-            serial_number=serial_number
+            serial_number=serial_number,
+            notes=notes
         )
         self.accept()
 

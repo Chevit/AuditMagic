@@ -41,6 +41,11 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "button.edit": "Редагувати",
         "button.yes": "Так",
         "button.no": "Ні",
+        "button.search": "Пошук",
+        "button.clear": "Очистити",
+        "button.add_quantity": "Додати кількість",
+        "button.remove_quantity": "Зменшити кількість",
+        "button.transactions": "Транзакції",
 
         # Item fields
         "field.id": "ID",
@@ -48,6 +53,9 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "field.subtype": "Підтип",
         "field.quantity": "Кількість",
         "field.serial_number": "Серійний номер",
+        "field.notes": "Нотатки",
+        "field.created_at": "Створено",
+        "field.updated_at": "Оновлено",
 
         # Labels with colons
         "label.id": "ID:",
@@ -55,11 +63,17 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "label.subtype": "Підтип:",
         "label.quantity": "Кількість:",
         "label.serial_number": "Серійний номер:",
+        "label.notes": "Нотатки:",
+        "label.search": "Пошук:",
+        "label.search_field": "Поле пошуку:",
+        "label.recent_searches": "Останні пошуки:",
 
         # Placeholders
         "placeholder.type": "Введіть тип...",
         "placeholder.subtype": "Введіть підтип (необов'язково)...",
         "placeholder.serial_number": "Введіть серійний номер (необов'язково)...",
+        "placeholder.notes": "Введіть нотатки (необов'язково)...",
+        "placeholder.search": "Введіть для пошуку...",
 
         # Dialog titles
         "dialog.add_item.title": "Додати новий елемент",
@@ -67,20 +81,49 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "dialog.details.title": "Деталі елемента",
         "dialog.edit.title": "Редагувати елемент",
         "dialog.confirm_delete.title": "Підтвердження видалення",
+        "dialog.transactions.title": "Історія транзакцій",
+        "dialog.quantity.title": "Змінити кількість",
+        "dialog.quantity.add_header": "Додати кількість",
+        "dialog.quantity.remove_header": "Зменшити кількість",
 
         # Context menu
         "menu.edit": "Редагувати",
         "menu.details": "Переглянути деталі",
         "menu.delete": "Видалити",
+        "menu.add_quantity": "Додати кількість",
+        "menu.remove_quantity": "Зменшити кількість",
+        "menu.transactions": "Переглянути транзакції",
 
         # Messages
         "message.confirm_delete": "Ви впевнені, що хочете видалити цей елемент?",
         "message.validation_error": "Помилка валідації",
         "message.fix_errors": "Будь ласка, виправте наступні помилки:",
         "message.type_required": "Тип є обов'язковим",
+        "message.quantity_positive": "Кількість має бути більше нуля",
+        "message.not_enough_quantity": "Недостатньо товару на складі",
+        "message.no_results": "Нічого не знайдено",
 
         # Main window
         "main.add_item": "Додати елемент",
+
+        # Search
+        "search.all_fields": "Всі поля",
+        "search.field.item_type": "Тип",
+        "search.field.sub_type": "Підтип",
+        "search.field.notes": "Нотатки",
+
+        # Transactions
+        "transaction.type.add": "Додавання",
+        "transaction.type.remove": "Видалення",
+        "transaction.column.date": "Дата",
+        "transaction.column.type": "Тип",
+        "transaction.column.change": "Зміна",
+        "transaction.column.before": "До",
+        "transaction.column.after": "Після",
+        "transaction.column.notes": "Нотатки",
+        "transaction.filter.start_date": "Дата початку:",
+        "transaction.filter.end_date": "Дата кінця:",
+        "transaction.filter.apply": "Застосувати фільтр",
     },
 
     Language.ENGLISH: {
@@ -94,6 +137,11 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "button.edit": "Edit",
         "button.yes": "Yes",
         "button.no": "No",
+        "button.search": "Search",
+        "button.clear": "Clear",
+        "button.add_quantity": "Add Quantity",
+        "button.remove_quantity": "Remove Quantity",
+        "button.transactions": "Transactions",
 
         # Item fields
         "field.id": "ID",
@@ -101,6 +149,9 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "field.subtype": "Sub-type",
         "field.quantity": "Quantity",
         "field.serial_number": "Serial Number",
+        "field.notes": "Notes",
+        "field.created_at": "Created At",
+        "field.updated_at": "Updated At",
 
         # Labels with colons
         "label.id": "ID:",
@@ -108,11 +159,17 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "label.subtype": "Sub-type:",
         "label.quantity": "Quantity:",
         "label.serial_number": "Serial Number:",
+        "label.notes": "Notes:",
+        "label.search": "Search:",
+        "label.search_field": "Search field:",
+        "label.recent_searches": "Recent searches:",
 
         # Placeholders
         "placeholder.type": "Enter item type...",
         "placeholder.subtype": "Enter item sub-type (optional)...",
         "placeholder.serial_number": "Enter serial number (optional)...",
+        "placeholder.notes": "Enter notes (optional)...",
+        "placeholder.search": "Type to search...",
 
         # Dialog titles
         "dialog.add_item.title": "Add New Item",
@@ -120,19 +177,48 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "dialog.details.title": "Item Details",
         "dialog.edit.title": "Edit Item",
         "dialog.confirm_delete.title": "Confirm Delete",
+        "dialog.transactions.title": "Transaction History",
+        "dialog.quantity.title": "Change Quantity",
+        "dialog.quantity.add_header": "Add Quantity",
+        "dialog.quantity.remove_header": "Remove Quantity",
 
         # Context menu
         "menu.edit": "Edit",
         "menu.details": "See Details",
         "menu.delete": "Delete",
+        "menu.add_quantity": "Add Quantity",
+        "menu.remove_quantity": "Remove Quantity",
+        "menu.transactions": "View Transactions",
 
         # Messages
         "message.confirm_delete": "Are you sure you want to delete this item?",
         "message.validation_error": "Validation Error",
         "message.fix_errors": "Please fix the following errors:",
         "message.type_required": "Type is required",
+        "message.quantity_positive": "Quantity must be greater than zero",
+        "message.not_enough_quantity": "Not enough items in stock",
+        "message.no_results": "No results found",
 
         # Main window
         "main.add_item": "Add Item",
+
+        # Search
+        "search.all_fields": "All fields",
+        "search.field.item_type": "Type",
+        "search.field.sub_type": "Sub-type",
+        "search.field.notes": "Notes",
+
+        # Transactions
+        "transaction.type.add": "Add",
+        "transaction.type.remove": "Remove",
+        "transaction.column.date": "Date",
+        "transaction.column.type": "Type",
+        "transaction.column.change": "Change",
+        "transaction.column.before": "Before",
+        "transaction.column.after": "After",
+        "transaction.column.notes": "Notes",
+        "transaction.filter.start_date": "Start date:",
+        "transaction.filter.end_date": "End date:",
+        "transaction.filter.apply": "Apply Filter",
     }
 }
