@@ -1,16 +1,15 @@
 """Search widget with autocomplete dropdown and history."""
-from typing import Optional, List
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from typing import Optional, List, Tuple
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QStringListModel
 from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QComboBox,
-    QPushButton, QCompleter, QListWidget, QListWidgetItem, QLabel
+    QPushButton, QCompleter
 )
-from PyQt6.QtGui import QFont
 from ui_entities.translations import tr
 
 
 class SearchWidget(QWidget):
-    """Search widget with autocomplete and history."""
+    """Search widget with autocomplete and history integrated in QCompleter."""
 
     # Signals
     search_requested = pyqtSignal(str, str)  # query, field (or None for all)
@@ -20,6 +19,7 @@ class SearchWidget(QWidget):
         super().__init__(parent)
         self._autocomplete_callback = None
         self._history_callback = None
+        self._history_items: List[Tuple[str, Optional[str]]] = []
         self._debounce_timer = QTimer()
         self._debounce_timer.setSingleShot(True)
         self._debounce_timer.timeout.connect(self._on_debounce_timeout)
@@ -42,6 +42,7 @@ class SearchWidget(QWidget):
         self.field_combo.addItem(tr("search.field.sub_type"), "sub_type")
         self.field_combo.addItem(tr("search.field.notes"), "notes")
         self.field_combo.setMinimumWidth(120)
+        self.field_combo.currentIndexChanged.connect(self._on_field_changed)
         search_row.addWidget(self.field_combo)
 
         # Search input with autocomplete
@@ -52,10 +53,11 @@ class SearchWidget(QWidget):
         self.search_input.returnPressed.connect(self._on_search_clicked)
         search_row.addWidget(self.search_input, 1)
 
-        # Completer for autocomplete
+        # Completer for autocomplete and history
         self.completer = QCompleter([])
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.completer.activated.connect(self._on_completer_activated)
         self.search_input.setCompleter(self.completer)
 
         # Search button
@@ -69,26 +71,6 @@ class SearchWidget(QWidget):
         search_row.addWidget(self.clear_button)
 
         layout.addLayout(search_row)
-
-        # History section (collapsible)
-        self.history_widget = QWidget()
-        history_layout = QVBoxLayout(self.history_widget)
-        history_layout.setContentsMargins(0, 5, 0, 0)
-        history_layout.setSpacing(2)
-
-        history_label = QLabel(tr("label.recent_searches"))
-        history_font = QFont()
-        history_font.setPointSize(9)
-        history_label.setFont(history_font)
-        history_layout.addWidget(history_label)
-
-        self.history_list = QListWidget()
-        self.history_list.setMaximumHeight(100)
-        self.history_list.itemClicked.connect(self._on_history_item_clicked)
-        history_layout.addWidget(self.history_list)
-
-        self.history_widget.setVisible(False)
-        layout.addWidget(self.history_widget)
 
     def set_autocomplete_callback(self, callback):
         """Set the callback for getting autocomplete suggestions.
@@ -105,27 +87,71 @@ class SearchWidget(QWidget):
             callback: Function() -> List[Tuple[str, Optional[str]]]
         """
         self._history_callback = callback
-        self._update_history()
+        self._load_history()
+
+    def _load_history(self):
+        """Load history items from callback."""
+        if self._history_callback:
+            self._history_items = self._history_callback()
+
+    def _on_field_changed(self, index: int):
+        """Handle field combo change - update completer with history."""
+        self._update_completer_with_history_and_suggestions()
 
     def _on_text_changed(self, text: str):
         """Handle text changes for autocomplete with debounce."""
         self._debounce_timer.stop()
         if len(text) >= 1:
             self._debounce_timer.start(150)  # 150ms debounce
+        else:
+            # Show history when input is empty
+            self._update_completer_with_history_and_suggestions()
 
     def _on_debounce_timeout(self):
         """Handle debounce timeout - fetch autocomplete suggestions."""
-        text = self.search_input.text()
-        if self._autocomplete_callback and len(text) >= 1:
-            field = self.field_combo.currentData()
-            suggestions = self._autocomplete_callback(text, field)
-            self._update_completer(suggestions)
+        self._update_completer_with_history_and_suggestions()
 
-    def _update_completer(self, suggestions: List[str]):
-        """Update the completer with new suggestions."""
-        from PyQt6.QtCore import QStringListModel
+    def _update_completer_with_history_and_suggestions(self):
+        """Update completer with both history and autocomplete suggestions."""
+        text = self.search_input.text()
+        field = self.field_combo.currentData()
+        suggestions = []
+
+        # Get history items that match current field
+        history_queries = self._get_filtered_history_queries(field)
+
+        # Get autocomplete suggestions if there's text
+        if self._autocomplete_callback and len(text) >= 1:
+            autocomplete = self._autocomplete_callback(text, field)
+            # Combine history and autocomplete, removing duplicates
+            suggestions = history_queries + [s for s in autocomplete if s not in history_queries]
+        else:
+            suggestions = history_queries
+
         model = QStringListModel(suggestions)
         self.completer.setModel(model)
+
+    def _get_filtered_history_queries(self, current_field: Optional[str]) -> List[str]:
+        """Get history queries filtered by current field.
+
+        Args:
+            current_field: The currently selected search field (None for all fields)
+
+        Returns:
+            List of query strings from history matching the field
+        """
+        queries = []
+        for query, field in self._history_items:
+            # Include if fields match, or if current field is "all" (None)
+            if current_field is None or field == current_field:
+                if query not in queries:
+                    queries.append(query)
+        return queries
+
+    def _on_completer_activated(self, text: str):
+        """Handle completer item selection."""
+        # Trigger search when item is selected from completer
+        self._on_search_clicked()
 
     def _on_search_clicked(self):
         """Handle search button click."""
@@ -139,44 +165,10 @@ class SearchWidget(QWidget):
         self.search_input.clear()
         self.search_cleared.emit()
 
-    def _on_history_item_clicked(self, item: QListWidgetItem):
-        """Handle history item click."""
-        data = item.data(Qt.ItemDataRole.UserRole)
-        if data:
-            query, field = data
-            self.search_input.setText(query)
-            # Set the field combo
-            for i in range(self.field_combo.count()):
-                if self.field_combo.itemData(i) == field:
-                    self.field_combo.setCurrentIndex(i)
-                    break
-            self._on_search_clicked()
-
-    def _update_history(self):
-        """Update the history list from callback."""
-        if not self._history_callback:
-            return
-
-        history = self._history_callback()
-        self.history_list.clear()
-
-        if history:
-            self.history_widget.setVisible(True)
-            for query, field in history:
-                field_name = tr("search.all_fields") if not field else tr(f"search.field.{field}")
-                item = QListWidgetItem(f"{query} ({field_name})")
-                item.setData(Qt.ItemDataRole.UserRole, (query, field))
-                self.history_list.addItem(item)
-        else:
-            self.history_widget.setVisible(False)
-
     def refresh_history(self):
-        """Refresh the history list."""
-        self._update_history()
-
-    def show_history(self, show: bool = True):
-        """Show or hide the history section."""
-        self.history_widget.setVisible(show and self.history_list.count() > 0)
+        """Refresh the history from callback."""
+        self._load_history()
+        self._update_completer_with_history_and_suggestions()
 
     def get_current_query(self) -> str:
         """Get the current search query."""
