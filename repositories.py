@@ -209,6 +209,29 @@ class ItemRepository:
             return _detach_item(item)
 
     @staticmethod
+    def find_by_fields(item_type: str, sub_type: str = "",
+                       serial_number: str = "", notes: str = "") -> Optional[Item]:
+        """Find an existing item with matching fields (excluding quantity).
+
+        Args:
+            item_type: Type of the item.
+            sub_type: Sub-type of the item.
+            serial_number: Serial number.
+            notes: Additional notes.
+
+        Returns:
+            The matching Item instance or None if not found.
+        """
+        with session_scope() as session:
+            item = session.query(Item).filter(
+                Item.item_type == item_type,
+                Item.sub_type == (sub_type or ""),
+                Item.serial_number == (serial_number or ""),
+                Item.notes == (notes or "")
+            ).first()
+            return _detach_item(item) if item else None
+
+    @staticmethod
     def search(query: str, field: str = None) -> List[Item]:
         """Search items by query string.
 

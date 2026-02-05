@@ -35,6 +35,52 @@ class InventoryService:
         return InventoryItem.from_db_model(db_item)
 
     @staticmethod
+    def create_or_merge_item(item_type: str, quantity: int, sub_type: str = "",
+                             serial_number: str = "", notes: str = "") -> Tuple[InventoryItem, bool]:
+        """Create a new item or merge with existing item if fields match.
+
+        If an item with the same item_type, sub_type, serial_number, and notes exists,
+        the quantity will be added to the existing item and a transaction will be created.
+
+        Args:
+            item_type: Type of the item (required)
+            quantity: Quantity to add (required)
+            sub_type: Sub-type of the item (optional)
+            serial_number: Serial number (optional)
+            notes: Additional notes (optional)
+
+        Returns:
+            Tuple of (InventoryItem, was_merged: bool).
+            was_merged is True if quantity was added to an existing item.
+        """
+        # Check for existing item with same fields
+        existing = ItemRepository.find_by_fields(
+            item_type=item_type,
+            sub_type=sub_type,
+            serial_number=serial_number,
+            notes=notes
+        )
+
+        if existing:
+            # Add quantity to existing item (creates transaction)
+            updated = ItemRepository.add_quantity(
+                item_id=existing.id,
+                quantity=quantity,
+                notes="Added via new item entry"
+            )
+            return InventoryItem.from_db_model(updated), True
+
+        # Create new item
+        db_item = ItemRepository.create(
+            item_type=item_type,
+            quantity=quantity,
+            sub_type=sub_type,
+            serial_number=serial_number,
+            notes=notes
+        )
+        return InventoryItem.from_db_model(db_item), False
+
+    @staticmethod
     def get_item(item_id: int) -> Optional[InventoryItem]:
         """Get an item by ID.
 

@@ -37,7 +37,6 @@ class MainWindow(QMainWindow):
         """Set up the search widget above the list."""
         self.search_widget = SearchWidget(self)
         self.search_widget.set_autocomplete_callback(self._get_autocomplete_suggestions)
-        self.search_widget.set_history_callback(self._get_search_history)
         self.search_widget.search_requested.connect(self._on_search)
         self.search_widget.search_cleared.connect(self._on_search_cleared)
 
@@ -126,15 +125,30 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             new_item = dialog.get_item()
             if new_item:
-                # Save to database
-                saved_item = InventoryService.create_item(
+                # Save to database (merge with existing if same fields)
+                saved_item, was_merged = InventoryService.create_or_merge_item(
                     item_type=new_item.item_type,
                     quantity=new_item.quantity,
                     sub_type=new_item.sub_type,
                     serial_number=new_item.serial_number,
                     notes=new_item.notes
                 )
-                self.inventory_model.add_item(saved_item)
+                if was_merged:
+                    # Update existing item in the list
+                    self._update_item_in_model(saved_item)
+                else:
+                    # Add new item to the list
+                    self.inventory_model.add_item(saved_item)
+
+    def _update_item_in_model(self, item: InventoryItem):
+        """Update an existing item in the model by ID."""
+        for row in range(self.inventory_model.rowCount()):
+            existing = self.inventory_model.get_item(row)
+            if existing and existing.id == item.id:
+                self.inventory_model.update_item(row, item)
+                return
+        # If not found in model (filtered view), refresh the list
+        self._refresh_item_list()
 
     def _on_add_quantity(self, row: int, item: InventoryItem):
         """Handle add quantity request."""
@@ -174,16 +188,11 @@ class MainWindow(QMainWindow):
         """Get autocomplete suggestions for search."""
         return SearchService.get_autocomplete_suggestions(prefix, field if field else None)
 
-    def _get_search_history(self) -> list:
-        """Get search history."""
-        return SearchService.get_search_history()
-
     def _on_search(self, query: str, field: str):
         """Handle search request."""
         field_value = field if field else None
-        results = SearchService.search(query, field_value, save_to_history=True)
+        results = SearchService.search(query, field_value, save_to_history=False)
         self._display_search_results(results)
-        self.search_widget.refresh_history()
 
     def _on_search_cleared(self):
         """Handle search cleared - show all items."""
