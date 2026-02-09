@@ -1,6 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication
 from ui_entities.main_window import MainWindow
+from db import run_migrations
 from logger import logger
 
 
@@ -15,6 +16,9 @@ def main():
 
         window = MainWindow()
         logger.info("MainWindow created successfully")
+
+        run_migrations()
+        logger.info("Database migrations applied")
 
         window.show()
         logger.info("MainWindow displayed")
