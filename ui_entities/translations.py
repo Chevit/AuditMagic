@@ -124,6 +124,10 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "transaction.filter.start_date": "Дата початку:",
         "transaction.filter.end_date": "Дата кінця:",
         "transaction.filter.apply": "Застосувати фільтр",
+
+        # Transaction notes
+        "transaction.notes.initial": "Початковий інвентар",
+        "transaction.notes.merged": "Додано через створення нового елемента",
     },
 
     Language.ENGLISH: {
@@ -220,5 +224,9 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "transaction.filter.start_date": "Start date:",
         "transaction.filter.end_date": "End date:",
         "transaction.filter.apply": "Apply Filter",
+
+        # Transaction notes
+        "transaction.notes.initial": "Initial inventory",
+        "transaction.notes.merged": "Added via new item entry",
     }
 }

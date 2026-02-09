@@ -75,8 +75,7 @@ class QuantityDialog(QDialog):
         self.quantity_spin.setMinimum(1)
         self.quantity_spin.setMaximum(999999 if self._is_add else self._current_quantity)
         self.quantity_spin.setValue(1)
-        self.quantity_spin.textChanged.connect(self._text_changed)
-        self.quantity_spin.editingFinished.connect(self._quntity_edit_finished)
+        self.quantity_spin.lineEdit().textChanged.connect(self._on_spin_text_changed)
         form_layout.addRow(quantity_label, self.quantity_spin)
 
         # Notes
@@ -116,13 +115,11 @@ class QuantityDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-    def _text_changed(self):
-        print("Text changed")
-        print(self.quantity_spin.text())
-
-    def _quntity_edit_finished(self):
-        print("Edit Finished")
-        print(self.quantity_spin.text())
+    def _on_spin_text_changed(self, text: str):
+        """Handle spinbox text changes, including when text is fully cleared."""
+        if not text:
+            self.quantity_spin.setValue(self.quantity_spin.minimum())
+        self._update_preview()
 
 
     def _update_preview(self):

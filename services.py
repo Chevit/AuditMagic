@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 from models import TransactionType
 from repositories import ItemRepository, TransactionRepository, SearchHistoryRepository
 from ui_entities.inventory_item import InventoryItem
+from ui_entities.translations import tr
 
 
 class InventoryService:
@@ -66,7 +67,7 @@ class InventoryService:
             updated = ItemRepository.add_quantity(
                 item_id=existing.id,
                 quantity=quantity,
-                notes="Added via new item entry"
+                notes=tr("transaction.notes.merged")
             )
             return InventoryItem.from_db_model(updated), True
 
