@@ -1,4 +1,5 @@
 """Database layer with SQLAlchemy session management."""
+
 import os
 from contextlib import contextmanager
 from typing import Generator
@@ -41,7 +42,7 @@ def init_database(db_url: str = None) -> None:
     engine = create_engine(
         db_url,
         echo=False,  # Set to True for SQL debugging
-        connect_args={"check_same_thread": False}  # Required for SQLite
+        connect_args={"check_same_thread": False},  # Required for SQLite
     )
 
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -93,6 +94,23 @@ def session_scope() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+
+def run_migrations() -> None:
+    """Run database migrations using Alembic."""
+    from alembic.config import Config
+    from alembic import command
+
+    logger.info("Running database migrations...")
+
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+
+    try:
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        raise
 
 
 def reset_database() -> None:
