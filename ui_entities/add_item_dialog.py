@@ -119,6 +119,9 @@ class AddItemDialog(QDialog):
         if not item_type:
             errors.append(tr("message.type_required"))
 
+        if quantity <= 0:
+            errors.append(tr("message.quantity_positive"))
+
         if errors:
             QMessageBox.warning(
                 self,
