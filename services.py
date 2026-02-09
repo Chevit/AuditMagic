@@ -6,6 +6,7 @@ from models import TransactionType
 from repositories import ItemRepository, TransactionRepository, SearchHistoryRepository
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
+from logger import logger
 
 
 class InventoryService:
@@ -26,14 +27,20 @@ class InventoryService:
         Returns:
             The created InventoryItem.
         """
-        db_item = ItemRepository.create(
-            item_type=item_type,
-            quantity=quantity,
-            sub_type=sub_type,
-            serial_number=serial_number,
-            notes=notes
-        )
-        return InventoryItem.from_db_model(db_item)
+        logger.info(f"Creating new item: type='{item_type}', quantity={quantity}")
+        try:
+            db_item = ItemRepository.create(
+                item_type=item_type,
+                quantity=quantity,
+                sub_type=sub_type,
+                serial_number=serial_number,
+                notes=notes
+            )
+            logger.info(f"Item created successfully: id={db_item.id}")
+            return InventoryItem.from_db_model(db_item)
+        except Exception as e:
+            logger.error(f"Failed to create item: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     def create_or_merge_item(item_type: str, quantity: int, sub_type: str = "",
@@ -138,7 +145,13 @@ class InventoryService:
         Returns:
             True if deleted, False if not found.
         """
-        return ItemRepository.delete(item_id)
+        logger.info(f"Attempting to delete item: id={item_id}")
+        result = ItemRepository.delete(item_id)
+        if result:
+            logger.info(f"Item deleted successfully: id={item_id}")
+        else:
+            logger.warning(f"Failed to delete item (not found): id={item_id}")
+        return result
 
     @staticmethod
     def add_quantity(item_id: int, quantity: int, notes: str = "") -> Optional[InventoryItem]:
@@ -152,6 +165,7 @@ class InventoryService:
         Returns:
             The updated InventoryItem or None if not found.
         """
+        logger.info(f"Adding quantity to item: id={item_id}, quantity={quantity}")
         db_item = ItemRepository.add_quantity(item_id, quantity, notes)
         return InventoryItem.from_db_model(db_item) if db_item else None
 
@@ -170,6 +184,7 @@ class InventoryService:
         Raises:
             ValueError: If quantity would go below zero.
         """
+        logger.info(f"Removing quantity from item: id={item_id}, quantity={quantity}")
         db_item = ItemRepository.remove_quantity(item_id, quantity, notes)
         return InventoryItem.from_db_model(db_item) if db_item else None
 

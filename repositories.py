@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from db import session_scope
 from models import Item, Transaction, TransactionType, SearchHistory
 from ui_entities.translations import tr
+from logger import logger
 
 
 class ItemRepository:
@@ -28,6 +29,7 @@ class ItemRepository:
         Returns:
             The created Item instance.
         """
+        logger.debug(f"Repository: Creating item type='{item_type}', quantity={quantity}")
         with session_scope() as session:
             item = Item(
                 item_type=item_type,
@@ -54,6 +56,7 @@ class ItemRepository:
             session.commit()
             # Detach from session before returning
             session.refresh(item)
+            logger.debug(f"Repository: Item created with id={item.id}")
             return _detach_item(item)
 
     @staticmethod
@@ -127,8 +130,10 @@ class ItemRepository:
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
+                logger.warning(f"Repository: Item not found for deletion: id={item_id}")
                 return False
             session.delete(item)
+            logger.debug(f"Repository: Item deleted: id={item_id}")
             return True
 
     @staticmethod
@@ -149,6 +154,7 @@ class ItemRepository:
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
+                logger.warning(f"Repository: Item not found for add_quantity: id={item_id}")
                 return None
 
             quantity_before = item.quantity
@@ -165,6 +171,7 @@ class ItemRepository:
             session.add(transaction)
             session.commit()
             session.refresh(item)
+            logger.debug(f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}")
             return _detach_item(item)
 
     @staticmethod
@@ -188,9 +195,11 @@ class ItemRepository:
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
+                logger.warning(f"Repository: Item not found for remove_quantity: id={item_id}")
                 return None
 
             if item.quantity < quantity:
+                logger.warning(f"Repository: Cannot remove {quantity} from item id={item_id}, only {item.quantity} available")
                 raise ValueError(f"Cannot remove {quantity} items. Only {item.quantity} available.")
 
             quantity_before = item.quantity
@@ -207,6 +216,7 @@ class ItemRepository:
             session.add(transaction)
             session.commit()
             session.refresh(item)
+            logger.debug(f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}")
             return _detach_item(item)
 
     @staticmethod
@@ -243,6 +253,7 @@ class ItemRepository:
         Returns:
             List of matching Item instances.
         """
+        logger.debug(f"Repository: Searching items with query='{query}', field={field}")
         with session_scope() as session:
             search_pattern = f"%{query}%"
 

@@ -107,8 +107,8 @@ class AddItemDialog(QDialog):
         layout.addLayout(button_layout)
 
     def _on_add_clicked(self):
-        """Validate and accept the dialog."""
         item_type = self.type_edit.text().strip()
+        """Validate and accept the dialog."""
         sub_type = self.subtype_edit.text().strip()
         quantity = self.quantity_spin.value()
         serial_number = self.serial_edit.text().strip()

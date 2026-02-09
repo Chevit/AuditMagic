@@ -7,9 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from models import Base
+from logger import logger, APP_DATA_DIR
 
 # Database file path - stored in user's app data directory
-APP_DATA_DIR = os.path.join(os.path.expanduser("~"), ".audit_magic")
 DATABASE_PATH = os.path.join(APP_DATA_DIR, "inventory.db")
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
@@ -31,8 +31,12 @@ def init_database(db_url: str = None) -> None:
         db_url = DATABASE_URL
         # Ensure app data directory exists
         os.makedirs(APP_DATA_DIR, exist_ok=True)
+        logger.info(f"Database directory created/verified: {APP_DATA_DIR}")
     elif db_url == ":memory:":
         db_url = "sqlite:///:memory:"
+        logger.info("Using in-memory database")
+
+    logger.info(f"Initializing database with URL: {db_url}")
 
     engine = create_engine(
         db_url,
@@ -44,6 +48,7 @@ def init_database(db_url: str = None) -> None:
 
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized successfully")
 
 
 def get_engine():
@@ -81,8 +86,10 @@ def session_scope() -> Generator[Session, None, None]:
     try:
         yield session
         session.commit()
-    except Exception:
+        logger.debug("Database transaction committed successfully")
+    except Exception as e:
         session.rollback()
+        logger.error(f"Database transaction failed: {str(e)}", exc_info=True)
         raise
     finally:
         session.close()
