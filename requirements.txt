@@ -1,2 +1,4 @@
-PyQt6>=6.0.0
-SQLAlchemy>=2.0.0
+# requirements.txt
+PyQt6==6.7.0
+SQLAlchemy==2.0.31
+
