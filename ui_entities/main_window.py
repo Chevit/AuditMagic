@@ -11,6 +11,8 @@ from ui_entities.transactions_dialog import TransactionsDialog
 from ui_entities.translations import tr
 from db import init_database
 from services import InventoryService, SearchService, TransactionService
+from config import config
+from logger import logger
 
 
 class MainWindow(QMainWindow):
@@ -26,6 +28,7 @@ class MainWindow(QMainWindow):
         self._setup_inventory_list()
         self._load_data_from_db()
         self._connect_signals()
+        self._restore_window_state()
 
     def _setup_ui(self):
         """Set up UI with localized strings."""
@@ -210,3 +213,22 @@ class MainWindow(QMainWindow):
         items = InventoryService.get_all_items()
         for item in items:
             self.inventory_model.add_item(item)
+
+    def _restore_window_state(self):
+        """Restore window size and position from config."""
+        geometry = config.get("window.geometry")
+        if geometry:
+            self.restoreGeometry(bytes.fromhex(geometry))
+            logger.debug("Window geometry restored from config")
+
+        if config.get("window.maximized", False):
+            self.showMaximized()
+            logger.debug("Window maximized from config")
+
+    def closeEvent(self, event):
+        """Save window state before closing."""
+        config.set("window.geometry", self.saveGeometry().toHex().data().decode(), save=False)
+        config.set("window.maximized", self.isMaximized(), save=False)
+        config.save()
+        logger.info("Window state saved to config")
+        event.accept()

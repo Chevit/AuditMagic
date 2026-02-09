@@ -1,20 +1,25 @@
 from enum import Enum
 from typing import Dict
 
+from config import config
+from logger import logger
+
 
 class Language(Enum):
     UKRAINIAN = "uk"
     ENGLISH = "en"
 
 
-# Current application language - Ukrainian is primary
-_current_language: Language = Language.UKRAINIAN
+# Initialize language from config
+_current_language: Language = Language(config.get("language", "uk"))
 
 
 def set_language(language: Language) -> None:
-    """Set the current application language."""
+    """Set the current application language and save to config."""
     global _current_language
     _current_language = language
+    config.set("language", language.value)
+    logger.info(f"Language changed to: {language.value}")
 
 
 def get_language() -> Language:
