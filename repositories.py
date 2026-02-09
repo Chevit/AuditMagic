@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from db import session_scope
 from models import Item, Transaction, TransactionType, SearchHistory
+from ui_entities.translations import tr
 
 
 class ItemRepository:
@@ -46,7 +47,7 @@ class ItemRepository:
                     quantity_change=quantity,
                     quantity_before=0,
                     quantity_after=quantity,
-                    notes="Initial inventory"
+                    notes=notes or tr("transaction.notes.initial")
                 )
                 session.add(transaction)
 
