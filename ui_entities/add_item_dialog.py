@@ -1,12 +1,31 @@
 from typing import Optional
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QLineEdit, QSpinBox, QPushButton, QFrame, QMessageBox, QTextEdit
-)
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QSpinBox,
+    QPushButton,
+    QFrame,
+    QMessageBox,
+    QTextEdit,
+)
+
+from logger import logger
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
+from validators import (
+    ItemTypeValidator,
+    SerialNumberValidator,
+    validate_required_field,
+    validate_positive_integer,
+    validate_length,
+)
 
 
 class AddItemDialog(QDialog):
@@ -16,6 +35,7 @@ class AddItemDialog(QDialog):
         super().__init__(parent)
         self._result_item: Optional[InventoryItem] = None
         self._setup_ui()
+        self._setup_validators()
 
     def _setup_ui(self):
         """Set up the dialog UI."""
@@ -66,7 +86,7 @@ class AddItemDialog(QDialog):
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
         self.quantity_spin = QSpinBox()
-        self.quantity_spin.setMinimum(0)
+        self.quantity_spin.setMinimum(1)
         self.quantity_spin.setMaximum(999999)
         self.quantity_spin.setValue(1)
         form_layout.addRow(quantity_label, self.quantity_spin)
@@ -106,36 +126,76 @@ class AddItemDialog(QDialog):
 
         layout.addLayout(button_layout)
 
+    def _setup_validators(self):
+        """Set up input validators for form fields."""
+        # Item type - letters, numbers, spaces, basic punctuation
+        self.type_edit.setValidator(ItemTypeValidator(self))
+
+        # Serial number - alphanumeric with hyphens
+        self.serial_edit.setValidator(SerialNumberValidator(self))
+
+        logger.debug("Form validators configured")
+
     def _on_add_clicked(self):
-        item_type = self.type_edit.text().strip()
         """Validate and accept the dialog."""
+        item_type = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
         quantity = self.quantity_spin.value()
         serial_number = self.serial_edit.text().strip()
         notes = self.notes_edit.toPlainText().strip()
 
-        # Validation - only Type is required
+        # Validation
         errors = []
-        if not item_type:
-            errors.append(tr("message.type_required"))
 
-        if quantity <= 0:
-            errors.append(tr("message.quantity_positive"))
+        # Validate item type - required and min length
+        valid, error = validate_required_field(item_type, tr("field.type"))
+        if not valid:
+            errors.append(error)
+        else:
+            valid, error = validate_length(
+                item_type, tr("field.type"), min_length=2, max_length=255
+            )
+            if not valid:
+                errors.append(error)
 
+        # Validate quantity
+        valid, error = validate_positive_integer(
+            str(quantity), tr("field.quantity"), minimum=1
+        )
+        if not valid:
+            errors.append(error)
+
+        # Validate serial number length if provided
+        if serial_number:
+            valid, error = validate_length(
+                serial_number, tr("field.serial_number"), max_length=255
+            )
+            if not valid:
+                errors.append(error)
+
+        # Validate notes length if provided
+        if notes:
+            valid, error = validate_length(notes, tr("field.notes"), max_length=1000)
+            if not valid:
+                errors.append(error)
+
+        # Show errors if any
         if errors:
             QMessageBox.warning(
                 self,
                 tr("message.validation_error"),
-                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors)
+                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
             )
+            logger.warning(f"Form validation failed: {errors}")
             return
 
+        logger.info("Form validation passed")
         self._result_item = InventoryItem(
             item_type=item_type,
             sub_type=sub_type,
             quantity=quantity,
             serial_number=serial_number,
-            notes=notes
+            notes=notes,
         )
         self.accept()
 

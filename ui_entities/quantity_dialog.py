@@ -1,18 +1,37 @@
 """Dialog for adding or removing quantity from an item."""
+
 from typing import Optional
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QSpinBox, QPushButton, QFrame, QTextEdit, QMessageBox
-)
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QSpinBox,
+    QPushButton,
+    QFrame,
+    QTextEdit,
+    QMessageBox,
+)
+
+from logger import logger
 from ui_entities.translations import tr
+from validators import validate_length
 
 
 class QuantityDialog(QDialog):
     """Dialog for changing item quantity."""
 
-    def __init__(self, item_name: str, current_quantity: int, is_add: bool = True, parent=None):
+    def __init__(
+        self,
+        item_name: str,
+        current_quantity: int,
+        is_add: bool = True,
+        parent=None,
+    ):
         super().__init__(parent)
         self._item_name = item_name
         self._current_quantity = current_quantity
@@ -32,7 +51,11 @@ class QuantityDialog(QDialog):
         layout.setSpacing(15)
 
         # Header
-        header_text = tr("dialog.quantity.add_header") if self._is_add else tr("dialog.quantity.remove_header")
+        header_text = (
+            tr("dialog.quantity.add_header")
+            if self._is_add
+            else tr("dialog.quantity.remove_header")
+        )
         header_label = QLabel(header_text)
         header_font = QFont()
         header_font.setPointSize(14)
@@ -73,7 +96,9 @@ class QuantityDialog(QDialog):
         quantity_label.setFont(label_font)
         self.quantity_spin = QSpinBox()
         self.quantity_spin.setMinimum(1)
-        self.quantity_spin.setMaximum(999999 if self._is_add else self._current_quantity)
+        self.quantity_spin.setMaximum(
+            999999 if self._is_add else self._current_quantity
+        )
         self.quantity_spin.setValue(1)
         self.quantity_spin.lineEdit().textChanged.connect(self._on_spin_text_changed)
         form_layout.addRow(quantity_label, self.quantity_spin)
@@ -119,8 +144,8 @@ class QuantityDialog(QDialog):
         """Handle spinbox text changes, including when text is fully cleared."""
         if not text:
             self.quantity_spin.setValue(self.quantity_spin.minimum())
+            logger.debug("Quantity field cleared, reset to minimum")
         self._update_preview()
-
 
     def _update_preview(self):
         """Update the preview label showing the result."""
@@ -137,27 +162,38 @@ class QuantityDialog(QDialog):
             )
 
     def _on_action_clicked(self):
-        """Handle action button click."""
+        """Handle action button click with validation."""
         quantity = self.quantity_spin.value()
+        notes = self.notes_edit.toPlainText().strip()
+
+        errors = []
 
         if quantity <= 0:
-            QMessageBox.warning(
-                self,
-                tr("message.validation_error"),
-                tr("message.quantity_positive")
-            )
-            return
+            errors.append(tr("message.quantity_positive"))
 
         if not self._is_add and quantity > self._current_quantity:
+            errors.append(tr("message.not_enough_quantity"))
+
+        # Validate notes length if provided
+        if notes:
+            valid, error = validate_length(notes, tr("field.notes"), max_length=1000)
+            if not valid:
+                errors.append(error)
+
+        if errors:
             QMessageBox.warning(
                 self,
                 tr("message.validation_error"),
-                tr("message.not_enough_quantity")
+                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
             )
+            logger.warning(f"Quantity validation failed: {errors}")
             return
 
+        logger.info(
+            f"Quantity validation passed: {'add' if self._is_add else 'remove'} {quantity}"
+        )
         self._result_quantity = quantity
-        self._result_notes = self.notes_edit.toPlainText().strip()
+        self._result_notes = notes
         self.accept()
 
     def get_quantity(self) -> int:
