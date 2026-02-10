@@ -1,4 +1,5 @@
 """Repository layer for database operations."""
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -15,8 +16,13 @@ class ItemRepository:
     """Repository for Item CRUD operations."""
 
     @staticmethod
-    def create(item_type: str, quantity: int, sub_type: str = None,
-               serial_number: str = None, notes: str = None) -> Item:
+    def create(
+        item_type: str,
+        quantity: int,
+        sub_type: str = None,
+        serial_number: str = None,
+        notes: str = None,
+    ) -> Item:
         """Create a new item and record the initial transaction.
 
         Args:
@@ -29,14 +35,16 @@ class ItemRepository:
         Returns:
             The created Item instance.
         """
-        logger.debug(f"Repository: Creating item type='{item_type}', quantity={quantity}")
+        logger.debug(
+            f"Repository: Creating item type='{item_type}', quantity={quantity}"
+        )
         with session_scope() as session:
             item = Item(
                 item_type=item_type,
                 sub_type=sub_type or "",
                 quantity=quantity,
                 serial_number=serial_number or "",
-                notes=notes or ""
+                notes=notes or "",
             )
             session.add(item)
             session.flush()  # Get the ID before creating transaction
@@ -49,7 +57,7 @@ class ItemRepository:
                     quantity_change=quantity,
                     quantity_before=0,
                     quantity_after=quantity,
-                    notes=notes or tr("transaction.notes.initial")
+                    notes=notes or tr("transaction.notes.initial"),
                 )
                 session.add(transaction)
 
@@ -85,8 +93,13 @@ class ItemRepository:
             return [_detach_item(item) for item in items]
 
     @staticmethod
-    def update(item_id: int, item_type: str = None, sub_type: str = None,
-               serial_number: str = None, notes: str = None) -> Optional[Item]:
+    def update(
+        item_id: int,
+        item_type: str = None,
+        sub_type: str = None,
+        serial_number: str = None,
+        notes: str = None,
+    ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
         Args:
@@ -115,6 +128,79 @@ class ItemRepository:
 
             session.commit()
             session.refresh(item)
+            return _detach_item(item)
+
+    @staticmethod
+    def edit_item(
+        item_id: int,
+        item_type: str,
+        sub_type: str,
+        quantity: int,
+        serial_number: str,
+        notes: str,
+        edit_reason: str,
+    ) -> Optional[Item]:
+        """Edit an item's properties and quantity, recording all changes as transactions.
+
+        Args:
+            item_id: The item's ID.
+            item_type: New item type.
+            sub_type: New sub-type.
+            quantity: New quantity.
+            serial_number: New serial number.
+            notes: New item notes.
+            edit_reason: Reason for the edit (required, stored in transaction notes).
+
+        Returns:
+            The updated Item instance or None if not found.
+        """
+        with session_scope() as session:
+            item = session.query(Item).filter(Item.id == item_id).first()
+            if not item:
+                logger.warning(f"Repository: Item not found for edit: id={item_id}")
+                return None
+
+            quantity_before = item.quantity
+
+            # Apply field changes
+            item.item_type = item_type
+            item.sub_type = sub_type
+            item.quantity = quantity
+            item.serial_number = serial_number
+            item.notes = notes
+
+            # Record quantity change as transaction if quantity differs
+            quantity_diff = quantity - quantity_before
+            if quantity_diff != 0:
+                trans_type = (
+                    TransactionType.ADD if quantity_diff > 0 else TransactionType.REMOVE
+                )
+                transaction = Transaction(
+                    item_id=item.id,
+                    transaction_type=trans_type,
+                    quantity_change=abs(quantity_diff),
+                    quantity_before=quantity_before,
+                    quantity_after=quantity,
+                    notes=edit_reason,
+                )
+                session.add(transaction)
+
+            # Always record an EDIT transaction for the field changes
+            edit_transaction = Transaction(
+                item_id=item.id,
+                transaction_type=TransactionType.EDIT,
+                quantity_change=0,
+                quantity_before=quantity_before,
+                quantity_after=quantity,
+                notes=edit_reason,
+            )
+            session.add(edit_transaction)
+
+            session.commit()
+            session.refresh(item)
+            logger.debug(
+                f"Repository: Item edited: id={item_id}, reason='{edit_reason}'"
+            )
             return _detach_item(item)
 
     @staticmethod
@@ -154,7 +240,9 @@ class ItemRepository:
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
-                logger.warning(f"Repository: Item not found for add_quantity: id={item_id}")
+                logger.warning(
+                    f"Repository: Item not found for add_quantity: id={item_id}"
+                )
                 return None
 
             quantity_before = item.quantity
@@ -166,16 +254,20 @@ class ItemRepository:
                 quantity_change=quantity,
                 quantity_before=quantity_before,
                 quantity_after=item.quantity,
-                notes=notes or ""
+                notes=notes or "",
             )
             session.add(transaction)
             session.commit()
             session.refresh(item)
-            logger.debug(f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}")
+            logger.debug(
+                f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}"
+            )
             return _detach_item(item)
 
     @staticmethod
-    def remove_quantity(item_id: int, quantity: int, notes: str = None) -> Optional[Item]:
+    def remove_quantity(
+        item_id: int, quantity: int, notes: str = None
+    ) -> Optional[Item]:
         """Remove quantity from an item and record the transaction.
 
         Args:
@@ -195,12 +287,18 @@ class ItemRepository:
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
-                logger.warning(f"Repository: Item not found for remove_quantity: id={item_id}")
+                logger.warning(
+                    f"Repository: Item not found for remove_quantity: id={item_id}"
+                )
                 return None
 
             if item.quantity < quantity:
-                logger.warning(f"Repository: Cannot remove {quantity} from item id={item_id}, only {item.quantity} available")
-                raise ValueError(f"Cannot remove {quantity} items. Only {item.quantity} available.")
+                logger.warning(
+                    f"Repository: Cannot remove {quantity} from item id={item_id}, only {item.quantity} available"
+                )
+                raise ValueError(
+                    f"Cannot remove {quantity} items. Only {item.quantity} available."
+                )
 
             quantity_before = item.quantity
             item.quantity -= quantity
@@ -211,17 +309,20 @@ class ItemRepository:
                 quantity_change=quantity,
                 quantity_before=quantity_before,
                 quantity_after=item.quantity,
-                notes=notes or ""
+                notes=notes or "",
             )
             session.add(transaction)
             session.commit()
             session.refresh(item)
-            logger.debug(f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}")
+            logger.debug(
+                f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}"
+            )
             return _detach_item(item)
 
     @staticmethod
-    def find_by_fields(item_type: str, sub_type: str = "",
-                       serial_number: str = "", notes: str = "") -> Optional[Item]:
+    def find_by_fields(
+        item_type: str, sub_type: str = "", serial_number: str = "", notes: str = ""
+    ) -> Optional[Item]:
         """Find an existing item with matching fields (excluding quantity).
 
         Args:
@@ -234,12 +335,16 @@ class ItemRepository:
             The matching Item instance or None if not found.
         """
         with session_scope() as session:
-            item = session.query(Item).filter(
-                Item.item_type == item_type,
-                Item.sub_type == (sub_type or ""),
-                Item.serial_number == (serial_number or ""),
-                Item.notes == (notes or "")
-            ).first()
+            item = (
+                session.query(Item)
+                .filter(
+                    Item.item_type == item_type,
+                    Item.sub_type == (sub_type or ""),
+                    Item.serial_number == (serial_number or ""),
+                    Item.notes == (notes or ""),
+                )
+                .first()
+            )
             return _detach_item(item) if item else None
 
     @staticmethod
@@ -257,32 +362,42 @@ class ItemRepository:
         with session_scope() as session:
             search_pattern = f"%{query}%"
 
-            if field == 'item_type':
-                items = session.query(Item).filter(
-                    Item.item_type.ilike(search_pattern)
-                ).all()
-            elif field == 'sub_type':
-                items = session.query(Item).filter(
-                    Item.sub_type.ilike(search_pattern)
-                ).all()
-            elif field == 'notes':
-                items = session.query(Item).filter(
-                    Item.notes.ilike(search_pattern)
-                ).all()
+            if field == "item_type":
+                items = (
+                    session.query(Item)
+                    .filter(Item.item_type.ilike(search_pattern))
+                    .all()
+                )
+            elif field == "sub_type":
+                items = (
+                    session.query(Item)
+                    .filter(Item.sub_type.ilike(search_pattern))
+                    .all()
+                )
+            elif field == "notes":
+                items = (
+                    session.query(Item).filter(Item.notes.ilike(search_pattern)).all()
+                )
             else:
                 # Search in all fields
-                items = session.query(Item).filter(
-                    or_(
-                        Item.item_type.ilike(search_pattern),
-                        Item.sub_type.ilike(search_pattern),
-                        Item.notes.ilike(search_pattern)
+                items = (
+                    session.query(Item)
+                    .filter(
+                        or_(
+                            Item.item_type.ilike(search_pattern),
+                            Item.sub_type.ilike(search_pattern),
+                            Item.notes.ilike(search_pattern),
+                        )
                     )
-                ).all()
+                    .all()
+                )
 
             return [_detach_item(item) for item in items]
 
     @staticmethod
-    def get_autocomplete_suggestions(prefix: str, field: str = None, limit: int = 10) -> List[str]:
+    def get_autocomplete_suggestions(
+        prefix: str, field: str = None, limit: int = 10
+    ) -> List[str]:
         """Get autocomplete suggestions for a search prefix.
 
         Args:
@@ -297,23 +412,33 @@ class ItemRepository:
             suggestions = set()
             search_pattern = f"{prefix}%"
 
-            if field == 'item_type' or field is None:
-                types = session.query(Item.item_type).filter(
-                    Item.item_type.ilike(search_pattern)
-                ).distinct().limit(limit).all()
+            if field == "item_type" or field is None:
+                types = (
+                    session.query(Item.item_type)
+                    .filter(Item.item_type.ilike(search_pattern))
+                    .distinct()
+                    .limit(limit)
+                    .all()
+                )
                 suggestions.update(t[0] for t in types if t[0])
 
-            if field == 'sub_type' or field is None:
-                sub_types = session.query(Item.sub_type).filter(
-                    Item.sub_type.ilike(search_pattern)
-                ).distinct().limit(limit).all()
+            if field == "sub_type" or field is None:
+                sub_types = (
+                    session.query(Item.sub_type)
+                    .filter(Item.sub_type.ilike(search_pattern))
+                    .distinct()
+                    .limit(limit)
+                    .all()
+                )
                 suggestions.update(t[0] for t in sub_types if t[0])
 
-            if field == 'notes' or field is None:
+            if field == "notes" or field is None:
                 # For notes, extract words that start with the prefix
-                notes = session.query(Item.notes).filter(
-                    Item.notes.ilike(f"%{prefix}%")
-                ).all()
+                notes = (
+                    session.query(Item.notes)
+                    .filter(Item.notes.ilike(f"%{prefix}%"))
+                    .all()
+                )
                 for (note,) in notes:
                     if note:
                         words = note.split()
@@ -338,14 +463,18 @@ class TransactionRepository:
             List of Transaction instances ordered by date (newest first).
         """
         with session_scope() as session:
-            transactions = session.query(Transaction).filter(
-                Transaction.item_id == item_id
-            ).order_by(Transaction.created_at.desc()).all()
+            transactions = (
+                session.query(Transaction)
+                .filter(Transaction.item_id == item_id)
+                .order_by(Transaction.created_at.desc())
+                .all()
+            )
             return [_detach_transaction(t) for t in transactions]
 
     @staticmethod
-    def get_by_date_range(start_date: datetime, end_date: datetime,
-                          item_id: int = None) -> List[Transaction]:
+    def get_by_date_range(
+        start_date: datetime, end_date: datetime, item_id: int = None
+    ) -> List[Transaction]:
         """Get transactions within a date range.
 
         Args:
@@ -358,8 +487,7 @@ class TransactionRepository:
         """
         with session_scope() as session:
             query = session.query(Transaction).filter(
-                Transaction.created_at >= start_date,
-                Transaction.created_at <= end_date
+                Transaction.created_at >= start_date, Transaction.created_at <= end_date
             )
 
             if item_id is not None:
@@ -385,7 +513,9 @@ class TransactionRepository:
             if item_id is not None:
                 query = query.filter(Transaction.item_id == item_id)
 
-            transactions = query.order_by(Transaction.created_at.desc()).limit(limit).all()
+            transactions = (
+                query.order_by(Transaction.created_at.desc()).limit(limit).all()
+            )
             return [_detach_transaction(t) for t in transactions]
 
 
@@ -407,10 +537,14 @@ class SearchHistoryRepository:
         """
         with session_scope() as session:
             # Check if this exact search already exists
-            existing = session.query(SearchHistory).filter(
-                SearchHistory.search_query == search_query,
-                SearchHistory.search_field == search_field
-            ).first()
+            existing = (
+                session.query(SearchHistory)
+                .filter(
+                    SearchHistory.search_query == search_query,
+                    SearchHistory.search_field == search_field,
+                )
+                .first()
+            )
 
             if existing:
                 # Update timestamp to move it to the top
@@ -420,19 +554,20 @@ class SearchHistoryRepository:
 
             # Add new search
             history = SearchHistory(
-                search_query=search_query,
-                search_field=search_field
+                search_query=search_query, search_field=search_field
             )
             session.add(history)
             session.flush()
 
             # Keep only the last 5 entries
-            all_history = session.query(SearchHistory).order_by(
-                SearchHistory.created_at.desc()
-            ).all()
+            all_history = (
+                session.query(SearchHistory)
+                .order_by(SearchHistory.created_at.desc())
+                .all()
+            )
 
             if len(all_history) > SearchHistoryRepository.MAX_HISTORY:
-                for old_entry in all_history[SearchHistoryRepository.MAX_HISTORY:]:
+                for old_entry in all_history[SearchHistoryRepository.MAX_HISTORY :]:
                     session.delete(old_entry)
 
             session.commit()
@@ -449,9 +584,12 @@ class SearchHistoryRepository:
             List of SearchHistory instances ordered by date (newest first).
         """
         with session_scope() as session:
-            history = session.query(SearchHistory).order_by(
-                SearchHistory.created_at.desc()
-            ).limit(limit).all()
+            history = (
+                session.query(SearchHistory)
+                .order_by(SearchHistory.created_at.desc())
+                .limit(limit)
+                .all()
+            )
             return [_detach_search_history(h) for h in history]
 
     @staticmethod
@@ -474,7 +612,7 @@ def _detach_item(item: Item) -> Item:
         serial_number=item.serial_number,
         notes=item.notes,
         created_at=item.created_at,
-        updated_at=item.updated_at
+        updated_at=item.updated_at,
     )
 
 
@@ -490,7 +628,7 @@ def _detach_transaction(trans: Transaction) -> Transaction:
         quantity_before=trans.quantity_before,
         quantity_after=trans.quantity_after,
         notes=trans.notes,
-        created_at=trans.created_at
+        created_at=trans.created_at,
     )
 
 
@@ -502,5 +640,5 @@ def _detach_search_history(history: SearchHistory) -> SearchHistory:
         id=history.id,
         search_query=history.search_query,
         search_field=history.search_field,
-        created_at=history.created_at
+        created_at=history.created_at,
     )

@@ -5,6 +5,7 @@ from ui_entities.inventory_item import InventoryItem
 from ui_entities.inventory_list_view import InventoryListView
 from ui_entities.item_details_dialog import ItemDetailsDialog
 from ui_entities.add_item_dialog import AddItemDialog
+from ui_entities.edit_item_dialog import EditItemDialog
 from ui_entities.search_widget import SearchWidget
 from ui_entities.quantity_dialog import QuantityDialog
 from ui_entities.transactions_dialog import TransactionsDialog
@@ -33,7 +34,7 @@ class MainWindow(QMainWindow):
     def _setup_ui(self):
         """Set up UI with localized strings."""
         self.setWindowTitle(tr("app.title"))
-        if hasattr(self, 'addButton'):
+        if hasattr(self, "addButton"):
             self.addButton.setText(tr("main.add_item"))
 
     def _setup_search_widget(self):
@@ -52,7 +53,7 @@ class MainWindow(QMainWindow):
         self.inventory_list.setModel(self.inventory_model)
 
         # Replace the listView placeholder from UI file
-        if hasattr(self, 'listView'):
+        if hasattr(self, "listView"):
             layout = self.listView.parent().layout()
             if layout:
                 # Find and replace the widget in layout
@@ -85,19 +86,27 @@ class MainWindow(QMainWindow):
         self.inventory_list.remove_quantity_requested.connect(self._on_remove_quantity)
         self.inventory_list.transactions_requested.connect(self._on_show_transactions)
 
-        if hasattr(self, 'addButton'):
+        if hasattr(self, "addButton"):
             self.addButton.clicked.connect(self._on_add_clicked)
 
     def _on_edit_item(self, row: int, item: InventoryItem):
         """Handle edit request for an inventory item."""
-        QMessageBox.information(
-            self,
-            tr("dialog.edit.title"),
-            f"{tr('field.type')}: {item.item_type}\n"
-            f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
-            f"{tr('field.quantity')}: {item.quantity}\n"
-            f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}"
-        )
+        dialog = EditItemDialog(item, self)
+        if dialog.exec():
+            edited_item = dialog.get_item()
+            edit_notes = dialog.get_edit_notes()
+            if edited_item and item.id is not None:
+                updated_item = InventoryService.edit_item(
+                    item_id=item.id,
+                    item_type=edited_item.item_type,
+                    quantity=edited_item.quantity,
+                    sub_type=edited_item.sub_type,
+                    serial_number=edited_item.serial_number,
+                    notes=edited_item.notes,
+                    edit_reason=edit_notes,
+                )
+                if updated_item:
+                    self.inventory_model.update_item(row, updated_item)
 
     def _on_show_details(self, row: int, item: InventoryItem):
         """Handle show details request for an inventory item."""
@@ -114,7 +123,7 @@ class MainWindow(QMainWindow):
             f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
             f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -134,7 +143,7 @@ class MainWindow(QMainWindow):
                     quantity=new_item.quantity,
                     sub_type=new_item.sub_type,
                     serial_number=new_item.serial_number,
-                    notes=new_item.notes
+                    notes=new_item.notes,
                 )
                 if was_merged:
                     # Update existing item in the list
@@ -155,7 +164,9 @@ class MainWindow(QMainWindow):
 
     def _on_add_quantity(self, row: int, item: InventoryItem):
         """Handle add quantity request."""
-        item_name = f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        item_name = (
+            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        )
         dialog = QuantityDialog(item_name, item.quantity, is_add=True, parent=self)
         if dialog.exec():
             quantity = dialog.get_quantity()
@@ -167,14 +178,18 @@ class MainWindow(QMainWindow):
 
     def _on_remove_quantity(self, row: int, item: InventoryItem):
         """Handle remove quantity request."""
-        item_name = f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        item_name = (
+            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        )
         dialog = QuantityDialog(item_name, item.quantity, is_add=False, parent=self)
         if dialog.exec():
             quantity = dialog.get_quantity()
             notes = dialog.get_notes()
             if item.id is not None:
                 try:
-                    updated_item = InventoryService.remove_quantity(item.id, quantity, notes)
+                    updated_item = InventoryService.remove_quantity(
+                        item.id, quantity, notes
+                    )
                     if updated_item:
                         self.inventory_model.update_item(row, updated_item)
                 except ValueError as e:
@@ -182,14 +197,20 @@ class MainWindow(QMainWindow):
 
     def _on_show_transactions(self, row: int, item: InventoryItem):
         """Handle show transactions request."""
-        item_name = f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        item_name = (
+            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
+        )
         dialog = TransactionsDialog(item_id=item.id, item_name=item_name, parent=self)
-        dialog.set_transactions_callback(TransactionService.get_transactions_by_date_range)
+        dialog.set_transactions_callback(
+            TransactionService.get_transactions_by_date_range
+        )
         dialog.exec()
 
     def _get_autocomplete_suggestions(self, prefix: str, field: str) -> list:
         """Get autocomplete suggestions for search."""
-        return SearchService.get_autocomplete_suggestions(prefix, field if field else None)
+        return SearchService.get_autocomplete_suggestions(
+            prefix, field if field else None
+        )
 
     def _on_search(self, query: str, field: str):
         """Handle search request."""
@@ -227,7 +248,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Save window state before closing."""
-        config.set("window.geometry", self.saveGeometry().toHex().data().decode(), save=False)
+        config.set(
+            "window.geometry", self.saveGeometry().toHex().data().decode(), save=False
+        )
         config.set("window.maximized", self.isMaximized(), save=False)
         config.save()
         logger.info("Window state saved to config")

@@ -1,4 +1,5 @@
 """Service layer for business logic operations."""
+
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -13,8 +14,13 @@ class InventoryService:
     """Service for inventory management operations."""
 
     @staticmethod
-    def create_item(item_type: str, quantity: int, sub_type: str = "",
-                    serial_number: str = "", notes: str = "") -> InventoryItem:
+    def create_item(
+        item_type: str,
+        quantity: int,
+        sub_type: str = "",
+        serial_number: str = "",
+        notes: str = "",
+    ) -> InventoryItem:
         """Create a new inventory item.
 
         Args:
@@ -34,7 +40,7 @@ class InventoryService:
                 quantity=quantity,
                 sub_type=sub_type,
                 serial_number=serial_number,
-                notes=notes
+                notes=notes,
             )
             logger.info(f"Item created successfully: id={db_item.id}")
             return InventoryItem.from_db_model(db_item)
@@ -43,8 +49,13 @@ class InventoryService:
             raise
 
     @staticmethod
-    def create_or_merge_item(item_type: str, quantity: int, sub_type: str = "",
-                             serial_number: str = "", notes: str = "") -> Tuple[InventoryItem, bool]:
+    def create_or_merge_item(
+        item_type: str,
+        quantity: int,
+        sub_type: str = "",
+        serial_number: str = "",
+        notes: str = "",
+    ) -> Tuple[InventoryItem, bool]:
         """Create a new item or merge with existing item if fields match.
 
         If an item with the same item_type, sub_type, serial_number, and notes exists,
@@ -66,7 +77,7 @@ class InventoryService:
             item_type=item_type,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes
+            notes=notes,
         )
 
         if existing:
@@ -74,7 +85,7 @@ class InventoryService:
             updated = ItemRepository.add_quantity(
                 item_id=existing.id,
                 quantity=quantity,
-                notes=tr("transaction.notes.merged")
+                notes=tr("transaction.notes.merged"),
             )
             return InventoryItem.from_db_model(updated), True
 
@@ -84,7 +95,7 @@ class InventoryService:
             quantity=quantity,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes
+            notes=notes,
         )
         return InventoryItem.from_db_model(db_item), False
 
@@ -112,8 +123,13 @@ class InventoryService:
         return [InventoryItem.from_db_model(item) for item in db_items]
 
     @staticmethod
-    def update_item(item_id: int, item_type: str = None, sub_type: str = None,
-                    serial_number: str = None, notes: str = None) -> Optional[InventoryItem]:
+    def update_item(
+        item_id: int,
+        item_type: str = None,
+        sub_type: str = None,
+        serial_number: str = None,
+        notes: str = None,
+    ) -> Optional[InventoryItem]:
         """Update an item's properties.
 
         Args:
@@ -131,9 +147,53 @@ class InventoryService:
             item_type=item_type,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes
+            notes=notes,
         )
         return InventoryItem.from_db_model(db_item) if db_item else None
+
+    @staticmethod
+    def edit_item(
+        item_id: int,
+        item_type: str,
+        quantity: int,
+        sub_type: str = "",
+        serial_number: str = "",
+        notes: str = "",
+        edit_reason: str = "",
+    ) -> Optional[InventoryItem]:
+        """Edit an item's properties with full transaction logging.
+
+        Args:
+            item_id: The item's ID.
+            item_type: New item type.
+            quantity: New quantity.
+            sub_type: New sub-type.
+            serial_number: New serial number.
+            notes: New item notes.
+            edit_reason: Reason for the edit (required).
+
+        Returns:
+            The updated InventoryItem or None if not found.
+        """
+        logger.info(f"Editing item: id={item_id}, reason='{edit_reason}'")
+        try:
+            db_item = ItemRepository.edit_item(
+                item_id=item_id,
+                item_type=item_type,
+                sub_type=sub_type,
+                quantity=quantity,
+                serial_number=serial_number,
+                notes=notes,
+                edit_reason=edit_reason,
+            )
+            if db_item:
+                logger.info(f"Item edited successfully: id={item_id}")
+                return InventoryItem.from_db_model(db_item)
+            logger.warning(f"Item not found for edit: id={item_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to edit item: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     def delete_item(item_id: int) -> bool:
@@ -154,7 +214,9 @@ class InventoryService:
         return result
 
     @staticmethod
-    def add_quantity(item_id: int, quantity: int, notes: str = "") -> Optional[InventoryItem]:
+    def add_quantity(
+        item_id: int, quantity: int, notes: str = ""
+    ) -> Optional[InventoryItem]:
         """Add quantity to an item.
 
         Args:
@@ -170,7 +232,9 @@ class InventoryService:
         return InventoryItem.from_db_model(db_item) if db_item else None
 
     @staticmethod
-    def remove_quantity(item_id: int, quantity: int, notes: str = "") -> Optional[InventoryItem]:
+    def remove_quantity(
+        item_id: int, quantity: int, notes: str = ""
+    ) -> Optional[InventoryItem]:
         """Remove quantity from an item.
 
         Args:
@@ -193,7 +257,9 @@ class SearchService:
     """Service for search operations with autocomplete and history."""
 
     @staticmethod
-    def search(query: str, field: str = None, save_to_history: bool = True) -> List[InventoryItem]:
+    def search(
+        query: str, field: str = None, save_to_history: bool = True
+    ) -> List[InventoryItem]:
         """Search for items and optionally save to history.
 
         Args:
@@ -258,8 +324,9 @@ class TransactionService:
         return [_transaction_to_dict(t) for t in transactions]
 
     @staticmethod
-    def get_transactions_by_date_range(start_date: datetime, end_date: datetime,
-                                       item_id: int = None) -> List[dict]:
+    def get_transactions_by_date_range(
+        start_date: datetime, end_date: datetime, item_id: int = None
+    ) -> List[dict]:
         """Get transactions within a date range.
 
         Args:
@@ -270,7 +337,9 @@ class TransactionService:
         Returns:
             List of transaction dictionaries.
         """
-        transactions = TransactionRepository.get_by_date_range(start_date, end_date, item_id)
+        transactions = TransactionRepository.get_by_date_range(
+            start_date, end_date, item_id
+        )
         return [_transaction_to_dict(t) for t in transactions]
 
     @staticmethod
@@ -291,12 +360,12 @@ class TransactionService:
 def _transaction_to_dict(trans) -> dict:
     """Convert a Transaction to a dictionary."""
     return {
-        'id': trans.id,
-        'item_id': trans.item_id,
-        'type': trans.transaction_type.value,
-        'quantity_change': trans.quantity_change,
-        'quantity_before': trans.quantity_before,
-        'quantity_after': trans.quantity_after,
-        'notes': trans.notes,
-        'created_at': trans.created_at
+        "id": trans.id,
+        "item_id": trans.item_id,
+        "type": trans.transaction_type.value,
+        "quantity_change": trans.quantity_change,
+        "quantity_before": trans.quantity_before,
+        "quantity_after": trans.quantity_after,
+        "notes": trans.notes,
+        "created_at": trans.created_at,
     }

@@ -1,11 +1,21 @@
 """Dialog for viewing transaction history."""
+
 from datetime import datetime, timedelta
 from typing import List, Optional
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QPushButton, QFrame, QTableWidget, QTableWidgetItem,
-    QDateEdit, QHeaderView, QGroupBox
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QTableWidget,
+    QTableWidgetItem,
+    QDateEdit,
+    QHeaderView,
+    QGroupBox,
 )
 from PyQt6.QtGui import QFont, QColor
 from ui_entities.translations import tr
@@ -87,14 +97,16 @@ class TransactionsDialog(QDialog):
         # Transactions table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            tr("transaction.column.date"),
-            tr("transaction.column.type"),
-            tr("transaction.column.change"),
-            tr("transaction.column.before"),
-            tr("transaction.column.after"),
-            tr("transaction.column.notes")
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("transaction.column.date"),
+                tr("transaction.column.type"),
+                tr("transaction.column.change"),
+                tr("transaction.column.before"),
+                tr("transaction.column.after"),
+                tr("transaction.column.notes"),
+            ]
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -147,9 +159,7 @@ class TransactionsDialog(QDialog):
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
         transactions = self._transactions_callback(
-            start_datetime,
-            end_datetime,
-            self._item_id
+            start_datetime, end_datetime, self._item_id
         )
 
         self._populate_table(transactions)
@@ -161,38 +171,49 @@ class TransactionsDialog(QDialog):
         for row, trans in enumerate(transactions):
             # Date
             date_item = QTableWidgetItem(
-                trans['created_at'].strftime("%Y-%m-%d %H:%M") if trans['created_at'] else ""
+                trans["created_at"].strftime("%Y-%m-%d %H:%M")
+                if trans["created_at"]
+                else ""
             )
             self.table.setItem(row, 0, date_item)
 
             # Type
-            trans_type = trans['type']
+            trans_type = trans["type"]
             type_text = tr(f"transaction.type.{trans_type}")
             type_item = QTableWidgetItem(type_text)
             if trans_type == "add":
                 type_item.setForeground(QColor(0, 128, 0))  # Green
+            elif trans_type == "edit":
+                type_item.setForeground(QColor(0, 0, 192))  # Blue
             else:
                 type_item.setForeground(QColor(192, 0, 0))  # Red
             self.table.setItem(row, 1, type_item)
 
             # Change
-            change = trans['quantity_change']
-            change_text = f"+{change}" if trans_type == "add" else f"-{change}"
+            change = trans["quantity_change"]
+            if trans_type == "edit":
+                change_text = "—"
+            elif trans_type == "add":
+                change_text = f"+{change}"
+            else:
+                change_text = f"-{change}"
             change_item = QTableWidgetItem(change_text)
             if trans_type == "add":
                 change_item.setForeground(QColor(0, 128, 0))
+            elif trans_type == "edit":
+                change_item.setForeground(QColor(0, 0, 192))
             else:
                 change_item.setForeground(QColor(192, 0, 0))
             self.table.setItem(row, 2, change_item)
 
             # Before
-            before_item = QTableWidgetItem(str(trans['quantity_before']))
+            before_item = QTableWidgetItem(str(trans["quantity_before"]))
             self.table.setItem(row, 3, before_item)
 
             # After
-            after_item = QTableWidgetItem(str(trans['quantity_after']))
+            after_item = QTableWidgetItem(str(trans["quantity_after"]))
             self.table.setItem(row, 4, after_item)
 
             # Notes
-            notes_item = QTableWidgetItem(trans.get('notes', '') or '')
+            notes_item = QTableWidgetItem(trans.get("notes", "") or "")
             self.table.setItem(row, 5, notes_item)
