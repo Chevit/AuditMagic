@@ -35,7 +35,7 @@ class Item(Base):
     sub_type = Column(String(255), nullable=True, index=True)
     quantity = Column(Integer, nullable=False, default=0)
     serial_number = Column(String(255), nullable=True)
-    notes = Column(Text, nullable=True)
+    details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -78,7 +78,7 @@ class SearchHistory(Base):
     search_query = Column(String(255), nullable=False)
     search_field = Column(
         String(50), nullable=True
-    )  # 'item_type', 'sub_type', 'notes', or None for all
+    )  # 'item_type', 'sub_type', 'details', or None for all
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):

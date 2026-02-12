@@ -1,7 +1,12 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QPushButton, QFrame
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
 )
 from PyQt6.QtGui import QFont
 from ui_entities.inventory_item import InventoryItem
@@ -86,17 +91,19 @@ class ItemDetailsDialog(QDialog):
         # Serial Number
         serial_label = QLabel(tr("label.serial_number"))
         serial_label.setFont(label_font)
-        serial_value = QLabel(self._item.serial_number if self._item.serial_number else "-")
+        serial_value = QLabel(
+            self._item.serial_number if self._item.serial_number else "-"
+        )
         serial_value.setFont(value_font)
         form_layout.addRow(serial_label, serial_value)
 
-        # Notes
-        notes_label = QLabel(tr("label.notes"))
-        notes_label.setFont(label_font)
-        notes_value = QLabel(self._item.notes if self._item.notes else "-")
-        notes_value.setFont(value_font)
-        notes_value.setWordWrap(True)
-        form_layout.addRow(notes_label, notes_value)
+        # Details
+        details_label = QLabel(tr("label.details"))
+        details_label.setFont(label_font)
+        details_value = QLabel(self._item.details if self._item.details else "-")
+        details_value.setFont(value_font)
+        details_value.setWordWrap(True)
+        form_layout.addRow(details_label, details_value)
 
         layout.addLayout(form_layout)
 

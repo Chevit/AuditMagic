@@ -5,12 +5,13 @@ from ui_entities.inventory_item import InventoryItem
 
 class InventoryItemRole:
     """Custom roles for accessing InventoryItem data."""
+
     ItemType = Qt.ItemDataRole.UserRole + 1
     SubType = Qt.ItemDataRole.UserRole + 2
     Quantity = Qt.ItemDataRole.UserRole + 3
     SerialNumber = Qt.ItemDataRole.UserRole + 4
     ItemData = Qt.ItemDataRole.UserRole + 5
-    Notes = Qt.ItemDataRole.UserRole + 6
+    Details = Qt.ItemDataRole.UserRole + 6
 
 
 class InventoryModel(QAbstractListModel):
@@ -49,12 +50,14 @@ class InventoryModel(QAbstractListModel):
         if role == InventoryItemRole.ItemData:
             return item
 
-        if role == InventoryItemRole.Notes:
-            return item.notes
+        if role == InventoryItemRole.Details:
+            return item.details
 
         return None
 
-    def setData(self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole) -> bool:
+    def setData(
+        self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole
+    ) -> bool:
         if not index.isValid() or not (0 <= index.row() < len(self._items)):
             return False
 
@@ -73,8 +76,8 @@ class InventoryModel(QAbstractListModel):
             item.quantity = value
         elif role == InventoryItemRole.SerialNumber:
             item.serial_number = value
-        elif role == InventoryItemRole.Notes:
-            item.notes = value
+        elif role == InventoryItemRole.Details:
+            item.details = value
         else:
             return False
 

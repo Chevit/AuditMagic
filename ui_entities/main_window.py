@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
                     quantity=edited_item.quantity,
                     sub_type=edited_item.sub_type,
                     serial_number=edited_item.serial_number,
-                    notes=edited_item.notes,
+                    details=edited_item.details,
                     edit_reason=edit_notes,
                 )
                 if updated_item:
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
                     quantity=new_item.quantity,
                     sub_type=new_item.sub_type,
                     serial_number=new_item.serial_number,
-                    notes=new_item.notes,
+                    details=new_item.details,
                 )
                 if was_merged:
                     # Update existing item in the list
