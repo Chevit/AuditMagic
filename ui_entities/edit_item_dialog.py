@@ -3,7 +3,7 @@
 from typing import Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLabel,
     QLineEdit,
-    QSpinBox,
     QPushButton,
     QFrame,
     QMessageBox,
@@ -28,6 +27,7 @@ from validators import (
     validate_positive_integer,
     validate_length,
 )
+from styles import Styles, apply_input_style, apply_button_style, apply_text_edit_style
 
 
 class EditItemDialog(QDialog):
@@ -60,6 +60,7 @@ class EditItemDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # Header
         header_label = QLabel(tr("dialog.edit.header"))
@@ -89,33 +90,45 @@ class EditItemDialog(QDialog):
         type_label.setFont(label_font)
         self.type_edit = QLineEdit()
         self.type_edit.setPlaceholderText(tr("placeholder.type"))
+        apply_input_style(self.type_edit)
         form_layout.addRow(type_label, self.type_edit)
 
         # Sub-type (optional)
         subtype_label = QLabel(tr("label.subtype"))
         self.subtype_edit = QLineEdit()
         self.subtype_edit.setPlaceholderText(tr("placeholder.subtype"))
+        apply_input_style(self.subtype_edit)
         form_layout.addRow(subtype_label, self.subtype_edit)
 
-        # Quantity
+        # Quantity - QLineEdit instead of QSpinBox for better UX
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
-        self.quantity_spin = QSpinBox()
-        self.quantity_spin.setMinimum(0)
-        self.quantity_spin.setMaximum(999999)
-        form_layout.addRow(quantity_label, self.quantity_spin)
+
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Enter quantity (e.g., 5)...")
+
+        # Set validator to only allow positive integers
+        quantity_validator = QIntValidator(0, 999999, self)
+        self.quantity_input.setValidator(quantity_validator)
+
+        # Style the input
+        apply_input_style(self.quantity_input, large=True)
+
+        form_layout.addRow(quantity_label, self.quantity_input)
 
         # Serial Number (optional)
         serial_label = QLabel(tr("label.serial_number"))
         self.serial_edit = QLineEdit()
         self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
+        apply_input_style(self.serial_edit)
         form_layout.addRow(serial_label, self.serial_edit)
 
         # Item Details (optional)
         item_details_label = QLabel(tr("label.details"))
         self.item_details_edit = QTextEdit()
         self.item_details_edit.setPlaceholderText(tr("placeholder.details"))
-        self.item_details_edit.setMaximumHeight(60)
+        self.item_details_edit.setMaximumHeight(80)
+        apply_text_edit_style(self.item_details_edit)
         form_layout.addRow(item_details_label, self.item_details_edit)
 
         layout.addLayout(form_layout)
@@ -135,7 +148,8 @@ class EditItemDialog(QDialog):
         reason_label.setFont(label_font)
         self.reason_edit = QTextEdit()
         self.reason_edit.setPlaceholderText(tr("placeholder.edit_reason"))
-        self.reason_edit.setMaximumHeight(60)
+        self.reason_edit.setMaximumHeight(80)
+        apply_text_edit_style(self.reason_edit)
         reason_layout.addRow(reason_label, self.reason_edit)
 
         layout.addLayout(reason_layout)
@@ -148,17 +162,20 @@ class EditItemDialog(QDialog):
         button_layout.addStretch()
 
         cancel_button = QPushButton(tr("button.cancel"))
-        cancel_button.setMinimumWidth(100)
+        apply_button_style(cancel_button, "danger")
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
 
         save_button = QPushButton(tr("button.save"))
-        save_button.setMinimumWidth(100)
+        apply_button_style(save_button, "primary")
         save_button.setDefault(True)
         save_button.clicked.connect(self._on_save_clicked)
         button_layout.addWidget(save_button)
 
         layout.addLayout(button_layout)
+
+        # Set focus to type field (first field)
+        self.type_edit.setFocus()
 
     def _setup_validators(self):
         """Set up input validators for form fields."""
@@ -170,7 +187,7 @@ class EditItemDialog(QDialog):
         """Populate form fields with the current item values."""
         self.type_edit.setText(self._original_item.item_type)
         self.subtype_edit.setText(self._original_item.sub_type or "")
-        self.quantity_spin.setValue(self._original_item.quantity)
+        self.quantity_input.setText(str(self._original_item.quantity))
         self.serial_edit.setText(self._original_item.serial_number or "")
         self.item_details_edit.setPlainText(self._original_item.details or "")
 
@@ -178,7 +195,7 @@ class EditItemDialog(QDialog):
         """Validate and accept the dialog."""
         item_type = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
-        quantity = self.quantity_spin.value()
+        quantity_text = self.quantity_input.text().strip()
         serial_number = self.serial_edit.text().strip()
         item_details = self.item_details_edit.toPlainText().strip()
         edit_reason = self.reason_edit.toPlainText().strip()
@@ -197,12 +214,21 @@ class EditItemDialog(QDialog):
             if not valid:
                 errors.append(error)
 
-        # Validate quantity
-        valid, error = validate_positive_integer(
-            str(quantity), tr("field.quantity"), minimum=0
-        )
-        if not valid:
-            errors.append(error)
+        # Validate quantity - must not be empty
+        if not quantity_text:
+            errors.append("Please enter a quantity value")
+            logger.warning("Quantity field is empty")
+        else:
+            try:
+                quantity_val = int(quantity_text)
+                valid, error = validate_positive_integer(
+                    str(quantity_val), tr("field.quantity"), minimum=0
+                )
+                if not valid:
+                    errors.append(error)
+            except ValueError:
+                errors.append("Quantity must be a valid number")
+                logger.warning(f"Invalid quantity value: {quantity_text}")
 
         # Validate serial number length if provided
         if serial_number:
@@ -239,9 +265,19 @@ class EditItemDialog(QDialog):
                 tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
             )
             logger.warning(f"Edit form validation failed: {errors}")
+
+            # Focus on the first problematic field
+            if not item_type:
+                self.type_edit.setFocus()
+            elif not quantity_text or quantity_text and not quantity_text.isdigit():
+                self.quantity_input.setFocus()
+                self.quantity_input.selectAll()
+
             return
 
-        logger.info("Edit form validation passed")
+        # All validation passed
+        quantity = int(quantity_text)
+        logger.info(f"Edit form validation passed - saving item with quantity {quantity}")
         self._result_item = InventoryItem(
             id=self._original_item.id,
             item_type=item_type,

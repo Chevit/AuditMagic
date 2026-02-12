@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QCompleter,
 )
 from ui_entities.translations import tr
+from styles import apply_input_style, apply_button_style, apply_combo_box_style
 
 
 class SearchWidget(QWidget):
@@ -46,6 +47,7 @@ class SearchWidget(QWidget):
         self.field_combo.addItem(tr("search.field.sub_type"), "sub_type")
         self.field_combo.addItem(tr("search.field.details"), "details")
         self.field_combo.setMinimumWidth(120)
+        apply_combo_box_style(self.field_combo)
         search_row.addWidget(self.field_combo)
 
         # Search input with autocomplete
@@ -54,6 +56,7 @@ class SearchWidget(QWidget):
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self._on_text_changed)
         self.search_input.returnPressed.connect(self._on_search_clicked)
+        apply_input_style(self.search_input)
         search_row.addWidget(self.search_input, 1)
 
         # Completer for autocomplete
@@ -64,11 +67,13 @@ class SearchWidget(QWidget):
 
         # Search button
         self.search_button = QPushButton(tr("button.search"))
+        apply_button_style(self.search_button, "info")
         self.search_button.clicked.connect(self._on_search_clicked)
         search_row.addWidget(self.search_button)
 
         # Clear button
         self.clear_button = QPushButton(tr("button.clear"))
+        apply_button_style(self.clear_button, "secondary")
         self.clear_button.clicked.connect(self._on_clear_clicked)
         search_row.addWidget(self.clear_button)
 

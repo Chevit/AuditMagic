@@ -1,16 +1,14 @@
-"""Dialog for adding or removing quantity from an item."""
-
-from typing import Optional
+"""Dialog for adding or removing quantity with clean QLineEdit UX."""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
     QLabel,
-    QSpinBox,
+    QLineEdit,
     QPushButton,
     QFrame,
     QTextEdit,
@@ -20,10 +18,11 @@ from PyQt6.QtWidgets import (
 from logger import logger
 from ui_entities.translations import tr
 from validators import validate_length
+from styles import Styles, apply_input_style, apply_button_style, apply_text_edit_style
 
 
 class QuantityDialog(QDialog):
-    """Dialog for changing item quantity."""
+    """Dialog for changing item quantity with improved UX using QLineEdit."""
 
     def __init__(
         self,
@@ -44,11 +43,12 @@ class QuantityDialog(QDialog):
         """Set up the dialog UI."""
         title = tr("dialog.quantity.title")
         self.setWindowTitle(title)
-        self.setMinimumWidth(350)
+        self.setMinimumWidth(400)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # Header
         header_text = (
@@ -91,23 +91,32 @@ class QuantityDialog(QDialog):
         label_font = QFont()
         label_font.setBold(True)
 
-        # Quantity
+        # Quantity - QLineEdit instead of QSpinBox for better UX
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
-        self.quantity_spin = QSpinBox()
-        self.quantity_spin.setMinimum(1)
-        self.quantity_spin.setMaximum(
-            999999 if self._is_add else self._current_quantity
-        )
-        self.quantity_spin.setValue(1)
-        self.quantity_spin.lineEdit().textChanged.connect(self._on_spin_text_changed)
-        form_layout.addRow(quantity_label, self.quantity_spin)
+        
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Enter quantity (e.g., 5)...")
+        
+        # Set validator to only allow positive integers
+        validator = QIntValidator(1, 999999, self)
+        self.quantity_input.setValidator(validator)
+
+        # Style the input
+        apply_input_style(self.quantity_input, large=True)
+        
+        # Connect text change to update preview
+        self.quantity_input.textChanged.connect(self._update_preview)
+        
+        form_layout.addRow(quantity_label, self.quantity_input)
 
         # Notes
         notes_label = QLabel(tr("label.notes"))
+        notes_label.setFont(label_font)
         self.notes_edit = QTextEdit()
         self.notes_edit.setPlaceholderText(tr("placeholder.notes"))
         self.notes_edit.setMaximumHeight(60)
+        apply_text_edit_style(self.notes_edit)
         form_layout.addRow(notes_label, self.notes_edit)
 
         layout.addLayout(form_layout)
@@ -116,7 +125,6 @@ class QuantityDialog(QDialog):
         self.preview_label = QLabel()
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._update_preview()
-        self.quantity_spin.valueChanged.connect(self._update_preview)
         layout.addWidget(self.preview_label)
 
         # Spacer
@@ -127,52 +135,72 @@ class QuantityDialog(QDialog):
         button_layout.addStretch()
 
         cancel_button = QPushButton(tr("button.cancel"))
-        cancel_button.setMinimumWidth(100)
+        apply_button_style(cancel_button, "danger")
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
 
         action_text = tr("button.add") if self._is_add else tr("button.delete")
         action_button = QPushButton(action_text)
-        action_button.setMinimumWidth(100)
+        apply_button_style(action_button, "primary")
         action_button.setDefault(True)
         action_button.clicked.connect(self._on_action_clicked)
         button_layout.addWidget(action_button)
 
         layout.addLayout(button_layout)
-
-    def _on_spin_text_changed(self, text: str):
-        """Handle spinbox text changes, including when text is fully cleared."""
-        if not text:
-            self.quantity_spin.setValue(self.quantity_spin.minimum())
-            logger.debug("Quantity field cleared, reset to minimum")
-        self._update_preview()
+        
+        # Set focus to quantity input
+        self.quantity_input.setFocus()
 
     def _update_preview(self):
         """Update the preview label showing the result."""
-        change = self.quantity_spin.value()
-        if self._is_add:
-            new_quantity = self._current_quantity + change
-            self.preview_label.setText(
-                f"{self._current_quantity} + {change} = {new_quantity}"
-            )
-        else:
-            new_quantity = self._current_quantity - change
-            self.preview_label.setText(
-                f"{self._current_quantity} - {change} = {new_quantity}"
-            )
+        text = self.quantity_input.text().strip()
+        
+        if not text:
+            self.preview_label.setText("")
+            return
+        
+        try:
+            change = int(text)
+            if self._is_add:
+                new_quantity = self._current_quantity + change
+                self.preview_label.setText(
+                    f"{self._current_quantity} + {change} = {new_quantity}"
+                )
+            else:
+                new_quantity = self._current_quantity - change
+                self.preview_label.setText(
+                    f"{self._current_quantity} - {change} = {new_quantity}"
+                )
+        except ValueError:
+            self.preview_label.setText("")
 
     def _on_action_clicked(self):
         """Handle action button click with validation."""
-        quantity = self.quantity_spin.value()
+        text = self.quantity_input.text().strip()
         notes = self.notes_edit.toPlainText().strip()
 
         errors = []
 
-        if quantity <= 0:
-            errors.append(tr("message.quantity_positive"))
+        # Check if quantity field is empty
+        if not text:
+            errors.append("Please enter a quantity value")
+            logger.warning("Quantity field is empty")
+        else:
+            try:
+                quantity = int(text)
+                
+                if quantity < 1:
+                    errors.append(tr("message.quantity_positive"))
 
-        if not self._is_add and quantity > self._current_quantity:
-            errors.append(tr("message.not_enough_quantity"))
+                if not self._is_add and quantity > self._current_quantity:
+                    errors.append(
+                        f"{tr('message.not_enough_quantity')}\n"
+                        f"Requested: {quantity}, Available: {self._current_quantity}"
+                    )
+                    
+            except ValueError:
+                errors.append("Quantity must be a valid number")
+                logger.warning(f"Invalid quantity value: {text}")
 
         # Validate notes length if provided
         if notes:
@@ -187,8 +215,12 @@ class QuantityDialog(QDialog):
                 tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
             )
             logger.warning(f"Quantity validation failed: {errors}")
+            self.quantity_input.setFocus()
+            self.quantity_input.selectAll()
             return
 
+        # All validation passed
+        quantity = int(text)
         logger.info(
             f"Quantity validation passed: {'add' if self._is_add else 'remove'} {quantity}"
         )

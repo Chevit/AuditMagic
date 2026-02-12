@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
+from styles import apply_button_style
 
 
 class ItemDetailsDialog(QDialog):
@@ -115,7 +116,7 @@ class ItemDetailsDialog(QDialog):
         button_layout.addStretch()
 
         close_button = QPushButton(tr("button.close"))
-        close_button.setMinimumWidth(100)
+        apply_button_style(close_button, "info")
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)
 
