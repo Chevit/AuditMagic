@@ -9,7 +9,10 @@ CONFIG_FILE = os.path.join(APP_DATA_DIR, "config.json")
 
 DEFAULT_CONFIG = {
     "language": "uk",  # Ukrainian by default
-    "theme": "default",
+    "theme": {
+        "mode": "light",  # "light" or "dark"
+        "variant": "default",  # "default", "teal", "cyan", "purple", "pink", "amber"
+    },
     "window": {
         "geometry": None,  # Will store window size/position
         "maximized": False,

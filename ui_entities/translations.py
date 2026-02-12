@@ -100,6 +100,18 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "menu.add_quantity": "Додати кількість",
         "menu.remove_quantity": "Зменшити кількість",
         "menu.transactions": "Переглянути транзакції",
+        # Theme menu
+        "menu.theme": "Тема",
+        "menu.theme.mode": "Режим",
+        "menu.theme.light": "Світла",
+        "menu.theme.dark": "Темна",
+        "menu.theme.variant": "Варіант кольору",
+        "menu.theme.variant.default": "За замовчуванням (Синій)",
+        "menu.theme.variant.teal": "Бірюзовий",
+        "menu.theme.variant.cyan": "Блакитний",
+        "menu.theme.variant.purple": "Фіолетовий",
+        "menu.theme.variant.pink": "Рожевий",
+        "menu.theme.variant.amber": "Бурштиновий",
         # Messages
         "message.confirm_delete": "Ви впевнені, що хочете видалити цей елемент?",
         "message.validation_error": "Помилка валідації",
@@ -108,6 +120,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.quantity_positive": "Кількість має бути більше нуля",
         "message.not_enough_quantity": "Недостатньо товару на складі",
         "message.no_results": "Нічого не знайдено",
+        "message.theme.changed": "Тему змінено",
+        "message.theme.changed.text": "Нова тема застосована успішно!",
         # Main window
         "main.add_item": "Додати елемент",
         # Search
@@ -197,6 +211,18 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "menu.add_quantity": "Add Quantity",
         "menu.remove_quantity": "Remove Quantity",
         "menu.transactions": "View Transactions",
+        # Theme menu
+        "menu.theme": "Theme",
+        "menu.theme.mode": "Mode",
+        "menu.theme.light": "Light",
+        "menu.theme.dark": "Dark",
+        "menu.theme.variant": "Color Variant",
+        "menu.theme.variant.default": "Default (Blue)",
+        "menu.theme.variant.teal": "Teal",
+        "menu.theme.variant.cyan": "Cyan",
+        "menu.theme.variant.purple": "Purple",
+        "menu.theme.variant.pink": "Pink",
+        "menu.theme.variant.amber": "Amber",
         # Messages
         "message.confirm_delete": "Are you sure you want to delete this item?",
         "message.validation_error": "Validation Error",
@@ -205,6 +231,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.quantity_positive": "Quantity must be greater than zero",
         "message.not_enough_quantity": "Not enough items in stock",
         "message.no_results": "No results found",
+        "message.theme.changed": "Theme Changed",
+        "message.theme.changed.text": "New theme applied successfully!",
         # Main window
         "main.add_item": "Add Item",
         # Search

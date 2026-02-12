@@ -1,7 +1,16 @@
 """Centralized UI styles for AuditMagic application.
 
-This module provides consistent styling across all dialogs and widgets.
-All colors, fonts, and StyleSheets are defined here to ensure UI consistency.
+This module provides additional styling customizations that work alongside qt-material.
+qt-material provides the base theme (light/dark with Material Design), while this
+module adds specific customizations for dialogs, buttons, and input fields.
+
+The styles defined here complement qt-material's themes and provide:
+- Consistent dimensions across all widgets
+- Standardized helper functions for applying styles
+- Easy-to-use style application without inline CSS
+
+Note: qt-material handles most of the theming automatically. These styles are
+additional customizations that maintain consistency across custom dialogs.
 """
 
 # Color Palette

@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import QApplication
 from ui_entities.main_window import MainWindow
 from db import run_migrations
 from logger import logger
+from theme_manager import init_theme_manager
+from config import config
 
 
 def main():
@@ -13,6 +15,13 @@ def main():
     try:
         app = QApplication(sys.argv)
         logger.info("QApplication created successfully")
+
+        # Initialize theme manager and apply saved theme
+        theme_manager = init_theme_manager(app)
+        theme_mode = config.get("theme.mode", "light")
+        theme_variant = config.get("theme.variant", "default")
+        theme_manager.apply_theme(theme_mode, theme_variant)
+        logger.info(f"Theme applied: {theme_mode}/{theme_variant}")
 
         window = MainWindow()
         logger.info("MainWindow created successfully")
