@@ -1,5 +1,4 @@
 # requirements.txt
-PyQt6==6.7.0
-SQLAlchemy==2.0.31
+PyQt6>=6.7.0
+SQLAlchemy>=2.0.31
 alembic>=1.13.0
-
