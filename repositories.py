@@ -169,27 +169,12 @@ class ItemRepository:
             item.serial_number = serial_number
             item.details = details
 
-            # Record quantity change as transaction if quantity differs
+            # Record a single EDIT transaction capturing all changes
             quantity_diff = quantity - quantity_before
-            if quantity_diff != 0:
-                trans_type = (
-                    TransactionType.ADD if quantity_diff > 0 else TransactionType.REMOVE
-                )
-                transaction = Transaction(
-                    item_id=item.id,
-                    transaction_type=trans_type,
-                    quantity_change=abs(quantity_diff),
-                    quantity_before=quantity_before,
-                    quantity_after=quantity,
-                    notes=edit_reason,
-                )
-                session.add(transaction)
-
-            # Always record an EDIT transaction for the field changes
             edit_transaction = Transaction(
                 item_id=item.id,
                 transaction_type=TransactionType.EDIT,
-                quantity_change=0,
+                quantity_change=abs(quantity_diff),
                 quantity_before=quantity_before,
                 quantity_after=quantity,
                 notes=edit_reason,
