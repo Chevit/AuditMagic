@@ -19,7 +19,7 @@ class InventoryService:
         quantity: int,
         sub_type: str = "",
         serial_number: str = "",
-        notes: str = "",
+        details: str = "",
     ) -> InventoryItem:
         """Create a new inventory item.
 
@@ -28,7 +28,7 @@ class InventoryService:
             quantity: Initial quantity (required)
             sub_type: Sub-type of the item (optional)
             serial_number: Serial number (optional)
-            notes: Additional notes (optional)
+            details: Additional details (optional)
 
         Returns:
             The created InventoryItem.
@@ -40,7 +40,7 @@ class InventoryService:
                 quantity=quantity,
                 sub_type=sub_type,
                 serial_number=serial_number,
-                notes=notes,
+                details=details,
             )
             logger.info(f"Item created successfully: id={db_item.id}")
             return InventoryItem.from_db_model(db_item)
@@ -54,11 +54,11 @@ class InventoryService:
         quantity: int,
         sub_type: str = "",
         serial_number: str = "",
-        notes: str = "",
+        details: str = "",
     ) -> Tuple[InventoryItem, bool]:
         """Create a new item or merge with existing item if fields match.
 
-        If an item with the same item_type, sub_type, serial_number, and notes exists,
+        If an item with the same item_type, sub_type, serial_number, and details exists,
         the quantity will be added to the existing item and a transaction will be created.
 
         Args:
@@ -66,7 +66,7 @@ class InventoryService:
             quantity: Quantity to add (required)
             sub_type: Sub-type of the item (optional)
             serial_number: Serial number (optional)
-            notes: Additional notes (optional)
+            details: Additional details (optional)
 
         Returns:
             Tuple of (InventoryItem, was_merged: bool).
@@ -77,7 +77,7 @@ class InventoryService:
             item_type=item_type,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes,
+            details=details,
         )
 
         if existing:
@@ -95,7 +95,7 @@ class InventoryService:
             quantity=quantity,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes,
+            details=details,
         )
         return InventoryItem.from_db_model(db_item), False
 
@@ -128,7 +128,7 @@ class InventoryService:
         item_type: str = None,
         sub_type: str = None,
         serial_number: str = None,
-        notes: str = None,
+        details: str = None,
     ) -> Optional[InventoryItem]:
         """Update an item's properties.
 
@@ -137,7 +137,7 @@ class InventoryService:
             item_type: New item type (optional)
             sub_type: New sub-type (optional)
             serial_number: New serial number (optional)
-            notes: New notes (optional)
+            details: New details (optional)
 
         Returns:
             The updated InventoryItem or None if not found.
@@ -147,7 +147,7 @@ class InventoryService:
             item_type=item_type,
             sub_type=sub_type,
             serial_number=serial_number,
-            notes=notes,
+            details=details,
         )
         return InventoryItem.from_db_model(db_item) if db_item else None
 
@@ -158,7 +158,7 @@ class InventoryService:
         quantity: int,
         sub_type: str = "",
         serial_number: str = "",
-        notes: str = "",
+        details: str = "",
         edit_reason: str = "",
     ) -> Optional[InventoryItem]:
         """Edit an item's properties with full transaction logging.
@@ -169,7 +169,7 @@ class InventoryService:
             quantity: New quantity.
             sub_type: New sub-type.
             serial_number: New serial number.
-            notes: New item notes.
+            details: New item details.
             edit_reason: Reason for the edit (required).
 
         Returns:
@@ -183,7 +183,7 @@ class InventoryService:
                 sub_type=sub_type,
                 quantity=quantity,
                 serial_number=serial_number,
-                notes=notes,
+                details=details,
                 edit_reason=edit_reason,
             )
             if db_item:

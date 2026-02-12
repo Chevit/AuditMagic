@@ -21,7 +21,7 @@ class ItemRepository:
         quantity: int,
         sub_type: str = None,
         serial_number: str = None,
-        notes: str = None,
+        details: str = None,
     ) -> Item:
         """Create a new item and record the initial transaction.
 
@@ -30,7 +30,7 @@ class ItemRepository:
             quantity: Initial quantity (required)
             sub_type: Sub-type of the item (optional)
             serial_number: Serial number (optional)
-            notes: Additional notes (optional)
+            details: Additional details (optional)
 
         Returns:
             The created Item instance.
@@ -44,7 +44,7 @@ class ItemRepository:
                 sub_type=sub_type or "",
                 quantity=quantity,
                 serial_number=serial_number or "",
-                notes=notes or "",
+                details=details or "",
             )
             session.add(item)
             session.flush()  # Get the ID before creating transaction
@@ -98,7 +98,7 @@ class ItemRepository:
         item_type: str = None,
         sub_type: str = None,
         serial_number: str = None,
-        notes: str = None,
+        details: str = None,
     ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
@@ -107,7 +107,7 @@ class ItemRepository:
             item_type: New item type (optional)
             sub_type: New sub-type (optional)
             serial_number: New serial number (optional)
-            notes: New notes (optional)
+            details: New details (optional)
 
         Returns:
             The updated Item instance or None if not found.
@@ -123,8 +123,8 @@ class ItemRepository:
                 item.sub_type = sub_type
             if serial_number is not None:
                 item.serial_number = serial_number
-            if notes is not None:
-                item.notes = notes
+            if details is not None:
+                item.details = details
 
             session.commit()
             session.refresh(item)
@@ -137,7 +137,7 @@ class ItemRepository:
         sub_type: str,
         quantity: int,
         serial_number: str,
-        notes: str,
+        details: str,
         edit_reason: str,
     ) -> Optional[Item]:
         """Edit an item's properties and quantity, recording all changes as transactions.
@@ -148,7 +148,7 @@ class ItemRepository:
             sub_type: New sub-type.
             quantity: New quantity.
             serial_number: New serial number.
-            notes: New item notes.
+            details: New item details.
             edit_reason: Reason for the edit (required, stored in transaction notes).
 
         Returns:
@@ -167,7 +167,7 @@ class ItemRepository:
             item.sub_type = sub_type
             item.quantity = quantity
             item.serial_number = serial_number
-            item.notes = notes
+            item.details = details
 
             # Record quantity change as transaction if quantity differs
             quantity_diff = quantity - quantity_before
@@ -321,7 +321,7 @@ class ItemRepository:
 
     @staticmethod
     def find_by_fields(
-        item_type: str, sub_type: str = "", serial_number: str = "", notes: str = ""
+        item_type: str, sub_type: str = "", serial_number: str = "", details: str = ""
     ) -> Optional[Item]:
         """Find an existing item with matching fields (excluding quantity).
 
@@ -329,7 +329,7 @@ class ItemRepository:
             item_type: Type of the item.
             sub_type: Sub-type of the item.
             serial_number: Serial number.
-            notes: Additional notes.
+            details: Additional details.
 
         Returns:
             The matching Item instance or None if not found.
@@ -341,7 +341,7 @@ class ItemRepository:
                     Item.item_type == item_type,
                     Item.sub_type == (sub_type or ""),
                     Item.serial_number == (serial_number or ""),
-                    Item.notes == (notes or ""),
+                    Item.details == (details or ""),
                 )
                 .first()
             )
@@ -353,7 +353,7 @@ class ItemRepository:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', or None for all).
 
         Returns:
             List of matching Item instances.
@@ -374,9 +374,9 @@ class ItemRepository:
                     .filter(Item.sub_type.ilike(search_pattern))
                     .all()
                 )
-            elif field == "notes":
+            elif field == "details":
                 items = (
-                    session.query(Item).filter(Item.notes.ilike(search_pattern)).all()
+                    session.query(Item).filter(Item.details.ilike(search_pattern)).all()
                 )
             else:
                 # Search in all fields
@@ -386,7 +386,7 @@ class ItemRepository:
                         or_(
                             Item.item_type.ilike(search_pattern),
                             Item.sub_type.ilike(search_pattern),
-                            Item.notes.ilike(search_pattern),
+                            Item.details.ilike(search_pattern),
                         )
                     )
                     .all()
@@ -402,7 +402,7 @@ class ItemRepository:
 
         Args:
             prefix: The prefix to search for.
-            field: Field to search in ('item_type', 'sub_type', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', or None for all).
             limit: Maximum number of suggestions.
 
         Returns:
@@ -432,16 +432,16 @@ class ItemRepository:
                 )
                 suggestions.update(t[0] for t in sub_types if t[0])
 
-            if field == "notes" or field is None:
-                # For notes, extract words that start with the prefix
-                notes = (
-                    session.query(Item.notes)
-                    .filter(Item.notes.ilike(f"%{prefix}%"))
+            if field == "details" or field is None:
+                # For details, extract words that start with the prefix
+                details_rows = (
+                    session.query(Item.details)
+                    .filter(Item.details.ilike(f"%{prefix}%"))
                     .all()
                 )
-                for (note,) in notes:
-                    if note:
-                        words = note.split()
+                for (detail,) in details_rows:
+                    if detail:
+                        words = detail.split()
                         for word in words:
                             if word.lower().startswith(prefix.lower()):
                                 suggestions.add(word)
@@ -610,7 +610,7 @@ def _detach_item(item: Item) -> Item:
         sub_type=item.sub_type,
         quantity=item.quantity,
         serial_number=item.serial_number,
-        notes=item.notes,
+        details=item.details,
         created_at=item.created_at,
         updated_at=item.updated_at,
     )

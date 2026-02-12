@@ -111,12 +111,12 @@ class EditItemDialog(QDialog):
         self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
         form_layout.addRow(serial_label, self.serial_edit)
 
-        # Item Notes (optional)
-        item_notes_label = QLabel(tr("label.notes"))
-        self.item_notes_edit = QTextEdit()
-        self.item_notes_edit.setPlaceholderText(tr("placeholder.notes"))
-        self.item_notes_edit.setMaximumHeight(60)
-        form_layout.addRow(item_notes_label, self.item_notes_edit)
+        # Item Details (optional)
+        item_details_label = QLabel(tr("label.details"))
+        self.item_details_edit = QTextEdit()
+        self.item_details_edit.setPlaceholderText(tr("placeholder.details"))
+        self.item_details_edit.setMaximumHeight(60)
+        form_layout.addRow(item_details_label, self.item_details_edit)
 
         layout.addLayout(form_layout)
 
@@ -172,7 +172,7 @@ class EditItemDialog(QDialog):
         self.subtype_edit.setText(self._original_item.sub_type or "")
         self.quantity_spin.setValue(self._original_item.quantity)
         self.serial_edit.setText(self._original_item.serial_number or "")
-        self.item_notes_edit.setPlainText(self._original_item.notes or "")
+        self.item_details_edit.setPlainText(self._original_item.details or "")
 
     def _on_save_clicked(self):
         """Validate and accept the dialog."""
@@ -180,7 +180,7 @@ class EditItemDialog(QDialog):
         sub_type = self.subtype_edit.text().strip()
         quantity = self.quantity_spin.value()
         serial_number = self.serial_edit.text().strip()
-        item_notes = self.item_notes_edit.toPlainText().strip()
+        item_details = self.item_details_edit.toPlainText().strip()
         edit_reason = self.reason_edit.toPlainText().strip()
 
         # Validation
@@ -212,10 +212,10 @@ class EditItemDialog(QDialog):
             if not valid:
                 errors.append(error)
 
-        # Validate item notes length if provided
-        if item_notes:
+        # Validate item details length if provided
+        if item_details:
             valid, error = validate_length(
-                item_notes, tr("field.notes"), max_length=1000
+                item_details, tr("field.details"), max_length=1000
             )
             if not valid:
                 errors.append(error)
@@ -248,7 +248,7 @@ class EditItemDialog(QDialog):
             sub_type=sub_type,
             quantity=quantity,
             serial_number=serial_number,
-            notes=item_notes,
+            details=item_details,
         )
         self._edit_notes = edit_reason
         self.accept()

@@ -97,12 +97,12 @@ class AddItemDialog(QDialog):
         self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
         form_layout.addRow(serial_label, self.serial_edit)
 
-        # Notes (optional)
-        notes_label = QLabel(tr("label.notes"))
-        self.notes_edit = QTextEdit()
-        self.notes_edit.setPlaceholderText(tr("placeholder.notes"))
-        self.notes_edit.setMaximumHeight(80)
-        form_layout.addRow(notes_label, self.notes_edit)
+        # Details (optional)
+        details_label = QLabel(tr("label.details"))
+        self.details_edit = QTextEdit()
+        self.details_edit.setPlaceholderText(tr("placeholder.details"))
+        self.details_edit.setMaximumHeight(80)
+        form_layout.addRow(details_label, self.details_edit)
 
         layout.addLayout(form_layout)
 
@@ -142,7 +142,7 @@ class AddItemDialog(QDialog):
         sub_type = self.subtype_edit.text().strip()
         quantity = self.quantity_spin.value()
         serial_number = self.serial_edit.text().strip()
-        notes = self.notes_edit.toPlainText().strip()
+        details = self.details_edit.toPlainText().strip()
 
         # Validation
         errors = []
@@ -173,9 +173,11 @@ class AddItemDialog(QDialog):
             if not valid:
                 errors.append(error)
 
-        # Validate notes length if provided
-        if notes:
-            valid, error = validate_length(notes, tr("field.notes"), max_length=1000)
+        # Validate details length if provided
+        if details:
+            valid, error = validate_length(
+                details, tr("field.details"), max_length=1000
+            )
             if not valid:
                 errors.append(error)
 
@@ -195,7 +197,7 @@ class AddItemDialog(QDialog):
             sub_type=sub_type,
             quantity=quantity,
             serial_number=serial_number,
-            notes=notes,
+            details=details,
         )
         self.accept()
 
