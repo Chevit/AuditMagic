@@ -59,25 +59,57 @@ class Colors:
     @staticmethod
     def get_border_hover() -> str:
         """Get hover border color based on current theme."""
-        colors = get_theme_colors()
-        # Slightly lighter/darker than default border
-        return "#5a5a5a" if colors.border_default == "#3a3a3a" else "#999"
+        return get_theme_colors().border_hover
 
-    # Action button colors (constant across themes for consistency)
-    PRIMARY = "#4CAF50"  # Green - primary actions
-    PRIMARY_HOVER = "#45a049"
-    PRIMARY_PRESSED = "#3d8b40"
+    @staticmethod
+    def get_border_focus() -> str:
+        """Get focus border color based on current theme."""
+        return get_theme_colors().border_focus
 
-    DANGER = "#f44336"  # Red - cancel/delete actions
-    DANGER_HOVER = "#da190b"
-    DANGER_PRESSED = "#c41000"
+    @staticmethod
+    def get_primary() -> str:
+        """Get primary action color based on current theme."""
+        return get_theme_colors().primary
 
-    INFO = "#2196F3"  # Blue - informational
-    INFO_HOVER = "#0b7dda"
-    INFO_PRESSED = "#0969c3"
+    @staticmethod
+    def get_primary_hover() -> str:
+        """Get primary hover color based on current theme."""
+        return get_theme_colors().primary_hover
 
-    # Border focus (constant)
-    BORDER_FOCUS = PRIMARY
+    @staticmethod
+    def get_primary_pressed() -> str:
+        """Get primary pressed color based on current theme."""
+        return get_theme_colors().primary_pressed
+
+    @staticmethod
+    def get_danger() -> str:
+        """Get danger action color based on current theme."""
+        return get_theme_colors().danger
+
+    @staticmethod
+    def get_danger_hover() -> str:
+        """Get danger hover color based on current theme."""
+        return get_theme_colors().danger_hover
+
+    @staticmethod
+    def get_danger_pressed() -> str:
+        """Get danger pressed color based on current theme."""
+        return get_theme_colors().danger_pressed
+
+    @staticmethod
+    def get_info() -> str:
+        """Get info action color based on current theme."""
+        return get_theme_colors().info
+
+    @staticmethod
+    def get_info_hover() -> str:
+        """Get info hover color based on current theme."""
+        return get_theme_colors().info_hover
+
+    @staticmethod
+    def get_info_pressed() -> str:
+        """Get info pressed color based on current theme."""
+        return get_theme_colors().info_pressed
 
 
 # Dimensions (theme-aware)
@@ -152,7 +184,7 @@ class Styles:
                 height: {Dimensions.get_input_height()}px;
             }}
             QLineEdit:focus {{
-                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
             }}
             QLineEdit:hover {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
@@ -176,7 +208,7 @@ class Styles:
                 color: {Colors.get_main_color()};
             }}
             QLineEdit:focus {{
-                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
             }}
             QLineEdit:hover {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
@@ -200,7 +232,7 @@ class Styles:
                 font-size: {Dimensions.get_font_size()}px;
             }}
             QTextEdit:focus {{
-                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
             }}
             QTextEdit:disabled {{
                 background-color: {Colors.get_bg_disabled()};
@@ -225,7 +257,7 @@ class Styles:
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
             }}
             QComboBox:focus {{
-                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
             }}
             QComboBox:disabled {{
                 background-color: {Colors.get_bg_disabled()};
@@ -245,7 +277,7 @@ class Styles:
             QComboBox QAbstractItemView {{
                 background-color: {Colors.get_bg_default()};
                 color: {Colors.get_main_color()};
-                selection-background-color: {Colors.PRIMARY};
+                selection-background-color: {Colors.get_primary()};
                 selection-color: white;
                 border: 1px solid {Colors.get_border_default()};
             }}
@@ -256,7 +288,7 @@ class Styles:
         """Get primary button stylesheet with theme-aware dimensions."""
         return f"""
             QPushButton {{
-                background-color: {Colors.PRIMARY};
+                background-color: {Colors.get_primary()};
                 color: white;
                 padding: 2px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
@@ -265,10 +297,10 @@ class Styles:
                 height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
-                background-color: {Colors.PRIMARY_HOVER};
+                background-color: {Colors.get_primary_hover()};
             }}
             QPushButton:pressed {{
-                background-color: {Colors.PRIMARY_PRESSED};
+                background-color: {Colors.get_primary_pressed()};
             }}
             QPushButton:disabled {{
                 background-color: {Colors.get_bg_disabled()};
@@ -281,7 +313,7 @@ class Styles:
         """Get danger button stylesheet with theme-aware dimensions."""
         return f"""
             QPushButton {{
-                background-color: {Colors.DANGER};
+                background-color: {Colors.get_danger()};
                 color: white;
                 padding: 2px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
@@ -290,10 +322,10 @@ class Styles:
                 height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
-                background-color: {Colors.DANGER_HOVER};
+                background-color: {Colors.get_danger_hover()};
             }}
             QPushButton:pressed {{
-                background-color: {Colors.DANGER_PRESSED};
+                background-color: {Colors.get_danger_pressed()};
             }}
             QPushButton:disabled {{
                 background-color: {Colors.get_bg_disabled()};
@@ -306,7 +338,7 @@ class Styles:
         """Get info button stylesheet with theme-aware dimensions."""
         return f"""
             QPushButton {{
-                background-color: {Colors.INFO};
+                background-color: {Colors.get_info()};
                 color: white;
                 padding: 2px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
@@ -315,10 +347,10 @@ class Styles:
                 height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
-                background-color: {Colors.INFO_HOVER};
+                background-color: {Colors.get_info_hover()};
             }}
             QPushButton:pressed {{
-                background-color: {Colors.INFO_PRESSED};
+                background-color: {Colors.get_info_pressed()};
             }}
             QPushButton:disabled {{
                 background-color: {Colors.get_bg_disabled()};

@@ -15,16 +15,17 @@ from PyQt6.QtWidgets import (
 from logger import logger
 from repositories import ItemRepository
 from styles import apply_button_style
-from ui_entities.inventory_item import InventoryItem
+from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.translations import tr
 
 
 class ItemDetailsDialog(QDialog):
     """Dialog for displaying inventory item details."""
 
-    def __init__(self, item: InventoryItem, parent=None):
+    def __init__(self, item, parent=None):
         super().__init__(parent)
         self._item = item
+        self._is_grouped = isinstance(item, GroupedInventoryItem)
         self._setup_ui()
 
     def _setup_ui(self):
@@ -94,12 +95,15 @@ class ItemDetailsDialog(QDialog):
         quantity_value.setFont(value_font)
         form_layout.addRow(quantity_label, quantity_value)
 
-        # Serial Number
+        # Serial Number (for non-grouped) or count (for grouped)
         serial_label = QLabel(tr("label.serial_number"))
         serial_label.setFont(label_font)
-        serial_value = QLabel(
-            self._item.serial_number if self._item.serial_number else "-"
-        )
+        if self._is_grouped:
+            serial_count = len(self._item.serial_numbers) if self._item.serial_numbers else 0
+            serial_text = f"{serial_count} шт." if serial_count > 0 else "-"
+        else:
+            serial_text = self._item.serial_number if self._item.serial_number else "-"
+        serial_value = QLabel(serial_text)
         serial_value.setFont(value_font)
         form_layout.addRow(serial_label, serial_value)
 
@@ -113,8 +117,10 @@ class ItemDetailsDialog(QDialog):
 
         layout.addLayout(form_layout)
 
-        # Serial numbers section for serialized types
-        if self._item.is_serialized:
+        # Serial numbers section for serialized types (grouped items have the list directly)
+        if self._is_grouped and self._item.serial_numbers:
+            self._add_serial_numbers_section_from_list(layout, self._item.serial_numbers)
+        elif self._item.is_serialized and not self._is_grouped:
             self._add_serial_numbers_section(layout)
 
         # Spacer
@@ -132,7 +138,7 @@ class ItemDetailsDialog(QDialog):
         layout.addLayout(button_layout)
 
     def _add_serial_numbers_section(self, layout: QVBoxLayout):
-        """Add section showing all serial numbers for this type.
+        """Add section showing all serial numbers for this type (loads from DB).
 
         Args:
             layout: The main layout to add to
@@ -140,34 +146,43 @@ class ItemDetailsDialog(QDialog):
         try:
             # Get all serial numbers for this type
             serial_numbers = ItemRepository.get_serial_numbers_for_type(self._item.item_type_id)
-
-            if not serial_numbers:
-                return
-
-            # Create group box
-            serial_group = QGroupBox(tr("dialog.details.serial_numbers"))
-            serial_layout = QVBoxLayout()
-
-            # Count label
-            count_label = QLabel(tr("dialog.details.serial_count").format(count=len(serial_numbers)))
-            count_font = QFont()
-            count_font.setBold(True)
-            count_label.setFont(count_font)
-            serial_layout.addWidget(count_label)
-
-            # List widget
-            serial_list = QListWidget()
-            serial_list.setMaximumHeight(150)
-            for sn in serial_numbers:
-                serial_list.addItem(sn)
-            serial_layout.addWidget(serial_list)
-
-            serial_group.setLayout(serial_layout)
-            layout.addWidget(serial_group)
-
-            logger.debug(f"Added serial numbers section with {len(serial_numbers)} items")
+            if serial_numbers:
+                self._add_serial_numbers_section_from_list(layout, serial_numbers)
         except Exception as e:
             logger.error(f"Failed to load serial numbers: {e}", exc_info=True)
+
+    def _add_serial_numbers_section_from_list(self, layout: QVBoxLayout, serial_numbers: list):
+        """Add section showing serial numbers from a provided list.
+
+        Args:
+            layout: The main layout to add to
+            serial_numbers: List of serial number strings
+        """
+        if not serial_numbers:
+            return
+
+        # Create group box
+        serial_group = QGroupBox(tr("dialog.details.serial_numbers"))
+        serial_layout = QVBoxLayout()
+
+        # Count label
+        count_label = QLabel(tr("dialog.details.serial_count").format(count=len(serial_numbers)))
+        count_font = QFont()
+        count_font.setBold(True)
+        count_label.setFont(count_font)
+        serial_layout.addWidget(count_label)
+
+        # List widget
+        serial_list = QListWidget()
+        serial_list.setMaximumHeight(150)
+        for sn in serial_numbers:
+            serial_list.addItem(sn)
+        serial_layout.addWidget(serial_list)
+
+        serial_group.setLayout(serial_layout)
+        layout.addWidget(serial_group)
+
+        logger.debug(f"Added serial numbers section with {len(serial_numbers)} items")
 
     @property
     def item(self) -> InventoryItem:

@@ -33,11 +33,12 @@ def main():
             f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}"
         )
 
+        run_migrations()
+        logger.info("Database migrations applied")
+
         window = MainWindow()
         logger.info("MainWindow created successfully")
 
-        run_migrations()
-        logger.info("Database migrations applied")
 
         window.show()
         logger.info("MainWindow displayed")

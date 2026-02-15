@@ -3,19 +3,19 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QListView, QMenu
 
 from ui_entities.inventory_delegate import InventoryItemDelegate
-from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 
 
 class InventoryListView(QListView):
     """Custom QListView for displaying inventory items with context menu support."""
 
-    edit_requested = pyqtSignal(int, InventoryItem)
-    details_requested = pyqtSignal(int, InventoryItem)
-    delete_requested = pyqtSignal(int, InventoryItem)
-    add_quantity_requested = pyqtSignal(int, InventoryItem)
-    remove_quantity_requested = pyqtSignal(int, InventoryItem)
-    transactions_requested = pyqtSignal(int, InventoryItem)
+    # Signals use 'object' to support both InventoryItem and GroupedInventoryItem
+    edit_requested = pyqtSignal(int, object)
+    details_requested = pyqtSignal(int, object)
+    delete_requested = pyqtSignal(int, object)
+    add_quantity_requested = pyqtSignal(int, object)
+    remove_quantity_requested = pyqtSignal(int, object)
+    transactions_requested = pyqtSignal(int, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -100,8 +100,8 @@ class InventoryListView(QListView):
                 self.details_requested.emit(row, item)
         super().mouseDoubleClickEvent(event)
 
-    def _get_item_from_index(self, index: QModelIndex) -> InventoryItem:
-        """Get the InventoryItem from the model at the given index."""
+    def _get_item_from_index(self, index: QModelIndex):
+        """Get the item (InventoryItem or GroupedInventoryItem) from the model at the given index."""
         from ui_entities.inventory_model import InventoryItemRole
 
         return index.data(InventoryItemRole.ItemData)

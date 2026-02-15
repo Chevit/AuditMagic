@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from logger import logger
 from models import TransactionType
 from repositories import ItemRepository, ItemTypeRepository, SearchHistoryRepository, TransactionRepository
-from ui_entities.inventory_item import InventoryItem
+from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.translations import tr
 
 
@@ -69,34 +69,60 @@ class InventoryService:
 
     @staticmethod
     def create_or_merge_item(
-        item_type: str,
+        item_type_name: str,
         quantity: int,
         sub_type: str = "",
+        is_serialized: bool = False,
         serial_number: str = "",
         details: str = "",
+        location: str = "",
+        condition: str = "",
+        notes: str = "",
     ) -> Tuple[InventoryItem, bool]:
-        """Create a new item or merge with existing item if fields match.
+        """Create a new item or merge with existing item if type matches.
 
-        If an item with the same item_type, sub_type, serial_number, and details exists,
-        the quantity will be added to the existing item and a transaction will be created.
+        For non-serialized items: If an item with the same type exists, quantity is added.
+        For serialized items: A new item is always created (serial numbers are unique).
 
         Args:
-            item_type: Type of the item (required)
+            item_type_name: Type name of the item (required)
             quantity: Quantity to add (required)
             sub_type: Sub-type of the item (optional)
-            serial_number: Serial number (optional)
-            details: Additional details (optional)
+            is_serialized: Whether items have serial numbers
+            serial_number: Serial number (required if serialized)
+            details: Type details/description (optional)
+            location: Storage location (optional)
+            condition: Item condition (optional)
+            notes: Item notes (optional)
 
         Returns:
             Tuple of (InventoryItem, was_merged: bool).
             was_merged is True if quantity was added to an existing item.
         """
-        # Check for existing item with same fields
-        existing = ItemRepository.find_by_fields(
-            item_type=item_type,
+        # Get or create item type
+        item_type = ItemTypeRepository.get_or_create(
+            name=item_type_name,
             sub_type=sub_type,
-            serial_number=serial_number,
-            details=details,
+            is_serialized=is_serialized,
+            details=details
+        )
+
+        # For serialized items, always create new (each serial is unique)
+        if is_serialized or serial_number:
+            db_item = ItemRepository.create(
+                item_type_id=item_type.id,
+                quantity=1,
+                serial_number=serial_number,
+                location=location,
+                condition=condition,
+                notes=notes
+            )
+            return InventoryItem.from_db_models(db_item, item_type), False
+
+        # For non-serialized, check for existing item of same type
+        existing = ItemRepository.find_by_type_and_serial(
+            item_type_id=item_type.id,
+            serial_number=None
         )
 
         if existing:
@@ -106,17 +132,18 @@ class InventoryService:
                 quantity=quantity,
                 notes=tr("transaction.notes.merged"),
             )
-            return InventoryItem.from_db_model(updated), True
+            return InventoryItem.from_db_models(updated, item_type), True
 
         # Create new item
         db_item = ItemRepository.create(
-            item_type=item_type,
+            item_type_id=item_type.id,
             quantity=quantity,
-            sub_type=sub_type,
-            serial_number=serial_number,
-            details=details,
+            serial_number=None,
+            location=location,
+            condition=condition,
+            notes=notes
         )
-        return InventoryItem.from_db_model(db_item), False
+        return InventoryItem.from_db_models(db_item, item_type), False
 
     @staticmethod
     def get_item(item_id: int) -> Optional[InventoryItem]:
@@ -153,6 +180,25 @@ class InventoryService:
         return result
 
     @staticmethod
+    def get_all_items_grouped() -> List[GroupedInventoryItem]:
+        """Get all inventory items grouped by type.
+
+        Returns items aggregated by ItemType, showing total quantity
+        and all serial numbers for each type.
+
+        Returns:
+            List of GroupedInventoryItem instances.
+        """
+        types_with_items = ItemTypeRepository.get_all_with_items()
+        result = []
+
+        for item_type, items in types_with_items:
+            grouped = GroupedInventoryItem.from_item_type_and_items(item_type, items)
+            result.append(grouped)
+
+        return result
+
+    @staticmethod
     def get_autocomplete_types(prefix: str = "") -> List[str]:
         """Get autocomplete suggestions for item types.
 
@@ -180,51 +226,64 @@ class InventoryService:
     @staticmethod
     def update_item(
         item_id: int,
-        item_type: str = None,
-        sub_type: str = None,
         serial_number: str = None,
-        details: str = None,
+        location: str = None,
+        condition: str = None,
+        notes: str = None,
     ) -> Optional[InventoryItem]:
-        """Update an item's properties.
+        """Update an item's instance properties.
+
+        Note: To change type-related fields (name, sub_type, details), use edit_item.
 
         Args:
             item_id: The item's ID.
-            item_type: New item type (optional)
-            sub_type: New sub-type (optional)
             serial_number: New serial number (optional)
-            details: New details (optional)
+            location: New location (optional)
+            condition: New condition (optional)
+            notes: New notes (optional)
 
         Returns:
             The updated InventoryItem or None if not found.
         """
         db_item = ItemRepository.update(
             item_id=item_id,
-            item_type=item_type,
-            sub_type=sub_type,
             serial_number=serial_number,
-            details=details,
+            location=location,
+            condition=condition,
+            notes=notes,
         )
-        return InventoryItem.from_db_model(db_item) if db_item else None
+        if not db_item:
+            return None
+        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+        return InventoryItem.from_db_models(db_item, item_type)
 
     @staticmethod
     def edit_item(
         item_id: int,
-        item_type: str,
-        quantity: int,
+        item_type_name: str,
         sub_type: str = "",
+        quantity: int = 1,
+        is_serialized: bool = False,
         serial_number: str = "",
         details: str = "",
+        location: str = "",
+        condition: str = "",
+        notes: str = "",
         edit_reason: str = "",
     ) -> Optional[InventoryItem]:
         """Edit an item's properties with full transaction logging.
 
         Args:
             item_id: The item's ID.
-            item_type: New item type.
+            item_type_name: Type name.
+            sub_type: Sub-type name.
             quantity: New quantity.
-            sub_type: New sub-type.
+            is_serialized: Whether type is serialized.
             serial_number: New serial number.
-            details: New item details.
+            details: Type details/description.
+            location: Storage location.
+            condition: Item condition.
+            notes: Item notes.
             edit_reason: Reason for the edit (required).
 
         Returns:
@@ -232,18 +291,27 @@ class InventoryService:
         """
         logger.info(f"Editing item: id={item_id}, reason='{edit_reason}'")
         try:
+            # Get or create the item type
+            item_type = ItemTypeRepository.get_or_create(
+                name=item_type_name,
+                sub_type=sub_type,
+                is_serialized=is_serialized,
+                details=details
+            )
+
             db_item = ItemRepository.edit_item(
                 item_id=item_id,
-                item_type=item_type,
-                sub_type=sub_type,
+                item_type_id=item_type.id,
                 quantity=quantity,
                 serial_number=serial_number,
-                details=details,
+                location=location,
+                condition=condition,
+                notes=notes,
                 edit_reason=edit_reason,
             )
             if db_item:
                 logger.info(f"Item edited successfully: id={item_id}")
-                return InventoryItem.from_db_model(db_item)
+                return InventoryItem.from_db_models(db_item, item_type)
             logger.warning(f"Item not found for edit: id={item_id}")
             return None
         except Exception as e:
@@ -284,7 +352,10 @@ class InventoryService:
         """
         logger.info(f"Adding quantity to item: id={item_id}, quantity={quantity}")
         db_item = ItemRepository.add_quantity(item_id, quantity, notes)
-        return InventoryItem.from_db_model(db_item) if db_item else None
+        if not db_item:
+            return None
+        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+        return InventoryItem.from_db_models(db_item, item_type)
 
     @staticmethod
     def remove_quantity(
@@ -305,7 +376,10 @@ class InventoryService:
         """
         logger.info(f"Removing quantity from item: id={item_id}, quantity={quantity}")
         db_item = ItemRepository.remove_quantity(item_id, quantity, notes)
-        return InventoryItem.from_db_model(db_item) if db_item else None
+        if not db_item:
+            return None
+        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+        return InventoryItem.from_db_models(db_item, item_type)
 
 
 class SearchService:
@@ -319,7 +393,7 @@ class SearchService:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', 'notes', or None for all).
             save_to_history: Whether to save this search to history.
 
         Returns:
@@ -329,7 +403,12 @@ class SearchService:
             SearchHistoryRepository.add(query, field)
 
         db_items = ItemRepository.search(query, field)
-        return [InventoryItem.from_db_model(item) for item in db_items]
+        result = []
+        for item in db_items:
+            item_type = ItemTypeRepository.get_by_id(item.item_type_id)
+            if item_type:
+                result.append(InventoryItem.from_db_models(item, item_type))
+        return result
 
     @staticmethod
     def get_autocomplete_suggestions(prefix: str, field: str = None) -> List[str]:

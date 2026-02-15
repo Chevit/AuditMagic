@@ -131,6 +131,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.no_results": "Нічого не знайдено",
         "message.theme.changed": "Тему змінено",
         "message.theme.changed.text": "Нова тема застосована успішно!",
+        "message.serialized_use_add_item": "Для серійних товарів використовуйте кнопку 'Додати' для створення нового елемента з серійним номером.",
+        "message.serialized_use_delete": "Для видалення серійного товару використовуйте функцію 'Видалити'.",
         # Main window
         "main.add_item": "Додати елемент",
         # Search
@@ -253,6 +255,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.no_results": "No results found",
         "message.theme.changed": "Theme Changed",
         "message.theme.changed.text": "New theme applied successfully!",
+        "message.serialized_use_add_item": "For serialized items, use 'Add' button to create a new item with a serial number.",
+        "message.serialized_use_delete": "To remove a serialized item, use the 'Delete' function.",
         # Main window
         "main.add_item": "Add Item",
         # Search

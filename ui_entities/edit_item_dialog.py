@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 
 from logger import logger
 from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
-from ui_entities.inventory_item import InventoryItem
+from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.translations import tr
 from validators import (
     ItemTypeValidator,
@@ -37,15 +37,16 @@ class EditItemDialog(QDialog):
     The notes field (reason for edit) is required.
     """
 
-    def __init__(self, item: InventoryItem, parent=None):
+    def __init__(self, item, parent=None):
         """Initialize the edit dialog.
 
         Args:
-            item: The inventory item to edit.
+            item: The inventory item to edit (InventoryItem or GroupedInventoryItem).
             parent: Parent widget.
         """
         super().__init__(parent)
         self._original_item = item
+        self._is_grouped = isinstance(item, GroupedInventoryItem)
         self._result_item: Optional[InventoryItem] = None
         self._edit_notes: str = ""
         self._setup_ui()
@@ -185,8 +186,8 @@ class EditItemDialog(QDialog):
 
     def _populate_fields(self):
         """Populate form fields with the current item values."""
-        self.type_edit.setText(self._original_item.item_type)
-        self.subtype_edit.setText(self._original_item.sub_type or "")
+        self.type_edit.setText(self._original_item.item_type_name)
+        self.subtype_edit.setText(self._original_item.item_sub_type or "")
         self.quantity_input.setText(str(self._original_item.quantity))
         self.serial_edit.setText(self._original_item.serial_number or "")
         self.item_details_edit.setPlainText(self._original_item.details or "")
@@ -282,11 +283,18 @@ class EditItemDialog(QDialog):
         )
         self._result_item = InventoryItem(
             id=self._original_item.id,
-            item_type=item_type,
-            sub_type=sub_type,
+            item_type_id=self._original_item.item_type_id,
+            item_type_name=item_type,
+            item_sub_type=sub_type,
+            is_serialized=self._original_item.is_serialized,
             quantity=quantity,
-            serial_number=serial_number,
+            serial_number=serial_number or None,
+            location=self._original_item.location,
+            condition=self._original_item.condition,
+            notes=self._original_item.notes,
             details=item_details,
+            created_at=self._original_item.created_at,
+            updated_at=self._original_item.updated_at,
         )
         self._edit_notes = edit_reason
         self.accept()

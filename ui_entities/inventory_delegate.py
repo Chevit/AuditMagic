@@ -36,16 +36,25 @@ class InventoryItemDelegate(QStyledItemDelegate):
         border_color = QColor(Colors.get_border_default())
         bg_default = QColor(Colors.get_bg_default())
         bg_hover = QColor(Colors.get_bg_hover())
-        selected_color = QColor(Colors.PRIMARY)
+        selected_color = QColor(Colors.get_primary())
         selected_color.setAlpha(50)  # Semi-transparent
 
         # Get item data
         item_type = index.data(InventoryItemRole.ItemType) or ""
         sub_type = index.data(InventoryItemRole.SubType) or ""
         quantity = index.data(InventoryItemRole.Quantity)
-        serial_number = index.data(InventoryItemRole.SerialNumber) or ""
+        serial_numbers = index.data(InventoryItemRole.SerialNumbers) or []
+        is_serialized = index.data(InventoryItemRole.IsSerialized)
 
         quantity_str = str(quantity) if quantity is not None else ""
+
+        # For serialized items, show count of serial numbers
+        if is_serialized and serial_numbers:
+            serial_display = f"{len(serial_numbers)} шт."
+        elif serial_numbers and len(serial_numbers) == 1:
+            serial_display = serial_numbers[0]
+        else:
+            serial_display = "-"
 
         # Draw background
         rect = option.rect
@@ -69,7 +78,7 @@ class InventoryItemDelegate(QStyledItemDelegate):
             (tr("label.type"), item_type, 0, 0),
             (tr("label.subtype"), sub_type if sub_type else "-", 1, 0),
             (tr("label.quantity"), quantity_str, 0, 1),
-            (tr("label.serial_number"), serial_number if serial_number else "-", 1, 1),
+            (tr("label.serial_number"), serial_display, 1, 1),
         ]
 
         for label, value, col, row in labels_data:

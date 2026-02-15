@@ -17,7 +17,7 @@ from styles import apply_button_style
 from theme_manager import get_theme_manager
 from ui_entities.add_item_dialog import AddItemDialog
 from ui_entities.edit_item_dialog import EditItemDialog
-from ui_entities.inventory_item import InventoryItem
+from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.inventory_list_view import InventoryListView
 from ui_entities.inventory_model import InventoryModel
 from ui_entities.item_details_dialog import ItemDetailsDialog
@@ -164,8 +164,8 @@ class MainWindow(QMainWindow):
                 self.listView.deleteLater()
 
     def _load_data_from_db(self):
-        """Load inventory items from database."""
-        items = InventoryService.get_all_items()
+        """Load inventory items from database (grouped by type)."""
+        items = InventoryService.get_all_items_grouped()
         for item in items:
             self.inventory_model.add_item(item)
 
@@ -181,45 +181,67 @@ class MainWindow(QMainWindow):
         if hasattr(self, "addButton"):
             self.addButton.clicked.connect(self._on_add_clicked)
 
-    def _on_edit_item(self, row: int, item: InventoryItem):
+    def _on_edit_item(self, row: int, item):
         """Handle edit request for an inventory item."""
+        # For grouped items, get the first item ID
+        item_id = item.item_ids[0] if isinstance(item, GroupedInventoryItem) else item.id
+
         dialog = EditItemDialog(item, self)
         if dialog.exec():
             edited_item = dialog.get_item()
             edit_notes = dialog.get_edit_notes()
-            if edited_item and item.id is not None:
+            if edited_item and item_id is not None:
                 updated_item = InventoryService.edit_item(
-                    item_id=item.id,
-                    item_type=edited_item.item_type,
+                    item_id=item_id,
+                    item_type_name=edited_item.item_type_name,
+                    sub_type=edited_item.item_sub_type,
                     quantity=edited_item.quantity,
-                    sub_type=edited_item.sub_type,
-                    serial_number=edited_item.serial_number,
-                    details=edited_item.details,
+                    is_serialized=edited_item.is_serialized,
+                    serial_number=edited_item.serial_number or "",
+                    details=edited_item.details or "",
+                    location=edited_item.location or "",
+                    condition=edited_item.condition or "",
+                    notes=edited_item.notes or "",
                     edit_reason=edit_notes,
                 )
                 if updated_item:
-                    self.inventory_model.update_item(row, updated_item)
+                    # Refresh list to show updated grouped items
+                    self._refresh_item_list()
 
-    def _on_show_details(self, row: int, item: InventoryItem):
+    def _on_show_details(self, row: int, item):
         """Handle show details request for an inventory item."""
         dialog = ItemDetailsDialog(item, self)
         dialog.exec()
 
-    def _on_delete_item(self, row: int, item: InventoryItem):
+    def _on_delete_item(self, row: int, item):
         """Handle delete request for an inventory item."""
+        is_grouped = isinstance(item, GroupedInventoryItem)
+
+        # Build confirmation message
+        if is_grouped:
+            qty_info = f"{tr('field.quantity')}: {item.total_quantity}"
+            if item.serial_numbers:
+                qty_info += f" ({len(item.serial_numbers)} {tr('label.serial_number')})"
+        else:
+            qty_info = f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}"
+
         reply = QMessageBox.question(
             self,
             tr("dialog.confirm_delete.title"),
             f"{tr('message.confirm_delete')}\n\n"
             f"{tr('field.type')}: {item.item_type}\n"
             f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
-            f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}",
+            f"{qty_info}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            if item.id is not None:
+            if is_grouped:
+                # Delete all items for this type
+                for item_id in item.item_ids:
+                    InventoryService.delete_item(item_id)
+            elif item.id is not None:
                 InventoryService.delete_item(item.id)
             self.inventory_model.remove_item(row)
 
@@ -229,20 +251,9 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             new_item = dialog.get_item()
             if new_item:
-                # Save to database (merge with existing if same fields)
-                saved_item, was_merged = InventoryService.create_or_merge_item(
-                    item_type=new_item.item_type,
-                    quantity=new_item.quantity,
-                    sub_type=new_item.sub_type,
-                    serial_number=new_item.serial_number,
-                    details=new_item.details,
-                )
-                if was_merged:
-                    # Update existing item in the list
-                    self._update_item_in_model(saved_item)
-                else:
-                    # Add new item to the list
-                    self.inventory_model.add_item(saved_item)
+                # Item is already saved by the dialog via InventoryService.create_item
+                # Refresh the list to show grouped items correctly
+                self._refresh_item_list()
 
     def _update_item_in_model(self, item: InventoryItem):
         """Update an existing item in the model by ID."""
@@ -254,8 +265,19 @@ class MainWindow(QMainWindow):
         # If not found in model (filtered view), refresh the list
         self._refresh_item_list()
 
-    def _on_add_quantity(self, row: int, item: InventoryItem):
+    def _on_add_quantity(self, row: int, item):
         """Handle add quantity request."""
+        is_grouped = isinstance(item, GroupedInventoryItem)
+
+        # For serialized items, adding quantity requires a new serial number
+        if item.is_serialized:
+            QMessageBox.information(
+                self,
+                tr("dialog.add_quantity.title"),
+                tr("message.serialized_use_add_item"),
+            )
+            return
+
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
@@ -263,13 +285,26 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             quantity = dialog.get_quantity()
             notes = dialog.get_notes()
-            if item.id is not None:
-                updated_item = InventoryService.add_quantity(item.id, quantity, notes)
+            # For grouped items, use the first item ID
+            item_id = item.item_ids[0] if is_grouped else item.id
+            if item_id is not None:
+                updated_item = InventoryService.add_quantity(item_id, quantity, notes)
                 if updated_item:
-                    self.inventory_model.update_item(row, updated_item)
+                    self._refresh_item_list()
 
-    def _on_remove_quantity(self, row: int, item: InventoryItem):
+    def _on_remove_quantity(self, row: int, item):
         """Handle remove quantity request."""
+        is_grouped = isinstance(item, GroupedInventoryItem)
+
+        # For serialized items, removing means deleting the item
+        if item.is_serialized:
+            QMessageBox.information(
+                self,
+                tr("dialog.remove_quantity.title"),
+                tr("message.serialized_use_delete"),
+            )
+            return
+
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
@@ -277,22 +312,27 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             quantity = dialog.get_quantity()
             notes = dialog.get_notes()
-            if item.id is not None:
+            # For grouped items, use the first item ID
+            item_id = item.item_ids[0] if is_grouped else item.id
+            if item_id is not None:
                 try:
                     updated_item = InventoryService.remove_quantity(
-                        item.id, quantity, notes
+                        item_id, quantity, notes
                     )
                     if updated_item:
-                        self.inventory_model.update_item(row, updated_item)
+                        self._refresh_item_list()
                 except ValueError as e:
                     QMessageBox.warning(self, tr("message.validation_error"), str(e))
 
-    def _on_show_transactions(self, row: int, item: InventoryItem):
+    def _on_show_transactions(self, row: int, item):
         """Handle show transactions request."""
+        is_grouped = isinstance(item, GroupedInventoryItem)
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        dialog = TransactionsDialog(item_id=item.id, item_name=item_name, parent=self)
+        # For grouped items, use the first item ID (transactions are per-item)
+        item_id = item.item_ids[0] if is_grouped else item.id
+        dialog = TransactionsDialog(item_id=item_id, item_name=item_name, parent=self)
         dialog.set_transactions_callback(
             TransactionService.get_transactions_by_date_range
         )
@@ -321,9 +361,9 @@ class MainWindow(QMainWindow):
             self.inventory_model.add_item(item)
 
     def _refresh_item_list(self):
-        """Refresh the item list from database."""
+        """Refresh the item list from database (grouped by type)."""
         self.inventory_model.clear()
-        items = InventoryService.get_all_items()
+        items = InventoryService.get_all_items_grouped()
         for item in items:
             self.inventory_model.add_item(item)
 

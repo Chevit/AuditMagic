@@ -12,11 +12,26 @@ class ThemeColors:
     main: str  # Main text/foreground color
     secondary: str  # Secondary/background color
     border_default: str
+    border_hover: str
+    border_focus: str
     bg_default: str
     bg_hover: str
     bg_disabled: str
     text_secondary: str
     text_disabled: str
+
+    # Action button colors
+    primary: str  # Green - primary actions
+    primary_hover: str
+    primary_pressed: str
+
+    danger: str  # Red - cancel/delete actions
+    danger_hover: str
+    danger_pressed: str
+
+    info: str  # Blue - informational
+    info_hover: str
+    info_pressed: str
 
 
 @dataclass
@@ -54,11 +69,22 @@ class Theme(Enum):
             main="#282828",
             secondary="#BBC8C3",
             border_default="#ccc",
+            border_hover="#999",
+            border_focus="#4CAF50",
             bg_default="#ffffff",
             bg_hover="#f0f0f0",
             bg_disabled="#e0e0e0",
             text_secondary="#666666",
             text_disabled="#999999",
+            primary="#4CAF50",
+            primary_hover="#45a049",
+            primary_pressed="#3d8b40",
+            danger="#f44336",
+            danger_hover="#da190b",
+            danger_pressed="#c41000",
+            info="#2196F3",
+            info_hover="#0b7dda",
+            info_pressed="#0969c3",
         ),
         dimensions=ThemeDimensions(
             input_height=28,
@@ -79,11 +105,22 @@ class Theme(Enum):
             main="#d3d3d3",
             secondary="#130512",
             border_default="#3a3a3a",
+            border_hover="#5a5a5a",
+            border_focus="#4CAF50",
             bg_default="#1e1e1e",
             bg_hover="#2a2a2a",
             bg_disabled="#2c2c2c",
             text_secondary="#aaaaaa",
             text_disabled="#666666",
+            primary="#4CAF50",
+            primary_hover="#45a049",
+            primary_pressed="#3d8b40",
+            danger="#f44336",
+            danger_hover="#da190b",
+            danger_pressed="#c41000",
+            info="#2196F3",
+            info_hover="#0b7dda",
+            info_pressed="#0969c3",
         ),
         dimensions=ThemeDimensions(
             input_height=28,

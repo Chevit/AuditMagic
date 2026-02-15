@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 
 from logger import logger
 from services import InventoryService
-from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
+from styles import Colors, Styles, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 from validators import (
@@ -205,7 +205,7 @@ class AddItemDialog(QDialog):
 
     def _setup_serialization_logic(self):
         """Connect serialization checkbox to enable/disable logic."""
-        self.serialized_checkbox.stateChanged.connect(self._on_serialization_changed)
+        self.serialized_checkbox.checkStateChanged.connect(self._on_serialization_changed)
         # Initialize state (unchecked by default)
         self._on_serialization_changed(self.serialized_checkbox.checkState())
         logger.debug("Serialization logic configured")
@@ -231,12 +231,12 @@ class AddItemDialog(QDialog):
             # Disable and fix quantity to 1
             self.quantity_input.setEnabled(False)
             self.quantity_input.setText("1")
-            self.quantity_input.setStyleSheet("background-color: #e0e0e0;")
+            self.quantity_input.setStyleSheet(f"background-color: {Colors.get_bg_disabled()};")
         else:
             # Disable and clear serial number
             self.serial_edit.setEnabled(False)
             self.serial_edit.clear()
-            self.serial_edit.setStyleSheet("background-color: #e0e0e0;")
+            self.serial_edit.setStyleSheet(f"background-color: {Colors.get_bg_disabled()};")
 
             # Enable quantity
             self.quantity_input.setEnabled(True)
