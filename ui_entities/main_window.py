@@ -87,6 +87,10 @@ class MainWindow(QMainWindow):
                 # Save to config
                 config.set("theme", theme_name)
 
+                # Refresh search widget styles to match new theme
+                if hasattr(self, 'search_widget'):
+                    self._reapply_search_widget_styles()
+
                 logger.info(f"Theme changed to: {theme_name}")
 
                 # Show message
