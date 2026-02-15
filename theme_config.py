@@ -58,8 +58,8 @@ class Theme(Enum):
             text_disabled="#999999"
         ),
         dimensions=ThemeDimensions(
-            input_height=13,
-            button_height=23,
+            input_height=28,
+            button_height=25,
             button_min_width=100,
             button_padding=10,
             border_radius=4,
@@ -83,8 +83,8 @@ class Theme(Enum):
             text_disabled="#666666"
         ),
         dimensions=ThemeDimensions(
-            input_height=13,
-            button_height=23,
+            input_height=28,
+            button_height=25,
             button_min_width=100,
             button_padding=10,
             border_radius=4,
