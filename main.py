@@ -1,11 +1,13 @@
 import sys
+
 from PyQt6.QtWidgets import QApplication
-from ui_entities.main_window import MainWindow
+
+from config import config
 from db import run_migrations
 from logger import logger
-from theme_manager import init_theme_manager
 from theme_config import Theme
-from config import config
+from theme_manager import init_theme_manager
+from ui_entities.main_window import MainWindow
 
 
 def main():
@@ -27,7 +29,9 @@ def main():
             theme = Theme.LIGHT
         theme_manager.apply_theme(theme)
         logger.info(f"Theme applied: {theme.value.name}")
-        logger.info(f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}")
+        logger.info(
+            f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}"
+        )
 
         window = MainWindow()
         logger.info("MainWindow created successfully")

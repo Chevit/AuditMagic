@@ -1,22 +1,30 @@
 from PyQt6 import uic
-from PyQt6.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout, QWidget, QPushButton, QMenu
 from PyQt6.QtGui import QAction, QActionGroup
-from ui_entities.inventory_model import InventoryModel
-from ui_entities.inventory_item import InventoryItem
-from ui_entities.inventory_list_view import InventoryListView
-from ui_entities.item_details_dialog import ItemDetailsDialog
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from config import config
+from db import init_database
+from logger import logger
+from services import InventoryService, SearchService, TransactionService
+from styles import apply_button_style
+from theme_manager import get_theme_manager
 from ui_entities.add_item_dialog import AddItemDialog
 from ui_entities.edit_item_dialog import EditItemDialog
-from ui_entities.search_widget import SearchWidget
+from ui_entities.inventory_item import InventoryItem
+from ui_entities.inventory_list_view import InventoryListView
+from ui_entities.inventory_model import InventoryModel
+from ui_entities.item_details_dialog import ItemDetailsDialog
 from ui_entities.quantity_dialog import QuantityDialog
+from ui_entities.search_widget import SearchWidget
 from ui_entities.transactions_dialog import TransactionsDialog
 from ui_entities.translations import tr
-from db import init_database
-from services import InventoryService, SearchService, TransactionService
-from config import config
-from logger import logger
-from theme_manager import get_theme_manager
-from styles import apply_button_style
 
 
 class MainWindow(QMainWindow):
@@ -65,7 +73,9 @@ class MainWindow(QMainWindow):
             action = QAction(theme_name, self)
             action.setCheckable(True)
             action.setActionGroup(theme_action_group)
-            action.triggered.connect(lambda checked, name=theme_name: self._on_theme_changed(name))
+            action.triggered.connect(
+                lambda checked, name=theme_name: self._on_theme_changed(name)
+            )
             theme_menu.addAction(action)
 
             # Set current theme as checked
@@ -88,7 +98,7 @@ class MainWindow(QMainWindow):
                 config.set("theme", theme_name)
 
                 # Refresh search widget styles to match new theme
-                if hasattr(self, 'search_widget'):
+                if hasattr(self, "search_widget"):
                     self._reapply_search_widget_styles()
 
                 logger.info(f"Theme changed to: {theme_name}")
@@ -116,7 +126,7 @@ class MainWindow(QMainWindow):
 
     def _reapply_search_widget_styles(self):
         """Reapply styles to SearchWidget after adding to layout."""
-        from styles import apply_input_style, apply_button_style, apply_combo_box_style
+        from styles import apply_button_style, apply_combo_box_style, apply_input_style
 
         # Reapply styles to ensure they override qt-material
         apply_combo_box_style(self.search_widget.field_combo)

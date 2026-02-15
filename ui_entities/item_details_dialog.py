@@ -1,17 +1,18 @@
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
+    QVBoxLayout,
 )
-from PyQt6.QtGui import QFont
+
+from styles import apply_button_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
-from styles import apply_button_style
 
 
 class ItemDetailsDialog(QDialog):

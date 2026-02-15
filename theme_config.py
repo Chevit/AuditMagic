@@ -1,13 +1,14 @@
 """Theme configuration with all parameters stored in enum values."""
 
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict
 
 
 @dataclass
 class ThemeColors:
     """Color palette for a theme."""
+
     main: str  # Main text/foreground color
     secondary: str  # Secondary/background color
     border_default: str
@@ -21,6 +22,7 @@ class ThemeColors:
 @dataclass
 class ThemeDimensions:
     """Dimensions for UI elements."""
+
     input_height: int
     button_height: int
     button_min_width: int
@@ -33,6 +35,7 @@ class ThemeDimensions:
 @dataclass
 class ThemeParameters:
     """Complete theme parameters."""
+
     name: str
     mode: str  # "light" or "dark"
     qt_material_theme: str
@@ -55,7 +58,7 @@ class Theme(Enum):
             bg_hover="#f0f0f0",
             bg_disabled="#e0e0e0",
             text_secondary="#666666",
-            text_disabled="#999999"
+            text_disabled="#999999",
         ),
         dimensions=ThemeDimensions(
             input_height=28,
@@ -64,8 +67,8 @@ class Theme(Enum):
             button_padding=10,
             border_radius=4,
             font_size=13,
-            font_size_large=14
-        )
+            font_size_large=14,
+        ),
     )
 
     DARK = ThemeParameters(
@@ -80,7 +83,7 @@ class Theme(Enum):
             bg_hover="#2a2a2a",
             bg_disabled="#2c2c2c",
             text_secondary="#aaaaaa",
-            text_disabled="#666666"
+            text_disabled="#666666",
         ),
         dimensions=ThemeDimensions(
             input_height=28,
@@ -89,12 +92,12 @@ class Theme(Enum):
             button_padding=10,
             border_radius=4,
             font_size=13,
-            font_size_large=14
-        )
+            font_size_large=14,
+        ),
     )
 
     @classmethod
-    def get_by_name(cls, name: str) -> 'Theme':
+    def get_by_name(cls, name: str) -> "Theme":
         """Get theme by name.
 
         Args:

@@ -2,24 +2,26 @@
 
 from datetime import datetime, timedelta
 from typing import List, Optional
-from PyQt6.QtCore import Qt, QDate
+
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import (
+    QDateEdit,
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
     QLabel,
     QPushButton,
-    QFrame,
     QTableWidget,
     QTableWidgetItem,
-    QDateEdit,
-    QHeaderView,
-    QGroupBox,
+    QVBoxLayout,
 )
-from PyQt6.QtGui import QFont, QColor
-from ui_entities.translations import tr
+
 from styles import apply_button_style
+from ui_entities.translations import tr
 
 
 class TransactionsDialog(QDialog):

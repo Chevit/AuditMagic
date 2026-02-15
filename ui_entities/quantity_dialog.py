@@ -4,21 +4,21 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QFrame,
-    QTextEdit,
     QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
 )
 
 from logger import logger
+from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.translations import tr
 from validators import validate_length
-from styles import Styles, apply_input_style, apply_button_style, apply_text_edit_style
 
 
 class QuantityDialog(QDialog):
@@ -94,20 +94,20 @@ class QuantityDialog(QDialog):
         # Quantity - QLineEdit instead of QSpinBox for better UX
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
-        
+
         self.quantity_input = QLineEdit()
         self.quantity_input.setPlaceholderText("Enter quantity (e.g., 5)...")
-        
+
         # Set validator to only allow positive integers
         validator = QIntValidator(1, 999999, self)
         self.quantity_input.setValidator(validator)
 
         # Style the input
         apply_input_style(self.quantity_input, large=True)
-        
+
         # Connect text change to update preview
         self.quantity_input.textChanged.connect(self._update_preview)
-        
+
         form_layout.addRow(quantity_label, self.quantity_input)
 
         # Notes
@@ -147,18 +147,18 @@ class QuantityDialog(QDialog):
         button_layout.addWidget(action_button)
 
         layout.addLayout(button_layout)
-        
+
         # Set focus to quantity input
         self.quantity_input.setFocus()
 
     def _update_preview(self):
         """Update the preview label showing the result."""
         text = self.quantity_input.text().strip()
-        
+
         if not text:
             self.preview_label.setText("")
             return
-        
+
         try:
             change = int(text)
             if self._is_add:
@@ -188,7 +188,7 @@ class QuantityDialog(QDialog):
         else:
             try:
                 quantity = int(text)
-                
+
                 if quantity < 1:
                     errors.append(tr("message.quantity_positive"))
 
@@ -197,7 +197,7 @@ class QuantityDialog(QDialog):
                         f"{tr('message.not_enough_quantity')}\n"
                         f"Requested: {quantity}, Available: {self._current_quantity}"
                     )
-                    
+
             except ValueError:
                 errors.append("Quantity must be a valid number")
                 logger.warning(f"Invalid quantity value: {text}")

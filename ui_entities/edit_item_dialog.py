@@ -6,28 +6,28 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QFrame,
     QMessageBox,
+    QPushButton,
     QTextEdit,
+    QVBoxLayout,
 )
 
 from logger import logger
+from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 from validators import (
     ItemTypeValidator,
     SerialNumberValidator,
-    validate_required_field,
-    validate_positive_integer,
     validate_length,
+    validate_positive_integer,
+    validate_required_field,
 )
-from styles import Styles, apply_input_style, apply_button_style, apply_text_edit_style
 
 
 class EditItemDialog(QDialog):
@@ -277,7 +277,9 @@ class EditItemDialog(QDialog):
 
         # All validation passed
         quantity = int(quantity_text)
-        logger.info(f"Edit form validation passed - saving item with quantity {quantity}")
+        logger.info(
+            f"Edit form validation passed - saving item with quantity {quantity}"
+        )
         self._result_item = InventoryItem(
             id=self._original_item.id,
             item_type=item_type,
