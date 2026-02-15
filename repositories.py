@@ -8,8 +8,244 @@ from sqlalchemy.orm import Session
 
 from db import session_scope
 from logger import logger
-from models import Item, SearchHistory, Transaction, TransactionType
+from models import Item, ItemType, SearchHistory, Transaction, TransactionType
 from ui_entities.translations import tr
+
+
+class ItemTypeRepository:
+    """Repository for ItemType CRUD operations."""
+
+    @staticmethod
+    def create(
+        name: str,
+        sub_type: str = "",
+        is_serialized: bool = False,
+        details: str = ""
+    ) -> ItemType:
+        """Create a new item type.
+
+        Args:
+            name: Type name (required)
+            sub_type: Sub-type name (optional)
+            is_serialized: Whether items of this type have serial numbers
+            details: Description of this type
+
+        Returns:
+            The created ItemType instance.
+        """
+        logger.debug(f"Repository: Creating item type name='{name}', sub_type='{sub_type}'")
+        with session_scope() as session:
+            item_type = ItemType(
+                name=name,
+                sub_type=sub_type or "",
+                is_serialized=is_serialized,
+                details=details or ""
+            )
+            session.add(item_type)
+            session.flush()
+            session.refresh(item_type)
+            logger.debug(f"Repository: ItemType created with id={item_type.id}")
+            return _detach_item_type(item_type)
+
+    @staticmethod
+    def get_or_create(
+        name: str,
+        sub_type: str = "",
+        is_serialized: bool = False,
+        details: str = ""
+    ) -> ItemType:
+        """Get existing type or create new one.
+
+        Args:
+            name: Type name
+            sub_type: Sub-type name
+            is_serialized: Whether serialized
+            details: Type description
+
+        Returns:
+            Existing or newly created ItemType.
+        """
+        with session_scope() as session:
+            # Try to find existing
+            item_type = (
+                session.query(ItemType)
+                .filter(
+                    ItemType.name == name,
+                    ItemType.sub_type == (sub_type or "")
+                )
+                .first()
+            )
+
+            if item_type:
+                return _detach_item_type(item_type)
+
+            # Create new
+            item_type = ItemType(
+                name=name,
+                sub_type=sub_type or "",
+                is_serialized=is_serialized,
+                details=details or ""
+            )
+            session.add(item_type)
+            session.flush()
+            session.refresh(item_type)
+            return _detach_item_type(item_type)
+
+    @staticmethod
+    def get_by_id(type_id: int) -> Optional[ItemType]:
+        """Get item type by ID.
+
+        Args:
+            type_id: The type's ID.
+
+        Returns:
+            ItemType instance or None if not found.
+        """
+        with session_scope() as session:
+            item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
+            return _detach_item_type(item_type) if item_type else None
+
+    @staticmethod
+    def get_all() -> List[ItemType]:
+        """Get all item types.
+
+        Returns:
+            List of all ItemType instances.
+        """
+        with session_scope() as session:
+            types = session.query(ItemType).order_by(ItemType.name, ItemType.sub_type).all()
+            return [_detach_item_type(t) for t in types]
+
+    @staticmethod
+    def get_autocomplete_names(prefix: str = "", limit: int = 20) -> List[str]:
+        """Get autocomplete suggestions for type names.
+
+        Args:
+            prefix: Search prefix (optional)
+            limit: Maximum number of suggestions
+
+        Returns:
+            List of matching type names.
+        """
+        with session_scope() as session:
+            query = session.query(ItemType.name).distinct()
+            if prefix:
+                query = query.filter(ItemType.name.ilike(f"{prefix}%"))
+            query = query.order_by(ItemType.name).limit(limit)
+            return [row[0] for row in query.all()]
+
+    @staticmethod
+    def get_autocomplete_subtypes(
+        type_name: str,
+        prefix: str = "",
+        limit: int = 20
+    ) -> List[str]:
+        """Get autocomplete suggestions for subtypes given a type name.
+
+        Args:
+            type_name: The type name to filter by
+            prefix: Search prefix for subtype (optional)
+            limit: Maximum number of suggestions
+
+        Returns:
+            List of matching subtype names.
+        """
+        with session_scope() as session:
+            query = (
+                session.query(ItemType.sub_type)
+                .filter(
+                    ItemType.name == type_name,
+                    ItemType.sub_type.isnot(None),
+                    ItemType.sub_type != ""
+                )
+                .distinct()
+            )
+            if prefix:
+                query = query.filter(ItemType.sub_type.ilike(f"{prefix}%"))
+            query = query.order_by(ItemType.sub_type).limit(limit)
+            return [row[0] for row in query.all() if row[0]]
+
+    @staticmethod
+    def update(
+        type_id: int,
+        name: str = None,
+        sub_type: str = None,
+        is_serialized: bool = None,
+        details: str = None
+    ) -> Optional[ItemType]:
+        """Update an item type.
+
+        Args:
+            type_id: Type ID
+            name: New name (optional)
+            sub_type: New sub-type (optional)
+            is_serialized: New serialized status (optional)
+            details: New details (optional)
+
+        Returns:
+            Updated ItemType or None if not found.
+        """
+        with session_scope() as session:
+            item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
+            if not item_type:
+                return None
+
+            if name is not None:
+                item_type.name = name
+            if sub_type is not None:
+                item_type.sub_type = sub_type
+            if is_serialized is not None:
+                item_type.is_serialized = is_serialized
+            if details is not None:
+                item_type.details = details
+
+            session.flush()
+            session.refresh(item_type)
+            return _detach_item_type(item_type)
+
+    @staticmethod
+    def delete(type_id: int) -> bool:
+        """Delete an item type and all its items.
+
+        Args:
+            type_id: Type ID
+
+        Returns:
+            True if deleted, False if not found.
+        """
+        with session_scope() as session:
+            item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
+            if not item_type:
+                return False
+            session.delete(item_type)  # Cascade will delete items too
+            return True
+
+    @staticmethod
+    def search(query: str, limit: int = 100) -> List[ItemType]:
+        """Search item types by name or subtype.
+
+        Args:
+            query: Search query
+            limit: Maximum results
+
+        Returns:
+            List of matching ItemType instances.
+        """
+        with session_scope() as session:
+            search_pattern = f"%{query}%"
+            types = (
+                session.query(ItemType)
+                .filter(
+                    or_(
+                        ItemType.name.ilike(search_pattern),
+                        ItemType.sub_type.ilike(search_pattern)
+                    )
+                )
+                .order_by(ItemType.name, ItemType.sub_type)
+                .limit(limit)
+                .all()
+            )
+            return [_detach_item_type(t) for t in types]
 
 
 class ItemRepository:
@@ -17,39 +253,61 @@ class ItemRepository:
 
     @staticmethod
     def create(
-        item_type: str,
-        quantity: int,
-        sub_type: str = None,
+        item_type_id: int,
+        quantity: int = 1,
         serial_number: str = None,
-        details: str = None,
+        location: str = None,
+        condition: str = None,
+        notes: str = None
     ) -> Item:
-        """Create a new item and record the initial transaction.
+        """Create a new item instance.
 
         Args:
-            item_type: Type of the item (required)
-            quantity: Initial quantity (required)
-            sub_type: Sub-type of the item (optional)
-            serial_number: Serial number (optional)
-            details: Additional details (optional)
+            item_type_id: FK to ItemType
+            quantity: Quantity (must be 1 if serialized)
+            serial_number: Serial number (required if type is serialized)
+            location: Storage location
+            condition: Item condition
+            notes: Additional notes
 
         Returns:
             The created Item instance.
+
+        Raises:
+            ValueError: If validation fails
         """
-        logger.debug(
-            f"Repository: Creating item type='{item_type}', quantity={quantity}"
-        )
+        logger.debug(f"Repository: Creating item for type_id={item_type_id}, qty={quantity}")
+
         with session_scope() as session:
+            # Validate type exists and get serialization status
+            item_type = session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            if not item_type:
+                raise ValueError(f"ItemType with id {item_type_id} not found")
+
+            # Validate serialization rules
+            if item_type.is_serialized:
+                if not serial_number:
+                    raise ValueError("Serial number required for serialized items")
+                if quantity != 1:
+                    raise ValueError("Quantity must be 1 for serialized items")
+            else:
+                if serial_number:
+                    raise ValueError("Serial number not allowed for non-serialized items")
+                if quantity < 1:
+                    raise ValueError("Quantity must be at least 1")
+
             item = Item(
-                item_type=item_type,
-                sub_type=sub_type or "",
+                item_type_id=item_type_id,
                 quantity=quantity,
-                serial_number=serial_number or "",
-                details=details or "",
+                serial_number=serial_number or None,
+                location=location or "",
+                condition=condition or "",
+                notes=notes or ""
             )
             session.add(item)
-            session.flush()  # Get the ID before creating transaction
+            session.flush()
 
-            # Record initial transaction
+            # Create initial transaction
             if quantity > 0:
                 transaction = Transaction(
                     item_id=item.id,
@@ -57,12 +315,11 @@ class ItemRepository:
                     quantity_change=quantity,
                     quantity_before=0,
                     quantity_after=quantity,
-                    notes=tr("transaction.notes.initial"),
+                    notes=tr("transaction.notes.initial")
                 )
                 session.add(transaction)
 
-            session.commit()
-            # Detach from session before returning
+            session.flush()
             session.refresh(item)
             logger.debug(f"Repository: Item created with id={item.id}")
             return _detach_item(item)
@@ -89,7 +346,7 @@ class ItemRepository:
             List of all Item instances.
         """
         with session_scope() as session:
-            items = session.query(Item).order_by(Item.item_type, Item.sub_type).all()
+            items = session.query(Item).order_by(Item.item_type_id, Item.serial_number).all()
             return [_detach_item(item) for item in items]
 
     @staticmethod
@@ -433,6 +690,85 @@ class ItemRepository:
 
             return sorted(list(suggestions))[:limit]
 
+    @staticmethod
+    def get_by_type(type_id: int) -> List[Item]:
+        """Get all items of a specific type.
+
+        Args:
+            type_id: ItemType ID
+
+        Returns:
+            List of Item instances.
+        """
+        with session_scope() as session:
+            items = (
+                session.query(Item)
+                .filter(Item.item_type_id == type_id)
+                .order_by(Item.serial_number, Item.location)
+                .all()
+            )
+            return [_detach_item(item) for item in items]
+
+    @staticmethod
+    def search_by_serial(serial_number: str) -> Optional[Item]:
+        """Find item by serial number.
+
+        Args:
+            serial_number: Serial number to search for
+
+        Returns:
+            Item instance or None.
+        """
+        with session_scope() as session:
+            item = (
+                session.query(Item)
+                .filter(Item.serial_number == serial_number)
+                .first()
+            )
+            return _detach_item(item) if item else None
+
+    @staticmethod
+    def get_serial_numbers_for_type(type_id: int) -> List[str]:
+        """Get all serial numbers for a given type.
+
+        Args:
+            type_id: ItemType ID
+
+        Returns:
+            List of serial numbers.
+        """
+        with session_scope() as session:
+            results = (
+                session.query(Item.serial_number)
+                .filter(
+                    Item.item_type_id == type_id,
+                    Item.serial_number.isnot(None),
+                    Item.serial_number != ""
+                )
+                .order_by(Item.serial_number)
+                .all()
+            )
+            return [row[0] for row in results if row[0]]
+
+    @staticmethod
+    def get_items_at_location(location: str) -> List[Item]:
+        """Get all items at a specific location.
+
+        Args:
+            location: Location name
+
+        Returns:
+            List of Item instances.
+        """
+        with session_scope() as session:
+            items = (
+                session.query(Item)
+                .filter(Item.location == location)
+                .order_by(Item.item_type_id, Item.serial_number)
+                .all()
+            )
+            return [_detach_item(item) for item in items]
+
 
 class TransactionRepository:
     """Repository for Transaction operations."""
@@ -591,11 +927,12 @@ def _detach_item(item: Item) -> Item:
         return None
     return Item(
         id=item.id,
-        item_type=item.item_type,
-        sub_type=item.sub_type,
+        item_type_id=item.item_type_id,
         quantity=item.quantity,
         serial_number=item.serial_number,
-        details=item.details,
+        location=item.location,
+        condition=item.condition,
+        notes=item.notes,
         created_at=item.created_at,
         updated_at=item.updated_at,
     )
@@ -626,4 +963,19 @@ def _detach_search_history(history: SearchHistory) -> SearchHistory:
         search_query=history.search_query,
         search_field=history.search_field,
         created_at=history.created_at,
+    )
+
+
+def _detach_item_type(item_type: ItemType) -> ItemType:
+    """Create a detached copy of an ItemType."""
+    if item_type is None:
+        return None
+    return ItemType(
+        id=item_type.id,
+        name=item_type.name,
+        sub_type=item_type.sub_type,
+        is_serialized=item_type.is_serialized,
+        details=item_type.details,
+        created_at=item_type.created_at,
+        updated_at=item_type.updated_at
     )

@@ -105,11 +105,25 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - Keys defined in `ui_entities/translations.py`
 - Hierarchical naming: `app.title`, `button.add`, `field.type`
 
-## Data Model
-- **Item**: `item_type`, `sub_type`, `quantity`, `serial_number`, `details` (item description)
-- **Transaction**: `item_id`, `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes` (reason)
-- Item `details` = item description; Transaction `notes` = reason for change (separate concepts)
-- Edit action creates a single EDIT transaction (not separate ADD/REMOVE + EDIT)
+## Data Model (Hierarchical Structure)
+
+### ItemType (Type Definitions)
+- **ItemType**: `name`, `sub_type`, `is_serialized`, `details`
+- Represents a category/template for items (e.g., "Laptop - ThinkPad X1")
+- One ItemType can have many Items
+- `is_serialized`: Boolean flag indicating if items of this type have unique serial numbers
+
+### Item (Inventory Instances)
+- **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location`, `condition`, `notes`
+- Represents actual inventory units
+- If serialized: quantity=1, serial_number required and unique
+- If not serialized: quantity>0, no serial_number allowed
+- Database constraint enforces: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
+
+### Transaction
+- **Transaction**: `item_id` (FK), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `notes`
+- Tracks all inventory changes with audit trail
+- ItemType `details` = type description; Item `notes` = item-specific notes; Transaction `notes` = reason for change
 
 ## Theme System 🎨
 

@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 from logger import logger
 from models import TransactionType
-from repositories import ItemRepository, SearchHistoryRepository, TransactionRepository
+from repositories import ItemRepository, ItemTypeRepository, SearchHistoryRepository, TransactionRepository
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 
@@ -15,35 +15,54 @@ class InventoryService:
 
     @staticmethod
     def create_item(
-        item_type: str,
-        quantity: int,
-        sub_type: str = "",
-        serial_number: str = "",
-        details: str = "",
+        item_type_name: str,
+        item_sub_type: str = "",
+        quantity: int = 1,
+        is_serialized: bool = False,
+        serial_number: str = None,
+        location: str = "",
+        condition: str = "",
+        notes: str = "",
+        details: str = ""
     ) -> InventoryItem:
         """Create a new inventory item.
 
         Args:
-            item_type: Type of the item (required)
-            quantity: Initial quantity (required)
-            sub_type: Sub-type of the item (optional)
-            serial_number: Serial number (optional)
-            details: Additional details (optional)
+            item_type_name: Type name
+            item_sub_type: Sub-type name
+            quantity: Initial quantity
+            is_serialized: Whether this type has serial numbers
+            serial_number: Serial number (required if serialized)
+            location: Storage location
+            condition: Item condition
+            notes: Item notes
+            details: Type details (description)
 
         Returns:
             The created InventoryItem.
         """
-        logger.info(f"Creating new item: type='{item_type}', quantity={quantity}")
+        logger.info(f"Creating new item: type='{item_type_name}', sub_type='{item_sub_type}', qty={quantity}")
         try:
-            db_item = ItemRepository.create(
-                item_type=item_type,
-                quantity=quantity,
-                sub_type=sub_type,
-                serial_number=serial_number,
-                details=details,
+            # Get or create item type
+            item_type = ItemTypeRepository.get_or_create(
+                name=item_type_name,
+                sub_type=item_sub_type,
+                is_serialized=is_serialized,
+                details=details
             )
+
+            # Create item instance
+            db_item = ItemRepository.create(
+                item_type_id=item_type.id,
+                quantity=quantity,
+                serial_number=serial_number,
+                location=location,
+                condition=condition,
+                notes=notes
+            )
+
             logger.info(f"Item created successfully: id={db_item.id}")
-            return InventoryItem.from_db_model(db_item)
+            return InventoryItem.from_db_models(db_item, item_type)
         except Exception as e:
             logger.error(f"Failed to create item: {str(e)}", exc_info=True)
             raise
@@ -110,7 +129,11 @@ class InventoryService:
             The InventoryItem or None if not found.
         """
         db_item = ItemRepository.get_by_id(item_id)
-        return InventoryItem.from_db_model(db_item) if db_item else None
+        if not db_item:
+            return None
+
+        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+        return InventoryItem.from_db_models(db_item, item_type)
 
     @staticmethod
     def get_all_items() -> List[InventoryItem]:
@@ -120,7 +143,39 @@ class InventoryService:
             List of all InventoryItem instances.
         """
         db_items = ItemRepository.get_all()
-        return [InventoryItem.from_db_model(item) for item in db_items]
+        result = []
+
+        for db_item in db_items:
+            item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+            if item_type:
+                result.append(InventoryItem.from_db_models(db_item, item_type))
+
+        return result
+
+    @staticmethod
+    def get_autocomplete_types(prefix: str = "") -> List[str]:
+        """Get autocomplete suggestions for item types.
+
+        Args:
+            prefix: Search prefix
+
+        Returns:
+            List of matching type names.
+        """
+        return ItemTypeRepository.get_autocomplete_names(prefix)
+
+    @staticmethod
+    def get_autocomplete_subtypes(type_name: str, prefix: str = "") -> List[str]:
+        """Get autocomplete suggestions for subtypes.
+
+        Args:
+            type_name: The type name
+            prefix: Search prefix
+
+        Returns:
+            List of matching subtype names.
+        """
+        return ItemTypeRepository.get_autocomplete_subtypes(type_name, prefix)
 
     @staticmethod
     def update_item(

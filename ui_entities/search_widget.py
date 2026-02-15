@@ -47,6 +47,8 @@ class SearchWidget(QWidget):
         self.field_combo.addItem(tr("search.all_fields"), None)
         self.field_combo.addItem(tr("search.field.item_type"), "item_type")
         self.field_combo.addItem(tr("search.field.sub_type"), "sub_type")
+        self.field_combo.addItem(tr("search.field.serial"), "serial_number")
+        self.field_combo.addItem(tr("search.field.location"), "location")
         self.field_combo.addItem(tr("search.field.details"), "details")
         self.field_combo.setMinimumWidth(120)
         apply_combo_box_style(self.field_combo)

@@ -4,12 +4,16 @@ from PyQt6.QtWidgets import (
     QDialog,
     QFormLayout,
     QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
+    QListWidget,
     QPushButton,
     QVBoxLayout,
 )
 
+from logger import logger
+from repositories import ItemRepository
 from styles import apply_button_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
@@ -109,6 +113,10 @@ class ItemDetailsDialog(QDialog):
 
         layout.addLayout(form_layout)
 
+        # Serial numbers section for serialized types
+        if self._item.is_serialized:
+            self._add_serial_numbers_section(layout)
+
         # Spacer
         layout.addStretch()
 
@@ -122,6 +130,44 @@ class ItemDetailsDialog(QDialog):
         button_layout.addWidget(close_button)
 
         layout.addLayout(button_layout)
+
+    def _add_serial_numbers_section(self, layout: QVBoxLayout):
+        """Add section showing all serial numbers for this type.
+
+        Args:
+            layout: The main layout to add to
+        """
+        try:
+            # Get all serial numbers for this type
+            serial_numbers = ItemRepository.get_serial_numbers_for_type(self._item.item_type_id)
+
+            if not serial_numbers:
+                return
+
+            # Create group box
+            serial_group = QGroupBox(tr("dialog.details.serial_numbers"))
+            serial_layout = QVBoxLayout()
+
+            # Count label
+            count_label = QLabel(tr("dialog.details.serial_count").format(count=len(serial_numbers)))
+            count_font = QFont()
+            count_font.setBold(True)
+            count_label.setFont(count_font)
+            serial_layout.addWidget(count_label)
+
+            # List widget
+            serial_list = QListWidget()
+            serial_list.setMaximumHeight(150)
+            for sn in serial_numbers:
+                serial_list.addItem(sn)
+            serial_layout.addWidget(serial_list)
+
+            serial_group.setLayout(serial_layout)
+            layout.addWidget(serial_group)
+
+            logger.debug(f"Added serial numbers section with {len(serial_numbers)} items")
+        except Exception as e:
+            logger.error(f"Failed to load serial numbers: {e}", exc_info=True)
 
     @property
     def item(self) -> InventoryItem:

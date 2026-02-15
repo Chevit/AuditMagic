@@ -1,8 +1,10 @@
 from typing import Optional
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QStringListModel
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
+    QCheckBox,
+    QCompleter,
     QDialog,
     QFormLayout,
     QFrame,
@@ -16,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from logger import logger
+from services import InventoryService
 from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
@@ -36,6 +39,8 @@ class AddItemDialog(QDialog):
         self._result_item: Optional[InventoryItem] = None
         self._setup_ui()
         self._setup_validators()
+        self._setup_autocomplete()
+        self._setup_serialization_logic()
 
     def _setup_ui(self):
         """Set up the dialog UI."""
@@ -84,6 +89,13 @@ class AddItemDialog(QDialog):
         self.subtype_edit.setPlaceholderText(tr("placeholder.subtype"))
         apply_input_style(self.subtype_edit)
         form_layout.addRow(subtype_label, self.subtype_edit)
+
+        # Serialization checkbox
+        serialized_label = QLabel(tr("label.has_serial"))
+        serialized_label.setFont(label_font)
+        self.serialized_checkbox = QCheckBox(tr("label.has_serial_items"))
+        self.serialized_checkbox.setToolTip(tr("tooltip.has_serial"))
+        form_layout.addRow(serialized_label, self.serialized_checkbox)
 
         # Quantity - QLineEdit instead of QSpinBox for better UX
         quantity_label = QLabel(tr("label.quantity"))
@@ -151,6 +163,86 @@ class AddItemDialog(QDialog):
 
         logger.debug("Form validators configured")
 
+    def _setup_autocomplete(self):
+        """Setup autocomplete for type and subtype fields."""
+        # Type autocomplete
+        self.type_completer = QCompleter(self)
+        self.type_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.type_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.type_edit.setCompleter(self.type_completer)
+
+        # Subtype autocomplete
+        self.subtype_completer = QCompleter(self)
+        self.subtype_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.subtype_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.subtype_edit.setCompleter(self.subtype_completer)
+
+        # Update autocomplete on text change
+        self.type_edit.textChanged.connect(self._update_type_autocomplete)
+        self.type_edit.textChanged.connect(self._update_subtype_autocomplete)
+
+        logger.debug("Autocomplete configured")
+
+    def _update_type_autocomplete(self, text: str):
+        """Update autocomplete suggestions for type."""
+        try:
+            suggestions = InventoryService.get_autocomplete_types(text)
+            model = QStringListModel(suggestions)
+            self.type_completer.setModel(model)
+        except Exception as e:
+            logger.error(f"Failed to load type autocomplete: {e}")
+
+    def _update_subtype_autocomplete(self, type_text: str):
+        """Update autocomplete suggestions for subtype based on selected type."""
+        if not type_text:
+            return
+        try:
+            suggestions = InventoryService.get_autocomplete_subtypes(type_text)
+            model = QStringListModel(suggestions)
+            self.subtype_completer.setModel(model)
+        except Exception as e:
+            logger.error(f"Failed to load subtype autocomplete: {e}")
+
+    def _setup_serialization_logic(self):
+        """Connect serialization checkbox to enable/disable logic."""
+        self.serialized_checkbox.stateChanged.connect(self._on_serialization_changed)
+        # Initialize state (unchecked by default)
+        self._on_serialization_changed(self.serialized_checkbox.checkState())
+        logger.debug("Serialization logic configured")
+
+    def _on_serialization_changed(self, state):
+        """Handle serialization checkbox change.
+
+        When checked:
+            - Serial number field enabled
+            - Quantity field disabled and set to 1
+        When unchecked:
+            - Serial number field disabled and cleared
+            - Quantity field enabled
+        """
+        is_serialized = (state == Qt.CheckState.Checked)
+
+        if is_serialized:
+            # Enable serial number
+            self.serial_edit.setEnabled(True)
+            self.serial_edit.setStyleSheet("")
+            apply_input_style(self.serial_edit)
+
+            # Disable and fix quantity to 1
+            self.quantity_input.setEnabled(False)
+            self.quantity_input.setText("1")
+            self.quantity_input.setStyleSheet("background-color: #e0e0e0;")
+        else:
+            # Disable and clear serial number
+            self.serial_edit.setEnabled(False)
+            self.serial_edit.clear()
+            self.serial_edit.setStyleSheet("background-color: #e0e0e0;")
+
+            # Enable quantity
+            self.quantity_input.setEnabled(True)
+            self.quantity_input.setStyleSheet("")
+            apply_input_style(self.quantity_input, large=True)
+
     def _on_add_clicked(self):
         """Validate and accept the dialog."""
         item_type = self.type_edit.text().strip()
@@ -158,6 +250,7 @@ class AddItemDialog(QDialog):
         quantity_text = self.quantity_input.text().strip()
         serial_number = self.serial_edit.text().strip()
         details = self.details_edit.toPlainText().strip()
+        is_serialized = self.serialized_checkbox.isChecked()
 
         # Validation
         errors = []
@@ -189,13 +282,22 @@ class AddItemDialog(QDialog):
                 errors.append("Quantity must be a valid number")
                 logger.warning(f"Invalid quantity value: {quantity_text}")
 
-        # Validate serial number length if provided
-        if serial_number:
-            valid, error = validate_length(
-                serial_number, tr("field.serial_number"), max_length=255
-            )
-            if not valid:
-                errors.append(error)
+        # Validate serial number if serialized
+        if is_serialized:
+            if not serial_number:
+                errors.append(tr("error.serial.required"))
+                logger.warning("Serial number required for serialized item")
+            elif serial_number:
+                valid, error = validate_length(
+                    serial_number, tr("field.serial_number"), max_length=255
+                )
+                if not valid:
+                    errors.append(error)
+        else:
+            # Non-serialized items shouldn't have serial numbers
+            if serial_number:
+                errors.append(tr("error.serial.not_allowed"))
+                logger.warning("Serial number not allowed for non-serialized item")
 
         # Validate details length if provided
         if details:
@@ -217,23 +319,45 @@ class AddItemDialog(QDialog):
             # Focus on the first problematic field
             if not item_type:
                 self.type_edit.setFocus()
+            elif is_serialized and not serial_number:
+                self.serial_edit.setFocus()
             elif not quantity_text or quantity_text and not quantity_text.isdigit():
                 self.quantity_input.setFocus()
                 self.quantity_input.selectAll()
 
             return
 
-        # All validation passed
+        # All validation passed - create item via service
         quantity = int(quantity_text)
-        logger.info(f"Form validation passed - adding item with quantity {quantity}")
-        self._result_item = InventoryItem(
-            item_type=item_type,
-            sub_type=sub_type,
-            quantity=quantity,
-            serial_number=serial_number,
-            details=details,
-        )
-        self.accept()
+        logger.info(f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}")
+
+        try:
+            self._result_item = InventoryService.create_item(
+                item_type_name=item_type,
+                item_sub_type=sub_type,
+                quantity=quantity,
+                is_serialized=is_serialized,
+                serial_number=serial_number if is_serialized else None,
+                details=details
+            )
+            logger.info(f"Item created successfully: id={self._result_item.id}")
+            self.accept()
+        except ValueError as e:
+            # Validation error from service/repository
+            QMessageBox.warning(
+                self,
+                tr("message.validation_error"),
+                str(e)
+            )
+            logger.error(f"Item creation failed with validation error: {e}")
+        except Exception as e:
+            # Unexpected error
+            QMessageBox.critical(
+                self,
+                tr("error.generic.title"),
+                f"{tr('error.generic.message')}\n\n{str(e)}"
+            )
+            logger.error(f"Item creation failed: {e}", exc_info=True)
 
     def get_item(self) -> Optional[InventoryItem]:
         """Return the created item, or None if dialog was cancelled."""
