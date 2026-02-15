@@ -1,18 +1,21 @@
 """SQLAlchemy ORM models for the inventory management system."""
 
+import enum
 from datetime import datetime, timezone
 from typing import Optional
+
 from sqlalchemy import (
     Column,
+    DateTime,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (
+    ForeignKey,
     Integer,
     String,
-    DateTime,
-    ForeignKey,
-    Enum as SQLEnum,
     Text,
 )
-from sqlalchemy.orm import relationship, declarative_base
-import enum
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -37,7 +40,11 @@ class Item(Base):
     serial_number = Column(String(255), nullable=True)
     details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationship to transactions
     transactions = relationship(
@@ -60,7 +67,9 @@ class Transaction(Base):
     quantity_before = Column(Integer, nullable=False)
     quantity_after = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
 
     # Relationship to item
     item = relationship("Item", back_populates="transactions")

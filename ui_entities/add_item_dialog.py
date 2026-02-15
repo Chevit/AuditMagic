@@ -4,28 +4,28 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QFrame,
     QMessageBox,
+    QPushButton,
     QTextEdit,
+    QVBoxLayout,
 )
 
 from logger import logger
+from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 from validators import (
     ItemTypeValidator,
     SerialNumberValidator,
-    validate_required_field,
-    validate_positive_integer,
     validate_length,
+    validate_positive_integer,
+    validate_required_field,
 )
-from styles import Styles, apply_input_style, apply_button_style, apply_text_edit_style
 
 
 class AddItemDialog(QDialog):
@@ -137,7 +137,7 @@ class AddItemDialog(QDialog):
         button_layout.addWidget(add_button)
 
         layout.addLayout(button_layout)
-        
+
         # Set focus to type field (first field)
         self.type_edit.setFocus()
 
@@ -213,14 +213,14 @@ class AddItemDialog(QDialog):
                 tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
             )
             logger.warning(f"Form validation failed: {errors}")
-            
+
             # Focus on the first problematic field
             if not item_type:
                 self.type_edit.setFocus()
             elif not quantity_text or quantity_text and not quantity_text.isdigit():
                 self.quantity_input.setFocus()
                 self.quantity_input.selectAll()
-            
+
             return
 
         # All validation passed

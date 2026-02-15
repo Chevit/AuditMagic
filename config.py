@@ -1,9 +1,10 @@
 """Application configuration management."""
+
 import json
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
-from logger import logger, APP_DATA_DIR
+from logger import APP_DATA_DIR, logger
 
 CONFIG_FILE = os.path.join(APP_DATA_DIR, "config.json")
 
@@ -124,7 +125,11 @@ class Config:
         """Recursively merge loaded config with defaults."""
         result = default.copy()
         for key, value in loaded.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = Config._merge_configs(result[key], value)
             else:
                 result[key] = value

@@ -1,17 +1,17 @@
 """Centralized logging configuration for AuditMagic."""
+
 import logging
 import os
-from datetime import datetime
-
-import os
-from pathlib import Path
 import sys
+from datetime import datetime
+from pathlib import Path
+
 
 def get_app_data_dir():
     """Get platform-specific application data directory."""
     if sys.platform == "win32":
         # Windows: C:\Users\Username\AppData\Local\AuditMagic
-        base = os.environ.get('LOCALAPPDATA') or os.path.expanduser("~")
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
         return os.path.join(base, "AuditMagic")
     elif sys.platform == "darwin":
         # macOS: ~/Library/Application Support/AuditMagic
@@ -20,12 +20,15 @@ def get_app_data_dir():
         # Linux: ~/.local/share/AuditMagic or ~/.audit_magic
         return os.path.expanduser("~/.local/share/AuditMagic")
 
+
 APP_DATA_DIR = get_app_data_dir()
 LOGS_DIR = os.path.join(APP_DATA_DIR, "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Log file with timestamp
-LOG_FILE = os.path.join(LOGS_DIR, f"audit_magic_{datetime.now().strftime('%Y%m%d')}.log")
+LOG_FILE = os.path.join(
+    LOGS_DIR, f"audit_magic_{datetime.now().strftime('%Y%m%d')}.log"
+)
 
 
 def setup_logger(name: str = "AuditMagic") -> logging.Logger:

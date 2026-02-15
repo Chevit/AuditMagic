@@ -1,6 +1,7 @@
-from PyQt6.QtCore import Qt, pyqtSignal, QModelIndex
+from PyQt6.QtCore import QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QListView, QMenu
+
 from ui_entities.inventory_delegate import InventoryItemDelegate
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
@@ -61,18 +62,24 @@ class InventoryListView(QListView):
 
         # Quantity actions
         add_qty_action = QAction(tr("menu.add_quantity"), self)
-        add_qty_action.triggered.connect(lambda: self.add_quantity_requested.emit(row, item))
+        add_qty_action.triggered.connect(
+            lambda: self.add_quantity_requested.emit(row, item)
+        )
         menu.addAction(add_qty_action)
 
         remove_qty_action = QAction(tr("menu.remove_quantity"), self)
-        remove_qty_action.triggered.connect(lambda: self.remove_quantity_requested.emit(row, item))
+        remove_qty_action.triggered.connect(
+            lambda: self.remove_quantity_requested.emit(row, item)
+        )
         menu.addAction(remove_qty_action)
 
         menu.addSeparator()
 
         # Transactions action
         transactions_action = QAction(tr("menu.transactions"), self)
-        transactions_action.triggered.connect(lambda: self.transactions_requested.emit(row, item))
+        transactions_action.triggered.connect(
+            lambda: self.transactions_requested.emit(row, item)
+        )
         menu.addAction(transactions_action)
 
         menu.addSeparator()
@@ -96,4 +103,5 @@ class InventoryListView(QListView):
     def _get_item_from_index(self, index: QModelIndex) -> InventoryItem:
         """Get the InventoryItem from the model at the given index."""
         from ui_entities.inventory_model import InventoryItemRole
+
         return index.data(InventoryItemRole.ItemData)

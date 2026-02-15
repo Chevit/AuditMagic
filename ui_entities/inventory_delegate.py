@@ -1,9 +1,10 @@
-from PyQt6.QtCore import Qt, QSize, QRect
-from PyQt6.QtGui import QPainter, QFont, QColor, QPen
-from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
+from PyQt6.QtCore import QRect, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
+
+from styles import Colors
 from ui_entities.inventory_model import InventoryItemRole
 from ui_entities.translations import tr
-from styles import Colors
 
 
 class InventoryItemDelegate(QStyledItemDelegate):
@@ -79,12 +80,20 @@ class InventoryItemDelegate(QStyledItemDelegate):
             painter.setFont(self._label_font)
             painter.setPen(label_color)
             label_rect = QRect(x, y, col_width, self.LABEL_HEIGHT)
-            painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, label)
+            painter.drawText(
+                label_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+                label,
+            )
 
             # Draw value below label
             painter.setFont(self._value_font)
             painter.setPen(value_color)
             value_rect = QRect(x, y + 14, col_width, self.LABEL_HEIGHT)
-            painter.drawText(value_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, value)
+            painter.drawText(
+                value_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+                value,
+            )
 
         painter.restore()

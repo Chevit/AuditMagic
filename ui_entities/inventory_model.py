@@ -1,5 +1,7 @@
 from typing import List, Optional
-from PyQt6.QtCore import Qt, QAbstractListModel, QModelIndex
+
+from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
+
 from ui_entities.inventory_item import InventoryItem
 
 

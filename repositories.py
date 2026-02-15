@@ -3,13 +3,13 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import or_, func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from db import session_scope
-from models import Item, Transaction, TransactionType, SearchHistory
-from ui_entities.translations import tr
 from logger import logger
+from models import Item, SearchHistory, Transaction, TransactionType
+from ui_entities.translations import tr
 
 
 class ItemRepository:

@@ -5,10 +5,12 @@ stored in Theme enum values.
 """
 
 from typing import Optional
+
 from PyQt6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
+
 from logger import logger
-from theme_config import Theme, set_current_theme, get_current_theme
+from theme_config import Theme, get_current_theme, set_current_theme
 
 
 class ThemeManager:
@@ -38,7 +40,9 @@ class ThemeManager:
             logger.info(f"Applying theme: {params.name} ({params.qt_material_theme})")
 
             # Apply qt-material theme
-            apply_stylesheet(self._app, theme=params.qt_material_theme, extra=extra_styles)
+            apply_stylesheet(
+                self._app, theme=params.qt_material_theme, extra=extra_styles
+            )
 
             # Update global current theme
             set_current_theme(theme)
@@ -47,7 +51,9 @@ class ThemeManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to apply theme {theme.value.name}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to apply theme {theme.value.name}: {e}", exc_info=True
+            )
             return False
 
     def get_current_theme(self) -> Theme:
