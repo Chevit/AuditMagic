@@ -251,6 +251,7 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
+- **IMPROVEMENTS.md**: ⭐ **Comprehensive improvement guide for Claude Code** - step-by-step implementation instructions with code examples, priorities, and testing guidelines
 - **DIMENSION_GUIDE.md**: Complete guide to theme dimensions (heights, widths, padding, fonts)
 - **THEME_SYSTEM_REFACTOR.md**: Documentation of theme system refactor
 - **THEME_FIXES.md**: Theme-related fixes and improvements
