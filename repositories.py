@@ -1,6 +1,6 @@
 """Repository layer for database operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import or_, func
@@ -533,7 +533,7 @@ class SearchHistoryRepository:
 
             if existing:
                 # Update timestamp to move it to the top
-                existing.created_at = datetime.utcnow()
+                existing.created_at = datetime.now(timezone.utc)
                 session.commit()
                 return _detach_search_history(existing)
 
