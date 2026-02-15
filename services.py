@@ -218,6 +218,8 @@ class InventoryService:
     ) -> Optional[InventoryItem]:
         """Edit an item's properties with full transaction logging.
 
+        DEPRECATED: Use edit_item_hierarchical() for hierarchical model.
+
         Args:
             item_id: The item's ID.
             item_type: New item type.
@@ -246,6 +248,135 @@ class InventoryService:
                 return InventoryItem.from_db_model(db_item)
             logger.warning(f"Item not found for edit: id={item_id}")
             return None
+        except Exception as e:
+            logger.error(f"Failed to edit item: {str(e)}", exc_info=True)
+            raise
+
+    @staticmethod
+    def edit_item_hierarchical(
+        item_id: int,
+        type_name: str = None,
+        sub_type: str = None,
+        quantity: int = None,
+        serial_number: str = None,
+        location: str = None,
+        condition: str = None,
+        notes: str = None,
+        details: str = None,
+        edit_reason: str = "",
+    ) -> Optional[InventoryItem]:
+        """Edit an item's properties with hierarchical model support.
+
+        For serialized items:
+        - Type and sub_type cannot be changed (affects the ItemType definition)
+        - Quantity must remain 1
+        - Serial number can be updated
+
+        For non-serialized items:
+        - Type and sub_type can be changed (creates/uses different ItemType)
+        - Quantity can be changed
+        - Serial number must remain None
+
+        Args:
+            item_id: The item's ID.
+            type_name: New type name (only for non-serialized items).
+            sub_type: New sub-type (only for non-serialized items).
+            quantity: New quantity.
+            serial_number: New serial number (only for serialized items).
+            location: New location.
+            condition: New condition.
+            notes: New notes (item-specific).
+            details: New details (type-level).
+            edit_reason: Reason for the edit (required).
+
+        Returns:
+            The updated InventoryItem or None if not found.
+
+        Raises:
+            ValueError: If validation fails.
+        """
+        logger.info(f"Editing item (hierarchical): id={item_id}, reason='{edit_reason}'")
+        try:
+            # Get current item to check serialization status
+            current_item = ItemRepository.get_by_id(item_id)
+            if not current_item:
+                logger.warning(f"Item not found for edit: id={item_id}")
+                return None
+
+            # Get current item type
+            from repositories import ItemTypeRepository
+            current_type = ItemTypeRepository.get_by_id(current_item.item_type_id)
+            if not current_type:
+                logger.error(f"ItemType not found: id={current_item.item_type_id}")
+                return None
+
+            is_serialized = current_type.is_serialized
+
+            # Validation for serialized items
+            if is_serialized:
+                if type_name and type_name != current_type.name:
+                    raise ValueError("Cannot change type of serialized item")
+                if sub_type and sub_type != current_type.sub_type:
+                    raise ValueError("Cannot change sub-type of serialized item")
+                if quantity and quantity != 1:
+                    raise ValueError("Quantity must be 1 for serialized items")
+                if serial_number == "":  # Empty string means removing SN
+                    raise ValueError("Serial number required for serialized items")
+
+            # Validation for non-serialized items
+            else:
+                if serial_number:
+                    raise ValueError("Serial number not allowed for non-serialized items")
+                if quantity and quantity < 1:
+                    raise ValueError("Quantity must be at least 1")
+
+            # If type/subtype changed for non-serialized item, get or create new ItemType
+            new_type_id = current_item.item_type_id
+            if not is_serialized and (type_name or sub_type):
+                new_type_name = type_name if type_name else current_type.name
+                new_sub_type = sub_type if sub_type is not None else current_type.sub_type
+                new_details = details if details is not None else current_type.details
+
+                # Get or create the new ItemType
+                new_type = ItemTypeRepository.get_or_create(
+                    name=new_type_name,
+                    sub_type=new_sub_type,
+                    is_serialized=False,  # Non-serialized
+                    details=new_details
+                )
+                new_type_id = new_type.id
+
+            # Update the item
+            updated_values = {}
+            if new_type_id != current_item.item_type_id:
+                updated_values['item_type_id'] = new_type_id
+            if quantity is not None:
+                updated_values['quantity'] = quantity
+            if serial_number is not None:
+                updated_values['serial_number'] = serial_number
+            if location is not None:
+                updated_values['location'] = location
+            if condition is not None:
+                updated_values['condition'] = condition
+            if notes is not None:
+                updated_values['notes'] = notes
+
+            # Update item in repository
+            db_item = ItemRepository.update_hierarchical(
+                item_id=item_id,
+                edit_reason=edit_reason,
+                **updated_values
+            )
+
+            if db_item:
+                logger.info(f"Item edited successfully: id={item_id}")
+                # Get the updated ItemType
+                updated_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
+                return InventoryItem.from_db_models(db_item, updated_type)
+
+            logger.warning(f"Item not found after edit: id={item_id}")
+            return None
+
         except Exception as e:
             logger.error(f"Failed to edit item: {str(e)}", exc_info=True)
             raise

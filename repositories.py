@@ -446,6 +446,77 @@ class ItemRepository:
             return _detach_item(item)
 
     @staticmethod
+    def update_hierarchical(
+        item_id: int,
+        edit_reason: str,
+        **kwargs
+    ) -> Optional[Item]:
+        """Update an item's properties with hierarchical model support.
+
+        Args:
+            item_id: The item's ID.
+            edit_reason: Reason for the edit (required).
+            **kwargs: Fields to update (item_type_id, quantity, serial_number,
+                     location, condition, notes).
+
+        Returns:
+            The updated Item instance or None if not found.
+        """
+        with session_scope() as session:
+            item = session.query(Item).filter(Item.id == item_id).first()
+            if not item:
+                logger.warning(f"Repository: Item not found for edit: id={item_id}")
+                return None
+
+            quantity_before = item.quantity
+            has_changes = False
+
+            # Apply field changes
+            if 'item_type_id' in kwargs and kwargs['item_type_id'] is not None:
+                item.item_type_id = kwargs['item_type_id']
+                has_changes = True
+
+            if 'quantity' in kwargs and kwargs['quantity'] is not None:
+                item.quantity = kwargs['quantity']
+                has_changes = True
+
+            if 'serial_number' in kwargs and kwargs['serial_number'] is not None:
+                item.serial_number = kwargs['serial_number']
+                has_changes = True
+
+            if 'location' in kwargs and kwargs['location'] is not None:
+                item.location = kwargs['location']
+                has_changes = True
+
+            if 'condition' in kwargs and kwargs['condition'] is not None:
+                item.condition = kwargs['condition']
+                has_changes = True
+
+            if 'notes' in kwargs and kwargs['notes'] is not None:
+                item.notes = kwargs['notes']
+                has_changes = True
+
+            # Record EDIT transaction if there were changes
+            if has_changes:
+                quantity_diff = item.quantity - quantity_before
+                edit_transaction = Transaction(
+                    item_id=item.id,
+                    transaction_type=TransactionType.EDIT,
+                    quantity_change=abs(quantity_diff),
+                    quantity_before=quantity_before,
+                    quantity_after=item.quantity,
+                    notes=edit_reason,
+                )
+                session.add(edit_transaction)
+
+            session.commit()
+            session.refresh(item)
+            logger.debug(
+                f"Repository: Item edited (hierarchical): id={item_id}, reason='{edit_reason}'"
+            )
+            return _detach_item(item)
+
+    @staticmethod
     def delete(item_id: int) -> bool:
         """Delete an item and all its transactions.
 

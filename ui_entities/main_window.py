@@ -185,20 +185,41 @@ class MainWindow(QMainWindow):
         """Handle edit request for an inventory item."""
         dialog = EditItemDialog(item, self)
         if dialog.exec():
-            edited_item = dialog.get_item()
-            edit_notes = dialog.get_edit_notes()
-            if edited_item and item.id is not None:
-                updated_item = InventoryService.edit_item(
-                    item_id=item.id,
-                    item_type=edited_item.item_type,
-                    quantity=edited_item.quantity,
-                    sub_type=edited_item.sub_type,
-                    serial_number=edited_item.serial_number,
-                    details=edited_item.details,
-                    edit_reason=edit_notes,
-                )
-                if updated_item:
-                    self.inventory_model.update_item(row, updated_item)
+            # Get edited values from dialog
+            edited_values = dialog.get_edited_values()
+            if edited_values and item.id is not None:
+                try:
+                    # Use new hierarchical edit method
+                    updated_item = InventoryService.edit_item_hierarchical(
+                        item_id=item.id,
+                        type_name=edited_values['type_name'],
+                        sub_type=edited_values['sub_type'],
+                        quantity=edited_values['quantity'],
+                        serial_number=edited_values['serial_number'],
+                        details=edited_values['details'],
+                        edit_reason=edited_values['edit_reason'],
+                    )
+                    if updated_item:
+                        self.inventory_model.update_item(row, updated_item)
+                        logger.info(f"Item {item.id} updated successfully")
+                except ValueError as e:
+                    # Show validation error
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.warning(
+                        self,
+                        tr("error.validation.title"),
+                        str(e)
+                    )
+                    logger.warning(f"Edit validation failed: {e}")
+                except Exception as e:
+                    # Show generic error
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.critical(
+                        self,
+                        tr("error.generic.title"),
+                        f"{tr('error.generic.message')}\n{str(e)}"
+                    )
+                    logger.error(f"Edit failed: {e}", exc_info=True)
 
     def _on_show_details(self, row: int, item: InventoryItem):
         """Handle show details request for an inventory item."""
