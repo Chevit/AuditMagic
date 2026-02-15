@@ -4,6 +4,7 @@ from ui_entities.main_window import MainWindow
 from db import run_migrations
 from logger import logger
 from theme_manager import init_theme_manager
+from theme_config import Theme
 from config import config
 
 
@@ -18,10 +19,15 @@ def main():
 
         # Initialize theme manager and apply saved theme
         theme_manager = init_theme_manager(app)
-        theme_mode = config.get("theme.mode", "light")
-        theme_variant = config.get("theme.variant", "default")
-        theme_manager.apply_theme(theme_mode, theme_variant)
-        logger.info(f"Theme applied: {theme_mode}/{theme_variant}")
+        theme_name = config.get("theme", "Light")
+        try:
+            theme = Theme.get_by_name(theme_name)
+        except ValueError:
+            logger.warning(f"Invalid theme '{theme_name}', using Light theme")
+            theme = Theme.LIGHT
+        theme_manager.apply_theme(theme)
+        logger.info(f"Theme applied: {theme.value.name}")
+        logger.info(f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}")
 
         window = MainWindow()
         logger.info("MainWindow created successfully")

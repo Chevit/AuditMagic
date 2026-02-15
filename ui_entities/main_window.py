@@ -1,6 +1,6 @@
 from PyQt6 import uic
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout, QWidget, QPushButton, QMenu
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QActionGroup
 from ui_entities.inventory_model import InventoryModel
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.inventory_list_view import InventoryListView
@@ -16,6 +16,7 @@ from services import InventoryService, SearchService, TransactionService
 from config import config
 from logger import logger
 from theme_manager import get_theme_manager
+from styles import apply_button_style
 
 
 class MainWindow(QMainWindow):
@@ -35,106 +36,72 @@ class MainWindow(QMainWindow):
         self._restore_window_state()
 
     def _setup_ui(self):
-        """Set up UI with localized strings."""
+        """Set up UI with localized strings and apply theme-aware styles."""
         self.setWindowTitle(tr("app.title"))
         if hasattr(self, "addButton"):
             self.addButton.setText(tr("main.add_item"))
+            apply_button_style(self.addButton, "primary")
 
     def _setup_theme_menu(self):
         """Set up theme switching menu."""
+        from theme_config import Theme
+
         # Create menu bar if it doesn't exist
         menu_bar = self.menuBar()
 
         # Create Theme menu
         theme_menu = menu_bar.addMenu("🎨 " + tr("menu.theme"))
 
-        # Theme mode submenu
-        mode_menu = QMenu(tr("menu.theme.mode"), self)
+        # Get all available themes
+        theme_names = Theme.get_all_names()
+        current_theme = get_theme_manager().get_current_theme()
 
-        # Light theme action
-        light_action = QAction(tr("menu.theme.light"), self)
-        light_action.setCheckable(True)
-        light_action.triggered.connect(lambda: self._on_theme_changed("light"))
-        mode_menu.addAction(light_action)
+        # Create action group for radio button behavior
+        theme_action_group = QActionGroup(self)
+        theme_action_group.setExclusive(True)
 
-        # Dark theme action
-        dark_action = QAction(tr("menu.theme.dark"), self)
-        dark_action.setCheckable(True)
-        dark_action.triggered.connect(lambda: self._on_theme_changed("dark"))
-        mode_menu.addAction(dark_action)
-
-        theme_menu.addMenu(mode_menu)
-        theme_menu.addSeparator()
-
-        # Color variant submenu
-        variant_menu = QMenu(tr("menu.theme.variant"), self)
-
-        variants = [
-            ("default", tr("menu.theme.variant.default")),
-            ("teal", tr("menu.theme.variant.teal")),
-            ("cyan", tr("menu.theme.variant.cyan")),
-            ("purple", tr("menu.theme.variant.purple")),
-            ("pink", tr("menu.theme.variant.pink")),
-            ("amber", tr("menu.theme.variant.amber")),
-        ]
-
-        for variant_key, variant_label in variants:
-            action = QAction(variant_label, self)
+        # Add action for each theme
+        for theme_name in theme_names:
+            action = QAction(theme_name, self)
             action.setCheckable(True)
-            action.triggered.connect(lambda checked, v=variant_key: self._on_variant_changed(v))
-            variant_menu.addAction(action)
+            action.setActionGroup(theme_action_group)
+            action.triggered.connect(lambda checked, name=theme_name: self._on_theme_changed(name))
+            theme_menu.addAction(action)
 
-        theme_menu.addMenu(variant_menu)
-
-        # Set current theme as checked
-        current_theme, current_variant = get_theme_manager().get_current_theme()
-        for action in mode_menu.actions():
-            if current_theme in action.text().lower():
-                action.setChecked(True)
-
-        for action in variant_menu.actions():
-            if current_variant in action.text().lower() or (current_variant == "default" and "Default" in action.text()):
+            # Set current theme as checked
+            if theme_name == current_theme.value.name:
                 action.setChecked(True)
 
         logger.info("Theme menu created")
 
-    def _on_theme_changed(self, theme: str):
-        """Handle theme mode change."""
+    def _on_theme_changed(self, theme_name: str):
+        """Handle theme change."""
+        from theme_config import Theme
+
         theme_manager = get_theme_manager()
         if theme_manager:
-            _, current_variant = theme_manager.get_current_theme()
-            theme_manager.apply_theme(theme, current_variant)
+            try:
+                theme = Theme.get_by_name(theme_name)
+                theme_manager.apply_theme(theme)
 
-            # Save to config
-            config.set("theme.mode", theme)
+                # Save to config
+                config.set("theme", theme_name)
 
-            logger.info(f"Theme changed to: {theme}")
+                logger.info(f"Theme changed to: {theme_name}")
 
-            # Show message
-            QMessageBox.information(
-                self,
-                tr("message.theme.changed"),
-                tr("message.theme.changed.text"),
-            )
-
-    def _on_variant_changed(self, variant: str):
-        """Handle theme variant change."""
-        theme_manager = get_theme_manager()
-        if theme_manager:
-            current_theme, _ = theme_manager.get_current_theme()
-            theme_manager.apply_theme(current_theme, variant)
-
-            # Save to config
-            config.set("theme.variant", variant)
-
-            logger.info(f"Theme variant changed to: {variant}")
-
-            # Show message
-            QMessageBox.information(
-                self,
-                tr("message.theme.changed"),
-                tr("message.theme.changed.text"),
-            )
+                # Show message
+                QMessageBox.information(
+                    self,
+                    tr("message.theme.changed"),
+                    tr("message.theme.changed.text"),
+                )
+            except ValueError:
+                logger.error(f"Invalid theme: {theme_name}")
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"Invalid theme: {theme_name}",
+                )
 
     def _setup_search_widget(self):
         """Set up the search widget above the list."""
@@ -142,6 +109,16 @@ class MainWindow(QMainWindow):
         self.search_widget.set_autocomplete_callback(self._get_autocomplete_suggestions)
         self.search_widget.search_requested.connect(self._on_search)
         self.search_widget.search_cleared.connect(self._on_search_cleared)
+
+    def _reapply_search_widget_styles(self):
+        """Reapply styles to SearchWidget after adding to layout."""
+        from styles import apply_input_style, apply_button_style, apply_combo_box_style
+
+        # Reapply styles to ensure they override qt-material
+        apply_combo_box_style(self.search_widget.field_combo)
+        apply_input_style(self.search_widget.search_input)
+        apply_button_style(self.search_widget.search_button, "info")
+        apply_button_style(self.search_widget.clear_button, "secondary")
 
     def _setup_inventory_list(self):
         """Replace the placeholder widget with the custom inventory list view."""
@@ -163,6 +140,8 @@ class MainWindow(QMainWindow):
                         # Insert search widget before the list
                         layout.insertWidget(i, self.search_widget)
                         layout.insertWidget(i + 1, self.inventory_list)
+                        # Reapply styles after adding to layout (in case qt-material overrides)
+                        self._reapply_search_widget_styles()
                         break
             else:
                 # No layout - use geometry from placeholder

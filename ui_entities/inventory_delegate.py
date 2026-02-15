@@ -3,6 +3,7 @@ from PyQt6.QtGui import QPainter, QFont, QColor, QPen
 from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
 from ui_entities.inventory_model import InventoryItemRole
 from ui_entities.translations import tr
+from styles import Colors
 
 
 class InventoryItemDelegate(QStyledItemDelegate):
@@ -22,17 +23,20 @@ class InventoryItemDelegate(QStyledItemDelegate):
         self._value_font = QFont()
         self._value_font.setPointSize(10)
 
-        self._label_color = QColor(100, 100, 100)
-        self._value_color = QColor(30, 30, 30)
-        self._border_color = QColor(200, 200, 200)
-        self._hover_color = QColor(240, 248, 255)
-        self._selected_color = QColor(200, 220, 255)
-
     def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
         return QSize(option.rect.width(), self.ROW_HEIGHT)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index):
         painter.save()
+
+        # Get theme-aware colors dynamically
+        label_color = QColor(Colors.get_text_secondary())
+        value_color = QColor(Colors.get_main_color())
+        border_color = QColor(Colors.get_border_default())
+        bg_default = QColor(Colors.get_bg_default())
+        bg_hover = QColor(Colors.get_bg_hover())
+        selected_color = QColor(Colors.PRIMARY)
+        selected_color.setAlpha(50)  # Semi-transparent
 
         # Get item data
         item_type = index.data(InventoryItemRole.ItemType) or ""
@@ -45,14 +49,14 @@ class InventoryItemDelegate(QStyledItemDelegate):
         # Draw background
         rect = option.rect
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(rect, self._selected_color)
+            painter.fillRect(rect, selected_color)
         elif option.state & QStyle.StateFlag.State_MouseOver:
-            painter.fillRect(rect, self._hover_color)
+            painter.fillRect(rect, bg_hover)
         else:
-            painter.fillRect(rect, Qt.GlobalColor.white)
+            painter.fillRect(rect, bg_default)
 
         # Draw border at bottom
-        painter.setPen(QPen(self._border_color, 1))
+        painter.setPen(QPen(border_color, 1))
         painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
 
         # Calculate label positions (2x2 grid)
@@ -73,13 +77,13 @@ class InventoryItemDelegate(QStyledItemDelegate):
 
             # Draw label
             painter.setFont(self._label_font)
-            painter.setPen(self._label_color)
+            painter.setPen(label_color)
             label_rect = QRect(x, y, col_width, self.LABEL_HEIGHT)
             painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, label)
 
             # Draw value below label
             painter.setFont(self._value_font)
-            painter.setPen(self._value_color)
+            painter.setPen(value_color)
             value_rect = QRect(x, y + 14, col_width, self.LABEL_HEIGHT)
             painter.drawText(value_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, value)
 

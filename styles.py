@@ -1,72 +1,133 @@
-"""Centralized UI styles for AuditMagic application.
+"""Centralized styling system for AuditMagic.
 
-This module provides additional styling customizations that work alongside qt-material.
-qt-material provides the base theme (light/dark with Material Design), while this
-module adds specific customizations for dialogs, buttons, and input fields.
-
-The styles defined here complement qt-material's themes and provide:
-- Consistent dimensions across all widgets
-- Standardized helper functions for applying styles
-- Easy-to-use style application without inline CSS
-
-Note: qt-material handles most of the theming automatically. These styles are
-additional customizations that maintain consistency across custom dialogs.
+This module provides consistent styling across all UI components with support
+for theme-aware colors and dimensions that adapt to the selected theme.
+All theme parameters are retrieved from the Theme enum.
 """
 
-# Color Palette
-class Colors:
-    """Application color palette."""
+from theme_config import get_theme_colors, get_theme_dimensions
 
-    # Primary colors
+
+# Color Palette (theme-aware)
+class Colors:
+    """Theme-aware application color palette.
+
+    Colors automatically adapt based on current theme.
+    All colors are retrieved from the Theme enum configuration.
+    """
+
+    @staticmethod
+    def get_main_color() -> str:
+        """Get main text/foreground color based on current theme."""
+        return get_theme_colors().main
+
+    @staticmethod
+    def get_secondary_color() -> str:
+        """Get secondary/background color based on current theme."""
+        return get_theme_colors().secondary
+
+    @staticmethod
+    def get_border_default() -> str:
+        """Get default border color based on current theme."""
+        return get_theme_colors().border_default
+
+    @staticmethod
+    def get_bg_default() -> str:
+        """Get default background color based on current theme."""
+        return get_theme_colors().bg_default
+
+    @staticmethod
+    def get_bg_hover() -> str:
+        """Get hover background color based on current theme."""
+        return get_theme_colors().bg_hover
+
+    @staticmethod
+    def get_bg_disabled() -> str:
+        """Get disabled background color based on current theme."""
+        return get_theme_colors().bg_disabled
+
+    @staticmethod
+    def get_text_secondary() -> str:
+        """Get secondary text color based on current theme."""
+        return get_theme_colors().text_secondary
+
+    @staticmethod
+    def get_text_disabled() -> str:
+        """Get disabled text color based on current theme."""
+        return get_theme_colors().text_disabled
+
+    @staticmethod
+    def get_border_hover() -> str:
+        """Get hover border color based on current theme."""
+        colors = get_theme_colors()
+        # Slightly lighter/darker than default border
+        return "#5a5a5a" if colors.border_default == "#3a3a3a" else "#999"
+
+    # Action button colors (constant across themes for consistency)
     PRIMARY = "#4CAF50"  # Green - primary actions
     PRIMARY_HOVER = "#45a049"
     PRIMARY_PRESSED = "#3d8b40"
 
-    # Secondary/Danger colors
     DANGER = "#f44336"  # Red - cancel/delete actions
     DANGER_HOVER = "#da190b"
     DANGER_PRESSED = "#c41000"
 
-    # Info/Neutral colors
     INFO = "#2196F3"  # Blue - informational
     INFO_HOVER = "#0b7dda"
     INFO_PRESSED = "#0969c3"
 
-    # Borders and backgrounds
-    BORDER_DEFAULT = "#ccc"
-    BORDER_HOVER = "#999"
+    # Border focus (constant)
     BORDER_FOCUS = PRIMARY
 
-    # Text colors
-    TEXT_PRIMARY = "#000000"
-    TEXT_SECONDARY = "#666666"
-    TEXT_DISABLED = "#999999"
 
-    # Background colors
-    BG_DEFAULT = "#ffffff"
-    BG_HOVER = "#f5f5f5"
-    BG_DISABLED = "#e0e0e0"
-
-
-# Common dimensions
+# Dimensions (theme-aware)
 class Dimensions:
-    """Common UI dimensions."""
+    """Theme-aware UI dimensions.
 
-    # Input fields
-    INPUT_HEIGHT = 35
-    INPUT_PADDING = 8
-    INPUT_FONT_SIZE = 13
+    Dimensions are retrieved from the current theme configuration,
+    allowing different themes to have different sizes.
+    """
 
-    # Buttons
-    BUTTON_HEIGHT = 35
-    BUTTON_MIN_WIDTH = 100
-    BUTTON_PADDING = 8
+    @staticmethod
+    def get_input_height() -> int:
+        """Get input field height from current theme."""
+        return get_theme_dimensions().input_height
 
-    # Border radius
-    BORDER_RADIUS = 4
+    @staticmethod
+    def get_button_height() -> int:
+        """Get button height from current theme."""
+        return get_theme_dimensions().button_height
+
+    @staticmethod
+    def get_button_min_width() -> int:
+        """Get button minimum width from current theme."""
+        return get_theme_dimensions().button_min_width
+
+    @staticmethod
+    def get_button_padding() -> int:
+        """Get button padding from current theme."""
+        return get_theme_dimensions().button_padding
+
+    @staticmethod
+    def get_border_radius() -> int:
+        """Get border radius from current theme."""
+        return get_theme_dimensions().border_radius
+
+    @staticmethod
+    def get_font_size() -> int:
+        """Get font size from current theme."""
+        return get_theme_dimensions().font_size
+
+    @staticmethod
+    def get_font_size_large() -> int:
+        """Get large font size from current theme."""
+        return get_theme_dimensions().font_size_large
+
+    # Static properties (constant across themes)
     BORDER_WIDTH = 2
+    INPUT_PADDING = 8
 
-    # Spacing
+    # Spacing (constant)
     SPACING_SMALL = 5
     SPACING_MEDIUM = 10
     SPACING_LARGE = 15
@@ -75,193 +136,223 @@ class Dimensions:
 
 # StyleSheet Templates
 class Styles:
-    """Pre-defined StyleSheet strings for common widgets."""
+    """Pre-defined StyleSheet strings for common widgets with theme-aware colors and dimensions."""
 
-    # Input fields (QLineEdit)
-    LINE_EDIT = f"""
-        QLineEdit {{
-            padding: {Dimensions.INPUT_PADDING}px;
-            font-size: {Dimensions.INPUT_FONT_SIZE}px;
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_DEFAULT};
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            background-color: {Colors.BG_DEFAULT};
-        }}
-        QLineEdit:focus {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
-        }}
-        QLineEdit:hover {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_HOVER};
-        }}
-        QLineEdit:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_line_edit_style() -> str:
+        """Get QLineEdit stylesheet with theme-aware colors and dimensions."""
+        return f"""
+            QLineEdit {{
+                padding: {Dimensions.INPUT_PADDING}px;
+                font-size: {Dimensions.get_font_size()}px;
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
+                border-radius: {Dimensions.get_border_radius()}px;
+                background-color: {Colors.get_bg_default()};
+                color: {Colors.get_main_color()};
+                height: {Dimensions.get_input_height()}px;
+            }}
+            QLineEdit:focus {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+            }}
+            QLineEdit:hover {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+            }}
+            QLineEdit:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # Large input fields (quantity, etc.)
-    LINE_EDIT_LARGE = f"""
-        QLineEdit {{
-            padding: {Dimensions.INPUT_PADDING}px;
-            font-size: 14px;
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_DEFAULT};
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            background-color: {Colors.BG_DEFAULT};
-        }}
-        QLineEdit:focus {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
-        }}
-        QLineEdit:hover {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_HOVER};
-        }}
-        QLineEdit:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_line_edit_large_style() -> str:
+        """Get large QLineEdit stylesheet with theme-aware colors and dimensions."""
+        return f"""
+            QLineEdit {{
+                padding: {Dimensions.INPUT_PADDING}px;
+                font-size: {Dimensions.get_font_size_large()}px;
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
+                border-radius: {Dimensions.get_border_radius()}px;
+                background-color: {Colors.get_bg_default()};
+                color: {Colors.get_main_color()};
+            }}
+            QLineEdit:focus {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+            }}
+            QLineEdit:hover {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+            }}
+            QLineEdit:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # Text areas (QTextEdit)
-    TEXT_EDIT = f"""
-        QTextEdit {{
-            padding: 5px;
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_DEFAULT};
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            background-color: {Colors.BG_DEFAULT};
-        }}
-        QTextEdit:focus {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
-        }}
-        QTextEdit:hover {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_HOVER};
-        }}
-        QTextEdit:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_text_edit_style() -> str:
+        """Get QTextEdit stylesheet with theme-aware colors and dimensions."""
+        return f"""
+            QTextEdit {{
+                padding: 5px;
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
+                border-radius: {Dimensions.get_border_radius()}px;
+                background-color: {Colors.get_bg_default()};
+                color: {Colors.get_main_color()};
+                font-size: {Dimensions.get_font_size()}px;
+            }}
+            QTextEdit:focus {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+            }}
+            QTextEdit:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # Primary action buttons (Save, Add, OK)
-    BUTTON_PRIMARY = f"""
-        QPushButton {{
-            background-color: {Colors.PRIMARY};
-            color: white;
-            padding: {Dimensions.BUTTON_PADDING}px;
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            font-weight: bold;
-            border: none;
-            min-height: {Dimensions.BUTTON_HEIGHT}px;
-        }}
-        QPushButton:hover {{
-            background-color: {Colors.PRIMARY_HOVER};
-        }}
-        QPushButton:pressed {{
-            background-color: {Colors.PRIMARY_PRESSED};
-        }}
-        QPushButton:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_combo_box_style() -> str:
+        """Get QComboBox stylesheet with theme-aware colors and dimensions."""
+        return f"""
+            QComboBox {{
+                padding: {Dimensions.INPUT_PADDING}px;
+                font-size: {Dimensions.get_font_size()}px;
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
+                border-radius: {Dimensions.get_border_radius()}px;
+                background-color: {Colors.get_bg_default()};
+                color: {Colors.get_main_color()};
+                height: {Dimensions.get_input_height()}px;
+            }}
+            QComboBox:hover {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+            }}
+            QComboBox:focus {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
+            }}
+            QComboBox:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid {Colors.get_main_color()};
+                margin-right: 5px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {Colors.get_bg_default()};
+                color: {Colors.get_main_color()};
+                selection-background-color: {Colors.PRIMARY};
+                selection-color: white;
+                border: 1px solid {Colors.get_border_default()};
+            }}
+        """
 
-    # Danger/Cancel buttons (Cancel, Delete)
-    BUTTON_DANGER = f"""
-        QPushButton {{
-            background-color: {Colors.DANGER};
-            color: white;
-            padding: {Dimensions.BUTTON_PADDING}px;
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            font-weight: bold;
-            border: none;
-            min-height: {Dimensions.BUTTON_HEIGHT}px;
-        }}
-        QPushButton:hover {{
-            background-color: {Colors.DANGER_HOVER};
-        }}
-        QPushButton:pressed {{
-            background-color: {Colors.DANGER_PRESSED};
-        }}
-        QPushButton:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_button_primary_style() -> str:
+        """Get primary button stylesheet with theme-aware dimensions."""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.PRIMARY};
+                color: white;
+                padding: 2px {Dimensions.get_button_padding()}px;
+                border-radius: {Dimensions.get_border_radius()}px;
+                font-weight: bold;
+                border: none;
+                height: {Dimensions.get_button_height()}px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.PRIMARY_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.PRIMARY_PRESSED};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # Info/Neutral buttons (Search, Clear, Details)
-    BUTTON_INFO = f"""
-        QPushButton {{
-            background-color: {Colors.INFO};
-            color: white;
-            padding: {Dimensions.BUTTON_PADDING}px;
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            font-weight: bold;
-            border: none;
-            min-height: {Dimensions.BUTTON_HEIGHT}px;
-        }}
-        QPushButton:hover {{
-            background-color: {Colors.INFO_HOVER};
-        }}
-        QPushButton:pressed {{
-            background-color: {Colors.INFO_PRESSED};
-        }}
-        QPushButton:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-        }}
-    """
+    @staticmethod
+    def get_button_danger_style() -> str:
+        """Get danger button stylesheet with theme-aware dimensions."""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.DANGER};
+                color: white;
+                padding: 2px {Dimensions.get_button_padding()}px;
+                border-radius: {Dimensions.get_border_radius()}px;
+                font-weight: bold;
+                border: none;
+                height: {Dimensions.get_button_height()}px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.DANGER_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.DANGER_PRESSED};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # Secondary/Outline buttons
-    BUTTON_SECONDARY = f"""
-        QPushButton {{
-            background-color: transparent;
-            color: {Colors.TEXT_PRIMARY};
-            padding: {Dimensions.BUTTON_PADDING}px;
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            font-weight: bold;
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_DEFAULT};
-            min-height: {Dimensions.BUTTON_HEIGHT}px;
-        }}
-        QPushButton:hover {{
-            background-color: {Colors.BG_HOVER};
-            border-color: {Colors.BORDER_HOVER};
-        }}
-        QPushButton:pressed {{
-            background-color: {Colors.BG_DISABLED};
-        }}
-        QPushButton:disabled {{
-            background-color: {Colors.BG_DISABLED};
-            color: {Colors.TEXT_DISABLED};
-            border-color: {Colors.BORDER_DEFAULT};
-        }}
-    """
+    @staticmethod
+    def get_button_info_style() -> str:
+        """Get info button stylesheet with theme-aware dimensions."""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.INFO};
+                color: white;
+                padding: 2px {Dimensions.get_button_padding()}px;
+                border-radius: {Dimensions.get_border_radius()}px;
+                font-weight: bold;
+                border: none;
+                height: {Dimensions.get_button_height()}px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.INFO_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.INFO_PRESSED};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
-    # ComboBox
-    COMBO_BOX = f"""
-        QComboBox {{
-            padding: {Dimensions.INPUT_PADDING}px;
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_DEFAULT};
-            border-radius: {Dimensions.BORDER_RADIUS}px;
-            background-color: {Colors.BG_DEFAULT};
-            min-height: 30px;
-        }}
-        QComboBox:hover {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_HOVER};
-        }}
-        QComboBox:focus {{
-            border: {Dimensions.BORDER_WIDTH}px solid {Colors.BORDER_FOCUS};
-        }}
-        QComboBox::drop-down {{
-            border: none;
-            padding-right: 5px;
-        }}
-        QComboBox::down-arrow {{
-            image: none;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid {Colors.TEXT_SECONDARY};
-        }}
-    """
+    @staticmethod
+    def get_button_secondary_style() -> str:
+        """Get secondary button stylesheet with theme-aware colors and dimensions."""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.get_secondary_color()};
+                color: {Colors.get_main_color()};
+                padding: 2px {Dimensions.get_button_padding()}px;
+                border-radius: {Dimensions.get_border_radius()}px;
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
+                height: {Dimensions.get_button_height()}px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.get_bg_hover()};
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.get_bg_default()};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.get_bg_disabled()};
+                color: {Colors.get_text_disabled()};
+            }}
+        """
 
 
-# Helper functions
+# Helper Functions
 def apply_input_style(widget, large=False):
     """Apply standard input field styling to a widget.
 
@@ -270,11 +361,11 @@ def apply_input_style(widget, large=False):
         large: If True, use larger font size
     """
     if large:
-        widget.setStyleSheet(Styles.LINE_EDIT_LARGE)
-        widget.setMinimumHeight(Dimensions.INPUT_HEIGHT)
+        widget.setStyleSheet(Styles.get_line_edit_large_style())
+        widget.setMinimumHeight(Dimensions.get_input_height())
     else:
-        widget.setStyleSheet(Styles.LINE_EDIT)
-        widget.setMinimumHeight(Dimensions.INPUT_HEIGHT)
+        widget.setStyleSheet(Styles.get_line_edit_style())
+        widget.setMinimumHeight(Dimensions.get_input_height())
 
 
 def apply_button_style(button, style="primary"):
@@ -284,17 +375,17 @@ def apply_button_style(button, style="primary"):
         button: QPushButton
         style: One of "primary", "danger", "info", "secondary"
     """
-    button.setMinimumWidth(Dimensions.BUTTON_MIN_WIDTH)
-    button.setMinimumHeight(Dimensions.BUTTON_HEIGHT)
+    button.setMinimumWidth(Dimensions.get_button_min_width())
+    button.setMinimumHeight(Dimensions.get_button_height())
 
     if style == "primary":
-        button.setStyleSheet(Styles.BUTTON_PRIMARY)
+        button.setStyleSheet(Styles.get_button_primary_style())
     elif style == "danger":
-        button.setStyleSheet(Styles.BUTTON_DANGER)
+        button.setStyleSheet(Styles.get_button_danger_style())
     elif style == "info":
-        button.setStyleSheet(Styles.BUTTON_INFO)
+        button.setStyleSheet(Styles.get_button_info_style())
     elif style == "secondary":
-        button.setStyleSheet(Styles.BUTTON_SECONDARY)
+        button.setStyleSheet(Styles.get_button_secondary_style())
 
 
 def apply_text_edit_style(widget):
@@ -303,7 +394,7 @@ def apply_text_edit_style(widget):
     Args:
         widget: QTextEdit widget
     """
-    widget.setStyleSheet(Styles.TEXT_EDIT)
+    widget.setStyleSheet(Styles.get_text_edit_style())
 
 
 def apply_combo_box_style(widget):
@@ -312,4 +403,4 @@ def apply_combo_box_style(widget):
     Args:
         widget: QComboBox widget
     """
-    widget.setStyleSheet(Styles.COMBO_BOX)
+    widget.setStyleSheet(Styles.get_combo_box_style())

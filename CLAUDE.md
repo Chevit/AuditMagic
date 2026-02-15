@@ -117,10 +117,13 @@ tm.set_variant("purple")        # Change color variant
 
 ### Styling System
 - **qt-material**: Provides base Material Design theme
-- **styles.py**: Adds custom refinements for dialogs and inputs
+- **styles.py**: Adds custom refinements with theme-aware colors
 - **Helper functions**: `apply_input_style()`, `apply_button_style()`, `apply_text_edit_style()`
 - **Consistent dimensions**: All widgets use standardized sizes from `Dimensions` class
-- **Color palette**: Defined in `Colors` class (complementary to qt-material)
+- **Color palette**: Defined in `Colors` class with custom colors:
+  - **Dark mode**: Main text #d3d3d3, Secondary #130512
+  - **Light mode**: Main text #282828, Secondary #BBC8C3
+  - **Action buttons**: Constant colors (green, red, blue) with theme-aware disabled states
 
 ### Style Application Example
 ```python
