@@ -5,6 +5,7 @@ from db import run_migrations
 from logger import logger
 from theme_manager import init_theme_manager
 from config import config
+from styles import init_styles
 
 
 def main():
@@ -22,6 +23,10 @@ def main():
         theme_variant = config.get("theme.variant", "default")
         theme_manager.apply_theme(theme_mode, theme_variant)
         logger.info(f"Theme applied: {theme_mode}/{theme_variant}")
+
+        # Initialize custom styles system
+        init_styles()
+        logger.info("Custom styles initialized")
 
         window = MainWindow()
         logger.info("MainWindow created successfully")

@@ -108,6 +108,10 @@ class MainWindow(QMainWindow):
             # Save to config
             config.set("theme.mode", theme)
 
+            # Refresh custom styled widgets
+            if hasattr(self, 'search_widget'):
+                self.search_widget.refresh_styles()
+
             logger.info(f"Theme changed to: {theme}")
 
             # Show message
@@ -126,6 +130,10 @@ class MainWindow(QMainWindow):
 
             # Save to config
             config.set("theme.variant", variant)
+
+            # Refresh custom styled widgets
+            if hasattr(self, 'search_widget'):
+                self.search_widget.refresh_styles()
 
             logger.info(f"Theme variant changed to: {variant}")
 

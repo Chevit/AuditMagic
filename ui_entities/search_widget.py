@@ -121,3 +121,10 @@ class SearchWidget(QWidget):
     def get_current_field(self) -> Optional[str]:
         """Get the current search field."""
         return self.field_combo.currentData()
+
+    def refresh_styles(self):
+        """Refresh widget styles to match current theme."""
+        apply_input_style(self.search_input)
+        apply_button_style(self.search_button, "info")
+        apply_button_style(self.clear_button, "secondary")
+        apply_combo_box_style(self.field_combo)
