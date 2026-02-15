@@ -1,5 +1,5 @@
-# requirements.txt
-PyQt6>=6.7.0
-SQLAlchemy>=2.0.31
-alembic>=1.13.0
-qt-material>=2.14
+# Core dependencies (pinned for reproducibility)
+PyQt6==6.7.1
+SQLAlchemy==2.0.31
+alembic==1.13.2
+qt-material==2.14
