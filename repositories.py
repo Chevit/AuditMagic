@@ -57,7 +57,7 @@ class ItemRepository:
                     quantity_change=quantity,
                     quantity_before=0,
                     quantity_after=quantity,
-                    notes=notes or tr("transaction.notes.initial"),
+                    notes=tr("transaction.notes.initial"),
                 )
                 session.add(transaction)
 
