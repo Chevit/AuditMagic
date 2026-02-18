@@ -56,6 +56,9 @@ class ItemTypeRepository:
     ) -> ItemType:
         """Get existing type or create new one.
 
+        Raises ValueError if the existing type's is_serialized conflicts with
+        the requested value — serialization mode is immutable once set.
+
         Args:
             name: Type name
             sub_type: Sub-type name
@@ -77,6 +80,15 @@ class ItemTypeRepository:
             )
 
             if item_type:
+                # Conflict guard — is_serialized is immutable after creation
+                if item_type.is_serialized != is_serialized:
+                    existing_state = "serialized" if item_type.is_serialized else "non-serialized"
+                    requested_state = "serialized" if is_serialized else "non-serialized"
+                    raise ValueError(
+                        f"ItemType '{name}' (sub_type='{sub_type}') already exists as "
+                        f"{existing_state}. Cannot use it as {requested_state}. "
+                        f"Choose a different name/sub-type or keep the same serialization mode."
+                    )
                 return _detach_item_type(item_type)
 
             # Create new
@@ -103,6 +115,31 @@ class ItemTypeRepository:
         """
         with session_scope() as session:
             item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
+            return _detach_item_type(item_type) if item_type else None
+
+    @staticmethod
+    def get_by_name_and_subtype(name: str, sub_type: str = "") -> Optional[ItemType]:
+        """Return an existing ItemType for the given name/sub_type, or None.
+
+        Used by the UI to look up the existing type while the user is typing,
+        so the serialization state can be pre-filled and locked.
+
+        Args:
+            name: Type name
+            sub_type: Sub-type name (optional)
+
+        Returns:
+            Existing ItemType or None if not found.
+        """
+        with session_scope() as session:
+            item_type = (
+                session.query(ItemType)
+                .filter(
+                    ItemType.name == name,
+                    ItemType.sub_type == (sub_type or "")
+                )
+                .first()
+            )
             return _detach_item_type(item_type) if item_type else None
 
     @staticmethod
@@ -194,7 +231,13 @@ class ItemTypeRepository:
                 item_type.name = name
             if sub_type is not None:
                 item_type.sub_type = sub_type
-            if is_serialized is not None:
+            if is_serialized is not None and item_type.is_serialized != is_serialized:
+                item_count = session.query(Item).filter(Item.item_type_id == type_id).count()
+                if item_count > 0:
+                    raise ValueError(
+                        f"Cannot change is_serialized for '{item_type.name}': "
+                        f"{item_count} item(s) already exist. Delete all items first."
+                    )
                 item_type.is_serialized = is_serialized
             if details is not None:
                 item_type.details = details

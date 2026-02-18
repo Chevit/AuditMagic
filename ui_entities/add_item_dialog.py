@@ -97,6 +97,13 @@ class AddItemDialog(QDialog):
         self.serialized_checkbox.setToolTip(tr("tooltip.has_serial"))
         form_layout.addRow(serialized_label, self.serialized_checkbox)
 
+        # Status label — shows feedback when an existing type is detected
+        self.type_status_label = QLabel("")
+        self.type_status_label.setStyleSheet(
+            f"color: {Colors.get_text_secondary()}; font-style: italic;"
+        )
+        form_layout.addRow("", self.type_status_label)
+
         # Quantity - QLineEdit instead of QSpinBox for better UX
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
@@ -189,6 +196,10 @@ class AddItemDialog(QDialog):
         self.type_edit.textChanged.connect(self._update_type_autocomplete)
         self.type_edit.textChanged.connect(self._update_subtype_autocomplete)
 
+        # Existing-type lookup — locks serialized checkbox if type already exists
+        self.type_edit.textChanged.connect(self._on_type_or_subtype_changed)
+        self.subtype_edit.textChanged.connect(self._on_type_or_subtype_changed)
+
         logger.debug("Autocomplete configured")
 
     def _update_type_autocomplete(self, text: str):
@@ -216,6 +227,8 @@ class AddItemDialog(QDialog):
         self.serialized_checkbox.checkStateChanged.connect(self._on_serialization_changed)
         # Initialize state (unchecked by default)
         self._on_serialization_changed(self.serialized_checkbox.checkState())
+        # Run initial type lookup (fields may be pre-filled)
+        self._on_type_or_subtype_changed()
         logger.debug("Serialization logic configured")
 
     def _on_serialization_changed(self, state):
@@ -250,6 +263,45 @@ class AddItemDialog(QDialog):
             self.quantity_input.setEnabled(True)
             self.quantity_input.setStyleSheet("")
             apply_input_style(self.quantity_input, large=True)
+
+    def _on_type_or_subtype_changed(self):
+        """Check if the current type/subtype combination already exists in the DB.
+
+        If it does, lock the serialized checkbox to the existing type's state
+        so the user cannot submit a conflicting value.
+        """
+        type_name = self.type_edit.text().strip()
+        sub_type = self.subtype_edit.text().strip()
+
+        if not type_name:
+            self._unlock_serialized_checkbox()
+            self.type_status_label.setText("")
+            return
+
+        try:
+            existing = InventoryService.get_item_type_by_name_subtype(type_name, sub_type)
+        except Exception as e:
+            logger.warning(f"Type lookup failed: {e}")
+            return
+
+        if existing is not None:
+            self.serialized_checkbox.setChecked(existing.is_serialized)
+            self.serialized_checkbox.setEnabled(False)
+            self.serialized_checkbox.setToolTip(tr("tooltip.serialized_locked"))
+            if existing.is_serialized:
+                self.type_status_label.setText(tr("message.type_exists_serialized"))
+            else:
+                self.type_status_label.setText(tr("message.type_exists_non_serialized"))
+            # Update dependent fields (serial/quantity) to match the locked state
+            self._on_serialization_changed(self.serialized_checkbox.checkState())
+        else:
+            self._unlock_serialized_checkbox()
+            self.type_status_label.setText("")
+
+    def _unlock_serialized_checkbox(self):
+        """Re-enable the serialized checkbox for a new (not-yet-existing) type."""
+        self.serialized_checkbox.setEnabled(True)
+        self.serialized_checkbox.setToolTip(tr("tooltip.has_serial"))
 
     def _on_add_clicked(self):
         """Validate and accept the dialog."""

@@ -88,6 +88,20 @@ class ItemDetailsDialog(QDialog):
         subtype_value.setFont(value_font)
         form_layout.addRow(subtype_label, subtype_value)
 
+        # Serialized badge
+        serialized_label = QLabel(tr("label.is_serialized"))
+        serialized_label.setFont(label_font)
+        is_ser = self._item.is_serialized
+        badge_text = tr("label.serialized_badge") if is_ser else tr("label.non_serialized_badge")
+        badge_color = "#2e7d32" if is_ser else "#757575"
+        serialized_value = QLabel(badge_text)
+        serialized_value.setFont(value_font)
+        serialized_value.setStyleSheet(
+            f"color: {badge_color}; font-weight: bold; padding: 2px 6px; "
+            f"border: 1px solid {badge_color}; border-radius: 3px;"
+        )
+        form_layout.addRow(serialized_label, serialized_value)
+
         # Quantity
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)

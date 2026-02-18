@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from logger import logger
+from services import InventoryService
 from styles import Colors, apply_button_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.translations import tr
@@ -55,6 +56,7 @@ class EditItemDialog(QDialog):
         self._edit_notes: str = ""
         self._deleted_serial_numbers: List[str] = []
         self._serial_numbers: List[str] = []
+        self._type_conflict: bool = False
 
         # Get serial numbers list
         if self._is_grouped and item.serial_numbers:
@@ -116,6 +118,24 @@ class EditItemDialog(QDialog):
         self.subtype_edit.setPlaceholderText(tr("placeholder.subtype"))
         apply_input_style(self.subtype_edit)
         form_layout.addRow(subtype_label, self.subtype_edit)
+
+        # Serialized indicator (read-only badge)
+        is_serial_label = QLabel(tr("label.is_serialized"))
+        is_serial_label.setFont(label_font)
+        badge_text = tr("label.serialized_badge") if self._is_serialized else tr("label.non_serialized_badge")
+        badge_color = "#2e7d32" if self._is_serialized else "#757575"
+        self._serialized_value_label = QLabel(badge_text)
+        self._serialized_value_label.setStyleSheet(
+            f"color: {badge_color}; font-weight: bold; padding: 2px 6px; "
+            f"border: 1px solid {badge_color}; border-radius: 3px;"
+        )
+        self._serialized_value_label.setToolTip(tr("tooltip.serialized_locked"))
+        form_layout.addRow(is_serial_label, self._serialized_value_label)
+
+        # Conflict status label — shown in red when type rename conflicts with is_serialized
+        self.edit_type_status_label = QLabel("")
+        self.edit_type_status_label.setStyleSheet("color: #c62828; font-style: italic;")
+        form_layout.addRow("", self.edit_type_status_label)
 
         # Quantity - only editable for non-serialized items
         quantity_label = QLabel(tr("label.quantity"))
@@ -298,7 +318,40 @@ class EditItemDialog(QDialog):
         self.type_edit.setValidator(ItemTypeValidator(self))
         if self.serial_edit:
             self.serial_edit.setValidator(SerialNumberValidator(self))
+        # Detect serialization conflicts on type/subtype rename
+        self.type_edit.textChanged.connect(self._on_edit_type_changed)
+        self.subtype_edit.textChanged.connect(self._on_edit_type_changed)
         logger.debug("Edit form validators configured")
+
+    def _on_edit_type_changed(self):
+        """Warn if the new type name/subtype maps to a type with different is_serialized."""
+        type_name = self.type_edit.text().strip()
+        sub_type = self.subtype_edit.text().strip()
+
+        if not type_name:
+            self.edit_type_status_label.setText("")
+            self._type_conflict = False
+            return
+
+        try:
+            existing = InventoryService.get_item_type_by_name_subtype(type_name, sub_type)
+        except Exception as e:
+            logger.warning(f"Type lookup in edit dialog failed: {e}")
+            return
+
+        if existing is not None and existing.is_serialized != self._is_serialized:
+            conflict_state = (
+                tr("label.serialized_badge")
+                if existing.is_serialized
+                else tr("label.non_serialized_badge")
+            )
+            self.edit_type_status_label.setText(
+                tr("error.serialized_conflict").format(name=type_name, state=conflict_state)
+            )
+            self._type_conflict = True
+        else:
+            self.edit_type_status_label.setText("")
+            self._type_conflict = False
 
     def _populate_fields(self):
         """Populate form fields with the current item values."""
@@ -317,6 +370,15 @@ class EditItemDialog(QDialog):
 
     def _on_save_clicked(self):
         """Validate and accept the dialog."""
+        if self._type_conflict:
+            QMessageBox.warning(
+                self,
+                tr("message.validation_error"),
+                self.edit_type_status_label.text(),
+            )
+            self.type_edit.setFocus()
+            return
+
         item_type = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
         quantity_text = self.quantity_input.text().strip()

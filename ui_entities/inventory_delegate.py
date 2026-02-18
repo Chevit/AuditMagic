@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QRect, QSize, Qt
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from styles import Colors
@@ -104,5 +104,29 @@ class InventoryItemDelegate(QStyledItemDelegate):
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
                 value,
             )
+
+        # ── Serialized badge ─────────────────────────────────────────────────────
+        badge_text = tr("label.serialized_badge") if is_serialized else tr("label.non_serialized_badge")
+        badge_color = QColor("#2e7d32") if is_serialized else QColor("#757575")
+
+        badge_font = QFont(painter.font())
+        badge_font.setPointSize(max(badge_font.pointSize() - 2, 7))
+        badge_font.setBold(True)
+        fm = QFontMetrics(badge_font)
+        badge_rect = fm.boundingRect(badge_text).adjusted(-4, -2, 4, 2)
+
+        # Position: top-right corner of the row
+        badge_rect.moveRight(option.rect.right() - 8)
+        badge_rect.moveTop(option.rect.top() + 6)
+
+        painter.save()
+        painter.setFont(badge_font)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(badge_color)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.drawRoundedRect(badge_rect, 3, 3)
+        painter.setPen(QColor("#ffffff"))
+        painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
+        painter.restore()
 
         painter.restore()

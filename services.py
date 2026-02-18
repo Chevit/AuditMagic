@@ -217,6 +217,22 @@ class InventoryService:
         return result
 
     @staticmethod
+    def get_item_type_by_name_subtype(name: str, sub_type: str = ""):
+        """Return ItemType info for the given name/sub_type, or None.
+
+        Used by the UI to pre-fill serialization state when the user picks an
+        existing type. Returns None if the type does not yet exist.
+
+        Args:
+            name: Type name
+            sub_type: Sub-type name (optional)
+
+        Returns:
+            ItemType detached object or None.
+        """
+        return ItemTypeRepository.get_by_name_and_subtype(name, sub_type)
+
+    @staticmethod
     def get_autocomplete_types(prefix: str = "") -> List[str]:
         """Get autocomplete suggestions for item types.
 
