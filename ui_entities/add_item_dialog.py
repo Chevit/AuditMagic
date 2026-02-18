@@ -127,14 +127,6 @@ class AddItemDialog(QDialog):
         apply_input_style(self.serial_edit)
         form_layout.addRow(serial_label, self.serial_edit)
 
-        # Details (optional)
-        details_label = QLabel(tr("label.details"))
-        self.details_edit = QTextEdit()
-        self.details_edit.setPlaceholderText(tr("placeholder.details"))
-        self.details_edit.setMaximumHeight(80)
-        apply_text_edit_style(self.details_edit)
-        form_layout.addRow(details_label, self.details_edit)
-
         # Initial notes (optional) — stored as transaction notes on first ADD
         initial_notes_label = QLabel(tr("label.initial_notes"))
         self.initial_notes_edit = QTextEdit()
@@ -309,7 +301,6 @@ class AddItemDialog(QDialog):
         sub_type = self.subtype_edit.text().strip()
         quantity_text = self.quantity_input.text().strip()
         serial_number = self.serial_edit.text().strip()
-        details = self.details_edit.toPlainText().strip()
         initial_notes = self.initial_notes_edit.toPlainText().strip()
         is_serialized = self.serialized_checkbox.isChecked()
 
@@ -360,14 +351,6 @@ class AddItemDialog(QDialog):
                 errors.append(tr("error.serial.not_allowed"))
                 logger.warning("Serial number not allowed for non-serialized item")
 
-        # Validate details length if provided
-        if details:
-            valid, error = validate_length(
-                details, tr("field.details"), max_length=1000
-            )
-            if not valid:
-                errors.append(error)
-
         # Validate initial notes length if provided
         if initial_notes:
             valid, error = validate_length(
@@ -401,15 +384,21 @@ class AddItemDialog(QDialog):
         logger.info(f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}")
 
         try:
-            self._result_item = InventoryService.create_item(
-                item_type_name=item_type,
-                item_sub_type=sub_type,
-                quantity=quantity,
-                is_serialized=is_serialized,
-                serial_number=serial_number if is_serialized else None,
-                details=details,
-                transaction_notes=initial_notes or None,
-            )
+            if is_serialized:
+                self._result_item = InventoryService.create_serialized_item(
+                    item_type_name=item_type,
+                    item_sub_type=sub_type,
+                    serial_number=serial_number,
+                    notes=initial_notes or "",
+                )
+            else:
+                self._result_item = InventoryService.create_item(
+                    item_type_name=item_type,
+                    item_sub_type=sub_type,
+                    quantity=quantity,
+                    is_serialized=False,
+                    transaction_notes=initial_notes or None,
+                )
             logger.info(f"Item created successfully: id={self._result_item.id}")
             self.accept()
         except ValueError as e:

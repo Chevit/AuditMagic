@@ -22,7 +22,6 @@ class InventoryService:
         serial_number: str = None,
         location: str = "",
         condition: str = "",
-        details: str = "",
         transaction_notes: str = "",
     ) -> InventoryItem:
         """Create a new inventory item.
@@ -48,7 +47,6 @@ class InventoryService:
                 name=item_type_name,
                 sub_type=item_sub_type,
                 is_serialized=is_serialized,
-                details=details
             )
 
             # Create item instance
@@ -65,6 +63,66 @@ class InventoryService:
             return InventoryItem.from_db_models(db_item, item_type)
         except Exception as e:
             logger.error(f"Failed to create item: {str(e)}", exc_info=True)
+            raise
+
+    @staticmethod
+    def create_serialized_item(
+        item_type_name: str,
+        item_sub_type: str = "",
+        serial_number: str = "",
+        location: str = "",
+        condition: str = "",
+        details: str = "",
+        notes: str = "",
+    ) -> InventoryItem:
+        """Create a new serialized inventory item.
+
+        Gets or creates the ItemType (must be serialized=True), then creates
+        a new Item via ItemRepository.create_serialized which tracks the full
+        group quantity in the transaction (quantity_before = current item count
+        for this type, quantity_after = count + 1).
+
+        Notes policy is enforced in the repository:
+          - First item of the type: default "initial inventory" text.
+          - Subsequent items: caller-supplied notes or "".
+
+        Args:
+            item_type_name: Type name.
+            item_sub_type: Sub-type (optional).
+            serial_number: Unique serial number (required).
+            location: Storage location (optional).
+            condition: Item condition (optional).
+            details: ItemType description (applied only when creating a new type).
+            notes: Transaction notes (used for non-first items).
+
+        Returns:
+            The created InventoryItem.
+
+        Raises:
+            ValueError: If the type already exists as non-serialized, or the
+                        serial number is missing or duplicate.
+        """
+        logger.info(
+            f"Creating serialized item: type='{item_type_name}', sn='{serial_number}'"
+        )
+        try:
+            item_type = ItemTypeRepository.get_or_create(
+                name=item_type_name,
+                sub_type=item_sub_type,
+                is_serialized=True,
+                details=details,
+            )
+            db_item = ItemRepository.create_serialized(
+                item_type_id=item_type.id,
+                serial_number=serial_number,
+                location=location,
+                condition=condition,
+                notes=notes,
+            )
+            logger.info(f"Serialized item created: id={db_item.id}")
+            return InventoryItem.from_db_models(db_item, item_type)
+        except Exception as e:
+            logger.error(f"Failed to create serialized item: {str(e)}", exc_info=True)
             raise
 
     @staticmethod
@@ -104,7 +162,6 @@ class InventoryService:
             name=item_type_name,
             sub_type=sub_type,
             is_serialized=is_serialized,
-            details=details
         )
 
         # For serialized items, always create new (each serial is unique)
@@ -325,7 +382,6 @@ class InventoryService:
                 name=item_type_name,
                 sub_type=sub_type,
                 is_serialized=is_serialized,
-                details=details
             )
 
             db_item = ItemRepository.edit_item(
@@ -345,6 +401,24 @@ class InventoryService:
         except Exception as e:
             logger.error(f"Failed to edit item: {str(e)}", exc_info=True)
             raise
+
+    @staticmethod
+    def delete_item_type(type_id: int) -> bool:
+        """Delete an ItemType together with all its items and transactions.
+
+        Args:
+            type_id: The ItemType ID.
+
+        Returns:
+            True if deleted, False if not found.
+        """
+        logger.info(f"Attempting to delete item type: id={type_id}")
+        result = ItemTypeRepository.delete(type_id)
+        if result:
+            logger.info(f"ItemType deleted successfully: id={type_id}")
+        else:
+            logger.warning(f"Failed to delete item type (not found): id={type_id}")
+        return result
 
     @staticmethod
     def delete_item(item_id: int) -> bool:

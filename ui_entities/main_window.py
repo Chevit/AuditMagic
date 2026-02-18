@@ -289,9 +289,8 @@ class MainWindow(QMainWindow):
 
         if reply == QMessageBox.StandardButton.Yes:
             if is_grouped:
-                # Delete all items for this type
-                for item_id in item.item_ids:
-                    InventoryService.delete_item(item_id)
+                # Delete the entire ItemType (cascades to all items + transactions)
+                InventoryService.delete_item_type(item.item_type_id)
             elif item.id is not None:
                 InventoryService.delete_item(item.id)
             self.inventory_model.remove_item(row)
@@ -333,15 +332,13 @@ class MainWindow(QMainWindow):
             )
             if dialog.exec():
                 try:
-                    new_item, _ = InventoryService.create_or_merge_item(
+                    new_item = InventoryService.create_serialized_item(
                         item_type_name=item.item_type,
-                        sub_type=item.sub_type or "",
-                        quantity=1,
-                        is_serialized=True,
+                        item_sub_type=item.sub_type or "",
                         serial_number=dialog.get_serial_number(),
-                        location=dialog.get_location(),
-                        condition=dialog.get_condition(),
-                        transaction_notes=dialog.get_notes(),
+                        # location=dialog.get_location(),
+                        # condition=dialog.get_condition(),
+                        notes=dialog.get_notes(),
                     )
                     if new_item:
                         self._refresh_item_list()
@@ -428,6 +425,7 @@ class MainWindow(QMainWindow):
         dialog = TransactionsDialog(
             item_type_id=item.item_type_id,
             item_name=item_name,
+            item_is_serialized=item.is_serialized,
             parent=self,
         )
         dialog.set_transactions_callback(

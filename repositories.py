@@ -52,7 +52,7 @@ class ItemTypeRepository:
         name: str,
         sub_type: str = "",
         is_serialized: bool = False,
-        details: str = ""
+        details: str = "",
     ) -> ItemType:
         """Get existing type or create new one.
 
@@ -63,7 +63,7 @@ class ItemTypeRepository:
             name: Type name
             sub_type: Sub-type name
             is_serialized: Whether serialized
-            details: Type description
+            details: Type description (applied only when creating a new type)
 
         Returns:
             Existing or newly created ItemType.
@@ -96,7 +96,7 @@ class ItemTypeRepository:
                 name=name,
                 sub_type=sub_type or "",
                 is_serialized=is_serialized,
-                details=details or ""
+                details=details or "",
             )
             session.add(item_type)
             session.flush()
@@ -248,7 +248,12 @@ class ItemTypeRepository:
 
     @staticmethod
     def delete(type_id: int) -> bool:
-        """Delete an item type and all its items.
+        """Delete an item type together with all its items and transactions.
+
+        Deletion order:
+          1. Transaction records for this type (item_type_id NOT NULL — must go first).
+          2. Item records (handled by ORM cascade from ItemType).
+          3. The ItemType itself.
 
         Args:
             type_id: Type ID
@@ -259,8 +264,16 @@ class ItemTypeRepository:
         with session_scope() as session:
             item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
             if not item_type:
+                logger.warning(f"Repository: ItemType not found for deletion: id={type_id}")
                 return False
-            session.delete(item_type)  # Cascade will delete items too
+
+            # 1. Delete transactions (FK item_type_id NOT NULL — no ORM cascade)
+            session.execute(sql_delete(Transaction).where(Transaction.item_type_id == type_id))
+            session.flush()
+
+            # 2+3. Delete items + item type (ORM cascade="all, delete-orphan" handles items)
+            session.delete(item_type)
+            logger.debug(f"Repository: ItemType deleted: id={type_id}, name='{item_type.name}'")
             return True
 
     @staticmethod
@@ -417,6 +430,93 @@ class ItemRepository:
             session.flush()
             session.refresh(item)
             logger.debug(f"Repository: Item created with id={item.id}")
+            return _detach_item(item)
+
+    @staticmethod
+    def create_serialized(
+        item_type_id: int,
+        serial_number: str,
+        location: str = "",
+        condition: str = "",
+        notes: str = "",
+    ) -> Item:
+        """Create a new serialized item with grouped-quantity-aware transactions.
+
+        The ADD transaction records the group size before and after adding this
+        unit, so the history correctly reflects the full type inventory moving
+        from N to N+1.
+
+        Notes policy:
+          - First item of the type (existing_count == 0): always uses the
+            default "initial inventory" translation, ignoring caller notes.
+          - Subsequent items: uses caller-supplied notes, or "" if empty.
+
+        Args:
+            item_type_id: FK to ItemType (must be is_serialized=True).
+            serial_number: Unique serial number (required).
+            location: Storage location (optional).
+            condition: Item condition (optional).
+            notes: Transaction notes for non-first items (optional).
+
+        Returns:
+            The created Item instance.
+
+        Raises:
+            ValueError: If the type is not serialized, serial number is
+                        missing, or serial number already exists.
+        """
+        if not serial_number:
+            raise ValueError("Serial number is required for serialized items")
+
+        with session_scope() as session:
+            item_type = session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            if not item_type:
+                raise ValueError(f"ItemType with id {item_type_id} not found")
+            if not item_type.is_serialized:
+                raise ValueError(
+                    f"ItemType '{item_type.name}' is not serialized; use create() instead"
+                )
+
+            # Count existing items so the transaction reflects the group quantity
+            existing_count = (
+                session.query(func.count(Item.id))
+                .filter(Item.item_type_id == item_type_id)
+                .scalar()
+            ) or 0
+
+            item = Item(
+                item_type_id=item_type_id,
+                quantity=1,
+                serial_number=serial_number,
+                location=location or "",
+                condition=condition or "",
+            )
+            session.add(item)
+            session.flush()
+
+            # First item of a type always gets the default note
+            transaction_notes = (
+                tr("transaction.notes.initial")
+                if existing_count == 0
+                else (notes or "")
+            )
+
+            transaction = Transaction(
+                item_type_id=item_type_id,
+                transaction_type=TransactionType.ADD,
+                quantity_change=1,
+                quantity_before=existing_count,
+                quantity_after=existing_count + 1,
+                serial_number=serial_number,
+                notes=transaction_notes,
+            )
+            session.add(transaction)
+            session.flush()
+            session.refresh(item)
+            logger.debug(
+                f"Repository: Serialized item created: id={item.id}, sn={serial_number!r}, "
+                f"group qty {existing_count} -> {existing_count + 1}"
+            )
             return _detach_item(item)
 
     @staticmethod

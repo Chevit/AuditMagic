@@ -31,12 +31,14 @@ class TransactionsDialog(QDialog):
         self,
         item_type_id: int,
         item_name: str = "",
+        item_is_serialized: bool = False,
         parent=None,
     ):
         super().__init__(parent)
         self._item_type_id = item_type_id
         self._item_name = item_name
         self._transactions_callback = None
+        self._item_is_serialized = item_is_serialized
         self._setup_ui()
 
     def _setup_ui(self):
@@ -105,17 +107,22 @@ class TransactionsDialog(QDialog):
 
         # Transactions table
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(7 if self._item_is_serialized else 6)
+        horizontal_header_labels = [
+            tr("transaction.column.date"),
+            tr("transaction.column.type"),
+        ]
+        if self._item_is_serialized == True:
+            horizontal_header_labels.append(tr("field.serial_number"))
+
+        horizontal_header_labels = horizontal_header_labels + [
+            tr("transaction.column.change"),
+            tr("transaction.column.before"),
+            tr("transaction.column.after"),
+            tr("transaction.column.notes"),
+        ]
         self.table.setHorizontalHeaderLabels(
-            [
-                tr("transaction.column.date"),
-                tr("transaction.column.type"),
-                tr("field.serial_number"),
-                tr("transaction.column.change"),
-                tr("transaction.column.before"),
-                tr("transaction.column.after"),
-                tr("transaction.column.notes"),
-            ]
+            horizontal_header_labels
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -128,8 +135,11 @@ class TransactionsDialog(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+        if self._item_is_serialized == True:
+            header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+        else:
+            header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
 
         layout.addWidget(self.table)
 
@@ -179,13 +189,19 @@ class TransactionsDialog(QDialog):
         self.table.setRowCount(len(transactions))
 
         for row, trans in enumerate(transactions):
+            column = 0
+            def incrementColumn():
+                nonlocal column
+                column += 1
+
             # Date
             date_item = QTableWidgetItem(
                 trans["created_at"].strftime("%Y-%m-%d %H:%M")
                 if trans["created_at"]
                 else ""
             )
-            self.table.setItem(row, 0, date_item)
+            self.table.setItem(row, column, date_item)
+            incrementColumn()
 
             # Type
             trans_type = trans["type"]
@@ -197,12 +213,15 @@ class TransactionsDialog(QDialog):
                 type_item.setForeground(QColor(0, 0, 192))  # Blue
             else:
                 type_item.setForeground(QColor(192, 0, 0))  # Red
-            self.table.setItem(row, 1, type_item)
+            self.table.setItem(row, column, type_item)
+            incrementColumn()
 
-            # Serial Number
-            serial = trans.get("serial_number", "") or "—"
-            serial_item = QTableWidgetItem(serial)
-            self.table.setItem(row, 2, serial_item)
+            if self._item_is_serialized == True:
+                # Serial Number
+                serial = trans.get("serial_number", "") or "—"
+                serial_item = QTableWidgetItem(serial)
+                self.table.setItem(row, column, serial_item)
+                incrementColumn()
 
             # Change
             change = trans["quantity_change"]
@@ -219,16 +238,20 @@ class TransactionsDialog(QDialog):
                 change_item.setForeground(QColor(0, 0, 192))
             else:
                 change_item.setForeground(QColor(192, 0, 0))
-            self.table.setItem(row, 3, change_item)
+            self.table.setItem(row, column, change_item)
+            incrementColumn()
 
             # Before
             before_item = QTableWidgetItem(str(trans["quantity_before"]))
-            self.table.setItem(row, 4, before_item)
+            self.table.setItem(row, column, before_item)
+            incrementColumn()
 
             # After
             after_item = QTableWidgetItem(str(trans["quantity_after"]))
-            self.table.setItem(row, 5, after_item)
+            self.table.setItem(row, column, after_item)
+            incrementColumn()
 
             # Notes
             notes_item = QTableWidgetItem(trans.get("notes", "") or "")
-            self.table.setItem(row, 6, notes_item)
+            self.table.setItem(row, column, notes_item)
+            incrementColumn()
