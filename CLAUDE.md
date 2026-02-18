@@ -37,10 +37,10 @@ ui_entities/         # UI components and models
   inventory_list_view.py # Custom QListView with context menu
   inventory_model.py # QAbstractListModel for items
   inventory_item.py  # Item dataclasses (InventoryItem, GroupedInventoryItem DTOs)
-  inventory_delegate.py # Custom rendering
+  inventory_delegate.py # Custom rendering with serialized/non-serialized pill badge
   translations.py    # i18n (Ukrainian/English)
   add_item_dialog.py # Add item form with optional "Initial Notes" field (stored as transaction notes)
-  edit_item_dialog.py # Edit item form with serial number management
+  edit_item_dialog.py # Edit item form; read-only serialized badge; conflict detection on type rename
   add_serial_number_dialog.py # Add serial number to existing type
   remove_serial_number_dialog.py # Remove serial numbers from group
   item_details_dialog.py # Item details view
@@ -102,6 +102,8 @@ Enhanced edit dialog with serialized item support:
 - **Type-aware UI**: Read-only quantity for serialized items, editable for non-serialized
 - **Bulk serial deletion**: Track deleted serial numbers via `get_deleted_serial_numbers()`
 - **Edit reason**: Required notes field for audit trail
+- **Serialized badge**: Read-only green/grey badge shows the type's serialization state
+- **Conflict detection**: Renaming to an existing type with different `is_serialized` shows a red label and blocks save
 
 ### AddSerialNumberDialog
 Streamlined dialog for adding a new serialized item to an existing ItemType:
@@ -143,7 +145,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - **ItemType**: `name`, `sub_type`, `is_serialized`, `details`
 - Represents a category/template for items (e.g., "Laptop - ThinkPad X1")
 - One ItemType can have many Items
-- `is_serialized`: Boolean flag indicating if items of this type have unique serial numbers
+- `is_serialized`: **immutable** once the type has any items — enforced in `get_or_create` (conflict guard) and `update` (item-count guard)
 
 ### Item (Inventory Instances)
 - **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location`, `condition`
@@ -296,6 +298,9 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
 - GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`
 - Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
+- **`is_serialized` immutability**: `ItemTypeRepository.get_or_create` raises `ValueError` on conflict; `update` raises if items exist. UI pre-fills and locks the checkbox when the user types an existing type name in AddItemDialog.
+- `ItemTypeRepository.get_by_name_and_subtype` / `InventoryService.get_item_type_by_name_subtype`: live lookup used by dialogs to detect existing types while user types
+- Serialized badge colors: green `#2e7d32` (serialized) / grey `#757575` (non-serialized) — fixed for accessibility, not theme-dependent
 - Serialized item management: serial number listing, deletion in edit dialog
 - Centralized styling with helper functions
 - Theme switching with instant preview
