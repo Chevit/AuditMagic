@@ -191,8 +191,8 @@ if item.is_serialized:
                 quantity=1,
                 is_serialized=True,
                 serial_number=dialog.get_serial_number(),
-                location=dialog.get_location(),
-                condition=dialog.get_condition(),
+                # location=dialog.get_location(),
+                # condition=dialog.get_condition(),
                 notes=dialog.get_notes(),
             )
             if new_item:

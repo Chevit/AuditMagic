@@ -93,17 +93,17 @@ class AddSerialNumberDialog(QDialog):
         apply_input_style(self.serial_edit)
         form_layout.addRow(serial_label, self.serial_edit)
 
-        # Location (optional)
-        location_label = QLabel("Location:")
-        self.location_edit = QLineEdit()
-        apply_input_style(self.location_edit)
-        form_layout.addRow(location_label, self.location_edit)
-
-        # Condition (optional)
-        condition_label = QLabel("Condition:")
-        self.condition_edit = QLineEdit()
-        apply_input_style(self.condition_edit)
-        form_layout.addRow(condition_label, self.condition_edit)
+        # # Location (optional)
+        # location_label = QLabel("Location:")
+        # self.location_edit = QLineEdit()
+        # apply_input_style(self.location_edit)
+        # form_layout.addRow(location_label, self.location_edit)
+        #
+        # # Condition (optional)
+        # condition_label = QLabel("Condition:")
+        # self.condition_edit = QLineEdit()
+        # apply_input_style(self.condition_edit)
+        # form_layout.addRow(condition_label, self.condition_edit)
 
         # Notes (optional)
         notes_label = QLabel(tr("label.notes"))
@@ -163,13 +163,13 @@ class AddSerialNumberDialog(QDialog):
         """Return the entered serial number."""
         return self.serial_edit.text().strip()
 
-    def get_location(self) -> str:
-        """Return the entered location."""
-        return self.location_edit.text().strip()
-
-    def get_condition(self) -> str:
-        """Return the entered condition."""
-        return self.condition_edit.text().strip()
+    # def get_location(self) -> str:
+    #     """Return the entered location."""
+    #     return self.location_edit.text().strip()
+    #
+    # def get_condition(self) -> str:
+    #     """Return the entered condition."""
+    #     return self.condition_edit.text().strip()
 
     def get_notes(self) -> str:
         """Return the entered notes."""
