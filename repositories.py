@@ -248,6 +248,35 @@ class ItemTypeRepository:
             return [_detach_item_type(t) for t in types]
 
     @staticmethod
+    def _get_types_with_items(session, type_filter=None) -> list:
+        """Shared helper to query item types with their items.
+
+        Args:
+            session: Database session.
+            type_filter: Optional SQLAlchemy filter clause to apply to the ItemType query.
+
+        Returns:
+            List of tuples (ItemType, List[Item]) for each matching type that has items.
+        """
+        query = session.query(ItemType).join(Item)
+        if type_filter is not None:
+            query = query.filter(type_filter)
+        types_with_items = query.order_by(ItemType.name, ItemType.sub_type).all()
+
+        result = []
+        for item_type in types_with_items:
+            items = (
+                session.query(Item)
+                .filter(Item.item_type_id == item_type.id)
+                .order_by(Item.serial_number, Item.id)
+                .all()
+            )
+            detached_type = _detach_item_type(item_type)
+            detached_items = [_detach_item(item) for item in items]
+            result.append((detached_type, detached_items))
+        return result
+
+    @staticmethod
     def get_all_with_items() -> list:
         """Get all item types with their items for grouped display.
 
@@ -255,29 +284,7 @@ class ItemTypeRepository:
             List of tuples (ItemType, List[Item]) for each type that has items.
         """
         with session_scope() as session:
-            # Get all types that have at least one item
-            types_with_items = (
-                session.query(ItemType)
-                .join(Item)
-                .order_by(ItemType.name, ItemType.sub_type)
-                .all()
-            )
-
-            result = []
-            for item_type in types_with_items:
-                # Get all items for this type
-                items = (
-                    session.query(Item)
-                    .filter(Item.item_type_id == item_type.id)
-                    .order_by(Item.serial_number, Item.id)
-                    .all()
-                )
-                # Detach both type and items
-                detached_type = _detach_item_type(item_type)
-                detached_items = [_detach_item(item) for item in items]
-                result.append((detached_type, detached_items))
-
-            return result
+            return ItemTypeRepository._get_types_with_items(session)
 
     @staticmethod
     def get_serialized_with_items() -> list:
@@ -287,27 +294,9 @@ class ItemTypeRepository:
             List of tuples (ItemType, List[Item]) for each serialized type that has items.
         """
         with session_scope() as session:
-            types_with_items = (
-                session.query(ItemType)
-                .join(Item)
-                .filter(ItemType.is_serialized.is_(True))
-                .order_by(ItemType.name, ItemType.sub_type)
-                .all()
+            return ItemTypeRepository._get_types_with_items(
+                session, ItemType.is_serialized.is_(True)
             )
-
-            result = []
-            for item_type in types_with_items:
-                items = (
-                    session.query(Item)
-                    .filter(Item.item_type_id == item_type.id)
-                    .order_by(Item.serial_number, Item.id)
-                    .all()
-                )
-                detached_type = _detach_item_type(item_type)
-                detached_items = [_detach_item(item) for item in items]
-                result.append((detached_type, detached_items))
-
-            return result
 
 
 class ItemRepository:
