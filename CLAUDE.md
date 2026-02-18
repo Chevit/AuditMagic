@@ -276,6 +276,7 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Modal dialogs for all CRUD operations
 - Transaction audit trail for all inventory changes (with before/after quantities)
 - GroupedInventoryItem aggregation: items grouped by ItemType in list view
+- Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
 - Serialized item management: serial number listing, deletion in edit dialog
 - Centralized styling with helper functions
 - Theme switching with instant preview
