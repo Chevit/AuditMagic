@@ -199,6 +199,25 @@ class InventoryService:
         return result
 
     @staticmethod
+    def get_serialized_items_grouped() -> List[GroupedInventoryItem]:
+        """Get serialized inventory items grouped by type.
+
+        Returns only items belonging to serialized ItemTypes,
+        aggregated with their serial numbers.
+
+        Returns:
+            List of GroupedInventoryItem instances for serialized types only.
+        """
+        types_with_items = ItemTypeRepository.get_serialized_with_items()
+        result = []
+
+        for item_type, items in types_with_items:
+            grouped = GroupedInventoryItem.from_item_type_and_items(item_type, items)
+            result.append(grouped)
+
+        return result
+
+    @staticmethod
     def get_autocomplete_types(prefix: str = "") -> List[str]:
         """Get autocomplete suggestions for item types.
 
