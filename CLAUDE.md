@@ -21,10 +21,14 @@ theme_config.py      # Theme configuration with enum-based parameters
 theme_manager.py     # Theme management (light/dark modes)
 styles.py            # Centralized UI styles (complements qt-material)
 db.py                # Database init, session management, migrations
-models.py            # SQLAlchemy models (Item, Transaction, SearchHistory)
-repositories.py      # Data access layer (ItemRepository, TransactionRepository)
+models.py            # SQLAlchemy models (ItemType, Item, Transaction, SearchHistory)
+repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, SearchHistoryRepository)
 services.py          # Business logic (InventoryService, SearchService)
 validators.py        # QValidator subclasses and validation helpers
+requirements.txt     # Core dependencies
+requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort)
+mypy.ini             # MyPy configuration
+alembic.ini          # Alembic configuration
 alembic/             # Database migration scripts
   versions/          # Migration files
 ui/                  # Qt Designer .ui files
@@ -32,11 +36,11 @@ ui_entities/         # UI components and models
   main_window.py     # Main window controller with theme menu
   inventory_list_view.py # Custom QListView with context menu
   inventory_model.py # QAbstractListModel for items
-  inventory_item.py  # Item dataclass (DTO)
+  inventory_item.py  # Item dataclasses (InventoryItem, GroupedInventoryItem DTOs)
   inventory_delegate.py # Custom rendering
   translations.py    # i18n (Ukrainian/English)
   add_item_dialog.py # Add item form with custom styling
-  edit_item_dialog.py # Edit item form with reason field
+  edit_item_dialog.py # Edit item form with serial number management
   item_details_dialog.py # Item details view
   quantity_dialog.py # Add/remove quantity dialog
   transactions_dialog.py # Transaction history view with filters
@@ -72,7 +76,7 @@ python main.py
 - Custom delegates for list item rendering
 - Custom QListView (InventoryListView) with context menu and signal-based actions
 - pyqtSignal for component communication
-- Python dataclasses for data models (InventoryItem as DTO)
+- Python dataclasses for data models (InventoryItem and GroupedInventoryItem as DTOs)
 - SQLAlchemy ORM with detached object pattern (copy before returning from session)
 - Alembic migrations with batch mode for SQLite compatibility
 - uic.loadUi() for .ui file loading
@@ -89,6 +93,18 @@ Custom QListView widget providing enhanced inventory list functionality:
 - **Double-click support** for quick access to item details
 - **Custom delegate** (InventoryItemDelegate) for rich item rendering
 - **Signals**: `edit_requested`, `details_requested`, `delete_requested`, `add_quantity_requested`, `remove_quantity_requested`, `transactions_requested`
+
+### EditItemDialog
+Enhanced edit dialog with serialized item support:
+- **Serial number management**: Lists all serial numbers for serialized items with delete capability
+- **Type-aware UI**: Read-only quantity for serialized items, editable for non-serialized
+- **Bulk serial deletion**: Track deleted serial numbers via `get_deleted_serial_numbers()`
+- **Edit reason**: Required notes field for audit trail
+
+### GroupedInventoryItem
+Aggregated DTO that groups all items of the same ItemType into a single list row:
+- Stores `item_ids`, `serial_numbers`, `total_quantity`, `item_count`
+- Legacy compatibility properties (`id`, `quantity`, `serial_number`) for uniform handling with InventoryItem
 
 ### Usage Pattern
 ```python
@@ -121,8 +137,8 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - Database constraint enforces: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
 
 ### Transaction
-- **Transaction**: `item_id` (FK), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `notes`
-- Tracks all inventory changes with audit trail
+- **Transaction**: `item_id` (FK), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`
+- Tracks all inventory changes with full audit trail (before/after quantities)
 - ItemType `details` = type description; Item `notes` = item-specific notes; Transaction `notes` = reason for change
 
 ## Theme System 🎨
@@ -190,7 +206,8 @@ tm.toggle_theme()               # Switch between light/dark
 - **qt-material**: Provides base Material Design theme
 - **theme_config.py**: Centralized theme parameters in enum values
 - **styles.py**: Theme-aware helpers that fetch from current theme
-- **Helper functions**: `apply_input_style()`, `apply_button_style()`, `apply_text_edit_style()`
+- **Helper functions**: `apply_input_style()`, `apply_button_style()`, `apply_text_edit_style()`, `apply_combo_box_style()`
+- **Utility classes**: `Colors` (theme-aware color access), `Dimensions` (theme-aware dimension access), `Styles` (stylesheet generators)
 - **Dynamic dimensions**: All widgets retrieve sizes from `get_theme_dimensions()`
 - **Dynamic colors**: All widgets retrieve colors from `get_theme_colors()`
 - **Action button colors**: Constant (green, red, blue) with theme-aware disabled states
@@ -257,7 +274,9 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Context menu actions: Edit, Details, Add/Remove Quantity, Transactions, Delete
 - Double-click opens details dialog
 - Modal dialogs for all CRUD operations
-- Transaction audit trail for all inventory changes
+- Transaction audit trail for all inventory changes (with before/after quantities)
+- GroupedInventoryItem aggregation: items grouped by ItemType in list view
+- Serialized item management: serial number listing, deletion in edit dialog
 - Centralized styling with helper functions
 - Theme switching with instant preview
 - Configuration persistence with dot-notation access
@@ -265,8 +284,10 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
-- **IMPROVEMENTS.md**: ⭐ **Comprehensive improvement guide for Claude Code** - step-by-step implementation instructions with code examples, priorities, and testing guidelines
-- **DIMENSION_GUIDE.md**: Complete guide to theme dimensions (heights, widths, padding, fonts)
-- **THEME_SYSTEM_REFACTOR.md**: Documentation of theme system refactor
-- **THEME_FIXES.md**: Theme-related fixes and improvements
-- **IMPLEMENTATION_GUIDE.md**: Detailed implementation guide (if applicable)
+- **IMPROVEMENTS.md**: Comprehensive improvement guide with step-by-step instructions
+- **README.md**: Project readme
+- **DIALOGS_UPDATED.md**: Dialog update documentation
+- **IMPLEMENT_HIERARCHICAL_MODEL.md / _PART2.md**: Hierarchical data model implementation guide
+- **IMPLEMENTATION_COMPLETE.md**: Implementation completion notes
+- **MIGRATION_SUCCESS.md**: Database migration documentation
+- **SERIAL_NUMBER_PROPOSAL.md**: Serial number feature proposal

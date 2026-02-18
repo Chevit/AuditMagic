@@ -337,6 +337,24 @@ class InventoryService:
         return result
 
     @staticmethod
+    def delete_items_by_serial_numbers(serial_numbers: List[str]) -> int:
+        """Delete items by their serial numbers in a single transaction.
+
+        Args:
+            serial_numbers: List of serial numbers to delete.
+
+        Returns:
+            Number of items deleted.
+        """
+        if not serial_numbers:
+            return 0
+
+        logger.info(f"Deleting {len(serial_numbers)} items by serial numbers")
+        deleted_count = ItemRepository.delete_by_serial_numbers(serial_numbers)
+        logger.info(f"Deleted {deleted_count} of {len(serial_numbers)} items by serial numbers")
+        return deleted_count
+
+    @staticmethod
     def add_quantity(
         item_id: int, quantity: int, notes: str = ""
     ) -> Optional[InventoryItem]:

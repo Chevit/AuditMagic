@@ -183,30 +183,80 @@ class MainWindow(QMainWindow):
 
     def _on_edit_item(self, row: int, item):
         """Handle edit request for an inventory item."""
-        # For grouped items, get the first item ID
-        item_id = item.item_ids[0] if isinstance(item, GroupedInventoryItem) else item.id
+        from repositories import ItemRepository
+
+        is_grouped = isinstance(item, GroupedInventoryItem)
 
         dialog = EditItemDialog(item, self)
         if dialog.exec():
             edited_item = dialog.get_item()
             edit_notes = dialog.get_edit_notes()
+            deleted_serials = dialog.get_deleted_serial_numbers()
+
+            # Determine the item ID to edit (before any deletions)
+            item_id = None
+            existing_serial = None
+            if is_grouped:
+                if item.is_serialized:
+                    # Pick the first remaining serial (deterministic via sorted list)
+                    remaining_serials = [
+                        sn for sn in item.serial_numbers if sn not in deleted_serials
+                    ]
+                    if remaining_serials:
+                        db_item = ItemRepository.search_by_serial(remaining_serials[0])
+                        if db_item:
+                            item_id = db_item.id
+                            existing_serial = db_item.serial_number
+                else:
+                    item_id = item.item_ids[0] if item.item_ids else None
+            else:
+                item_id = item.id
+
+            # Edit the item first (validates at DB level before we delete anything)
+            edit_succeeded = False
             if edited_item and item_id is not None:
-                updated_item = InventoryService.edit_item(
-                    item_id=item_id,
-                    item_type_name=edited_item.item_type_name,
-                    sub_type=edited_item.item_sub_type,
-                    quantity=edited_item.quantity,
-                    is_serialized=edited_item.is_serialized,
-                    serial_number=edited_item.serial_number or "",
-                    details=edited_item.details or "",
-                    location=edited_item.location or "",
-                    condition=edited_item.condition or "",
-                    notes=edited_item.notes or "",
-                    edit_reason=edit_notes,
-                )
-                if updated_item:
-                    # Refresh list to show updated grouped items
-                    self._refresh_item_list()
+                serial_to_use = existing_serial if existing_serial else (edited_item.serial_number or "")
+
+                try:
+                    updated_item = InventoryService.edit_item(
+                        item_id=item_id,
+                        item_type_name=edited_item.item_type_name,
+                        sub_type=edited_item.item_sub_type,
+                        quantity=edited_item.quantity,
+                        is_serialized=edited_item.is_serialized,
+                        serial_number=serial_to_use,
+                        details=edited_item.details or "",
+                        location=edited_item.location or "",
+                        condition=edited_item.condition or "",
+                        notes=edited_item.notes or "",
+                        edit_reason=edit_notes,
+                    )
+                    if updated_item:
+                        edit_succeeded = True
+                except Exception as e:
+                    logger.error(f"Failed to edit item: {e}")
+                    QMessageBox.warning(
+                        self,
+                        tr("error.generic.title"),
+                        f"{tr('error.generic.message')}\n{e}",
+                    )
+                    return
+
+            # Only delete serial numbers after edit succeeds
+            if deleted_serials:
+                try:
+                    deleted_count = InventoryService.delete_items_by_serial_numbers(deleted_serials)
+                    logger.info(f"Deleted {deleted_count} items with serial numbers")
+                except Exception as e:
+                    logger.error(f"Failed to delete serial numbers: {e}")
+                    QMessageBox.warning(
+                        self,
+                        tr("error.generic.title"),
+                        f"{tr('error.generic.message')}\n{e}",
+                    )
+
+            if edit_succeeded or deleted_serials:
+                self._refresh_item_list()
 
     def _on_show_details(self, row: int, item):
         """Handle show details request for an inventory item."""

@@ -51,6 +51,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "button.add_quantity": "Додати кількість",
         "button.remove_quantity": "Зменшити кількість",
         "button.transactions": "Транзакції",
+        "button.delete_selected": "Видалити вибраний",
         # Item fields
         "field.id": "ID",
         "field.type": "Тип",
@@ -82,6 +83,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "error.generic.title": "Помилка",
         "error.generic.message": "Виникла помилка при виконанні операції:",
         # Placeholders
+        "placeholder.quantity": "Введіть кількість...",
         "placeholder.type": "Введіть тип...",
         "placeholder.subtype": "Введіть підтип (необов'язково)...",
         "placeholder.serial_number": "Введіть серійний номер (необов'язково)...",
@@ -133,6 +135,11 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.theme.changed.text": "Нова тема застосована успішно!",
         "message.serialized_use_add_item": "Для серійних товарів використовуйте кнопку 'Додати' для створення нового елемента з серійним номером.",
         "message.serialized_use_delete": "Для видалення серійного товару використовуйте функцію 'Видалити'.",
+        "message.select_serial_to_delete": "Виберіть серійний номер для видалення",
+        "message.confirm_delete_serial": "Ви впевнені, що хочете видалити серійний номер {serial}?",
+        "message.at_least_one_serial": "Повинен залишитись хоча б один серійний номер",
+        "message.quantity_required": "Кількість є обов'язковою",
+        "message.quantity_invalid": "Кількість має бути числом",
         # Main window
         "main.add_item": "Додати елемент",
         # Search
@@ -175,6 +182,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "button.add_quantity": "Add Quantity",
         "button.remove_quantity": "Remove Quantity",
         "button.transactions": "Transactions",
+        "button.delete_selected": "Delete Selected",
         # Item fields
         "field.id": "ID",
         "field.type": "Type",
@@ -206,6 +214,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "error.generic.message": "An error occurred while performing the operation:",
         "label.recent_searches": "Recent searches:",
         # Placeholders
+        "placeholder.quantity": "Enter quantity...",
         "placeholder.type": "Enter item type...",
         "placeholder.subtype": "Enter item sub-type (optional)...",
         "placeholder.serial_number": "Enter serial number (optional)...",
@@ -257,6 +266,11 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.theme.changed.text": "New theme applied successfully!",
         "message.serialized_use_add_item": "For serialized items, use 'Add' button to create a new item with a serial number.",
         "message.serialized_use_delete": "To remove a serialized item, use the 'Delete' function.",
+        "message.select_serial_to_delete": "Select a serial number to delete",
+        "message.confirm_delete_serial": "Are you sure you want to delete serial number {serial}?",
+        "message.at_least_one_serial": "At least one serial number must remain",
+        "message.quantity_required": "Quantity is required",
+        "message.quantity_invalid": "Quantity must be a number",
         # Main window
         "main.add_item": "Add Item",
         # Search

@@ -822,6 +822,31 @@ class ItemRepository:
             return [row[0] for row in results if row[0]]
 
     @staticmethod
+    def delete_by_serial_numbers(serial_numbers: List[str]) -> int:
+        """Delete items by their serial numbers in a single transaction.
+
+        Args:
+            serial_numbers: List of serial numbers to delete.
+
+        Returns:
+            Number of items deleted.
+        """
+        if not serial_numbers:
+            return 0
+
+        with session_scope() as session:
+            items = (
+                session.query(Item)
+                .filter(Item.serial_number.in_(serial_numbers))
+                .all()
+            )
+            count = len(items)
+            for item in items:
+                session.delete(item)
+            logger.debug(f"Repository: Bulk deleted {count} items by serial numbers")
+            return count
+
+    @staticmethod
     def get_items_at_location(location: str) -> List[Item]:
         """Get all items at a specific location.
 

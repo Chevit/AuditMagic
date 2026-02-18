@@ -7,7 +7,8 @@
       "Bash(.venvScriptspython -m black logger.py main.py db.py services.py repositories.py)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ls:*)"
     ]
   }
 }
