@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import delete as sql_delete, func, or_
 from sqlalchemy.orm import Session
 
 from db import session_scope
@@ -361,7 +361,7 @@ class ItemRepository:
             # Create initial transaction
             if quantity > 0:
                 transaction = Transaction(
-                    item_id=item.id,
+                    item_type_id=item_type_id,
                     transaction_type=TransactionType.ADD,
                     quantity_change=quantity,
                     quantity_before=0,
@@ -483,7 +483,7 @@ class ItemRepository:
             # Record a single EDIT transaction capturing all changes
             quantity_diff = quantity - quantity_before
             edit_transaction = Transaction(
-                item_id=item.id,
+                item_type_id=item_type_id,
                 transaction_type=TransactionType.EDIT,
                 quantity_change=abs(quantity_diff),
                 quantity_before=quantity_before,
@@ -545,7 +545,7 @@ class ItemRepository:
             item.quantity += quantity
 
             transaction = Transaction(
-                item_id=item.id,
+                item_type_id=item.item_type_id,
                 transaction_type=TransactionType.ADD,
                 quantity_change=quantity,
                 quantity_before=quantity_before,
@@ -600,7 +600,7 @@ class ItemRepository:
             item.quantity -= quantity
 
             transaction = Transaction(
-                item_id=item.id,
+                item_type_id=item.item_type_id,
                 transaction_type=TransactionType.REMOVE,
                 quantity_change=quantity,
                 quantity_before=quantity_before,
@@ -836,9 +836,11 @@ class ItemRepository:
                 .all()
             )
             count = len(items)
+
+            # Create REMOVE transactions first
             for item in items:
                 transaction = Transaction(
-                    item_id=item.id,
+                    item_type_id=item.item_type_id,
                     transaction_type=TransactionType.REMOVE,
                     quantity_change=1,
                     quantity_before=1,
@@ -847,7 +849,16 @@ class ItemRepository:
                     notes=notes,
                 )
                 session.add(transaction)
-                session.delete(item)
+
+            # Flush transactions into DB before items are deleted
+            session.flush()
+
+            # Delete items via direct SQL to bypass ORM cascade (preserves the
+            # REMOVE transactions we just inserted as audit records)
+            session.execute(
+                sql_delete(Item).where(Item.serial_number.in_(serial_numbers))
+            )
+
             logger.debug(f"Repository: Bulk deleted {count} items by serial numbers")
             return count
 
@@ -875,11 +886,17 @@ class TransactionRepository:
     """Repository for Transaction operations."""
 
     @staticmethod
-    def get_by_item(item_id: int) -> List[Transaction]:
-        """Get all transactions for an item.
+    def get_by_type_and_date_range(
+        type_id: int,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> List[Transaction]:
+        """Get all transactions for an ItemType within a date range.
 
         Args:
-            item_id: The item's ID.
+            type_id: ItemType ID to filter by.
+            start_date: Start of the date range.
+            end_date: End of the date range.
 
         Returns:
             List of Transaction instances ordered by date (newest first).
@@ -887,62 +904,32 @@ class TransactionRepository:
         with session_scope() as session:
             transactions = (
                 session.query(Transaction)
-                .filter(Transaction.item_id == item_id)
+                .filter(
+                    Transaction.item_type_id == type_id,
+                    Transaction.created_at >= start_date,
+                    Transaction.created_at <= end_date,
+                )
                 .order_by(Transaction.created_at.desc())
                 .all()
             )
             return [_detach_transaction(t) for t in transactions]
 
     @staticmethod
-    def get_by_date_range(
-        start_date: datetime,
-        end_date: datetime,
-        item_id: int = None,
-        item_ids: List[int] = None,
-    ) -> List[Transaction]:
-        """Get transactions within a date range.
-
-        Args:
-            start_date: Start of the date range.
-            end_date: End of the date range.
-            item_id: Optional single item ID to filter by.
-            item_ids: Optional list of item IDs to filter by (overrides item_id).
-
-        Returns:
-            List of Transaction instances ordered by date (newest first).
-        """
-        with session_scope() as session:
-            query = session.query(Transaction).filter(
-                Transaction.created_at >= start_date, Transaction.created_at <= end_date
-            )
-
-            if item_ids is not None:
-                query = query.filter(Transaction.item_id.in_(item_ids))
-            elif item_id is not None:
-                query = query.filter(Transaction.item_id == item_id)
-
-            transactions = query.order_by(Transaction.created_at.desc()).all()
-            return [_detach_transaction(t) for t in transactions]
-
-    @staticmethod
-    def get_recent(limit: int = 50, item_id: int = None) -> List[Transaction]:
+    def get_recent(limit: int = 50) -> List[Transaction]:
         """Get recent transactions.
 
         Args:
             limit: Maximum number of transactions to return.
-            item_id: Optional item ID to filter by.
 
         Returns:
             List of Transaction instances ordered by date (newest first).
         """
         with session_scope() as session:
-            query = session.query(Transaction)
-
-            if item_id is not None:
-                query = query.filter(Transaction.item_id == item_id)
-
             transactions = (
-                query.order_by(Transaction.created_at.desc()).limit(limit).all()
+                session.query(Transaction)
+                .order_by(Transaction.created_at.desc())
+                .limit(limit)
+                .all()
             )
             return [_detach_transaction(t) for t in transactions]
 
@@ -1050,7 +1037,7 @@ def _detach_transaction(trans: Transaction) -> Transaction:
         return None
     return Transaction(
         id=trans.id,
-        item_id=trans.item_id,
+        item_type_id=trans.item_type_id,
         transaction_type=trans.transaction_type,
         quantity_change=trans.quantity_change,
         quantity_before=trans.quantity_before,

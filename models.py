@@ -108,7 +108,6 @@ class Item(Base):
 
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
-    transactions = relationship("Transaction", back_populates="item", cascade="all, delete-orphan")
 
     # Constraints: Either bulk (no SN, qty > 0) OR serialized (has SN, qty = 1)
     __table_args__ = (
@@ -133,7 +132,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
+    item_type_id = Column(Integer, ForeignKey("item_types.id"), nullable=False, index=True)
     transaction_type = Column(SQLEnum(TransactionType), nullable=False)
     quantity_change = Column(Integer, nullable=False)
     quantity_before = Column(Integer, nullable=False)
@@ -144,11 +143,11 @@ class Transaction(Base):
         DateTime, default=lambda: datetime.now(timezone.utc), index=True
     )
 
-    # Relationship to item
-    item = relationship("Item", back_populates="transactions")
+    # Relationships
+    item_type = relationship("ItemType")
 
     def __repr__(self):
-        return f"<Transaction(id={self.id}, item_id={self.item_id}, type={self.transaction_type.value}, change={self.quantity_change})>"
+        return f"<Transaction(id={self.id}, type_id={self.item_type_id}, type={self.transaction_type.value}, change={self.quantity_change})>"
 
 
 class SearchHistory(Base):

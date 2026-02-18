@@ -422,20 +422,16 @@ class MainWindow(QMainWindow):
 
     def _on_show_transactions(self, row: int, item):
         """Handle show transactions request."""
-        is_grouped = isinstance(item, GroupedInventoryItem)
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        if is_grouped:
-            dialog = TransactionsDialog(
-                item_ids=item.item_ids, item_name=item_name, parent=self
-            )
-        else:
-            dialog = TransactionsDialog(
-                item_id=item.id, item_name=item_name, parent=self
-            )
+        dialog = TransactionsDialog(
+            item_type_id=item.item_type_id,
+            item_name=item_name,
+            parent=self,
+        )
         dialog.set_transactions_callback(
-            TransactionService.get_transactions_by_date_range
+            TransactionService.get_transactions_by_type_and_date_range
         )
         dialog.exec()
 

@@ -29,14 +29,12 @@ class TransactionsDialog(QDialog):
 
     def __init__(
         self,
-        item_id: int = None,
-        item_ids: list = None,
+        item_type_id: int,
         item_name: str = "",
         parent=None,
     ):
         super().__init__(parent)
-        self._item_id = item_id
-        self._item_ids = item_ids
+        self._item_type_id = item_type_id
         self._item_name = item_name
         self._transactions_callback = None
         self._setup_ui()
@@ -150,7 +148,7 @@ class TransactionsDialog(QDialog):
         """Set the callback for getting transactions.
 
         Args:
-            callback: Function(start_date, end_date, item_id) -> List[dict]
+            callback: Function(type_id, start_date, end_date) -> List[dict]
         """
         self._transactions_callback = callback
         self._load_transactions()
@@ -171,15 +169,9 @@ class TransactionsDialog(QDialog):
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
-        if self._item_ids:
-            transactions = self._transactions_callback(
-                start_datetime, end_datetime, item_ids=self._item_ids
-            )
-        else:
-            transactions = self._transactions_callback(
-                start_datetime, end_datetime, self._item_id
-            )
-
+        transactions = self._transactions_callback(
+            self._item_type_id, start_datetime, end_datetime
+        )
         self._populate_table(transactions)
 
     def _populate_table(self, transactions: List[dict]):

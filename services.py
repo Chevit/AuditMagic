@@ -476,53 +476,37 @@ class TransactionService:
     """Service for transaction history operations."""
 
     @staticmethod
-    def get_item_transactions(item_id: int) -> List[dict]:
-        """Get all transactions for an item.
-
-        Args:
-            item_id: The item's ID.
-
-        Returns:
-            List of transaction dictionaries.
-        """
-        transactions = TransactionRepository.get_by_item(item_id)
-        return [_transaction_to_dict(t) for t in transactions]
-
-    @staticmethod
-    def get_transactions_by_date_range(
+    def get_transactions_by_type_and_date_range(
+        type_id: int,
         start_date: datetime,
         end_date: datetime,
-        item_id: int = None,
-        item_ids: List[int] = None,
     ) -> List[dict]:
-        """Get transactions within a date range.
+        """Get all transactions for an ItemType within a date range.
 
         Args:
+            type_id: ItemType ID.
             start_date: Start of the date range.
             end_date: End of the date range.
-            item_id: Optional single item ID to filter by.
-            item_ids: Optional list of item IDs to filter by (overrides item_id).
 
         Returns:
             List of transaction dictionaries.
         """
-        transactions = TransactionRepository.get_by_date_range(
-            start_date, end_date, item_id, item_ids
+        transactions = TransactionRepository.get_by_type_and_date_range(
+            type_id, start_date, end_date
         )
         return [_transaction_to_dict(t) for t in transactions]
 
     @staticmethod
-    def get_recent_transactions(limit: int = 50, item_id: int = None) -> List[dict]:
+    def get_recent_transactions(limit: int = 50) -> List[dict]:
         """Get recent transactions.
 
         Args:
             limit: Maximum number of transactions to return.
-            item_id: Optional item ID to filter by.
 
         Returns:
             List of transaction dictionaries.
         """
-        transactions = TransactionRepository.get_recent(limit, item_id)
+        transactions = TransactionRepository.get_recent(limit)
         return [_transaction_to_dict(t) for t in transactions]
 
 
@@ -530,7 +514,7 @@ def _transaction_to_dict(trans) -> dict:
     """Convert a Transaction to a dictionary."""
     return {
         "id": trans.id,
-        "item_id": trans.item_id,
+        "item_type_id": trans.item_type_id,
         "type": trans.transaction_type.value,
         "quantity_change": trans.quantity_change,
         "quantity_before": trans.quantity_before,
