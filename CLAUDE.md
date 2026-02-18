@@ -39,8 +39,10 @@ ui_entities/         # UI components and models
   inventory_item.py  # Item dataclasses (InventoryItem, GroupedInventoryItem DTOs)
   inventory_delegate.py # Custom rendering
   translations.py    # i18n (Ukrainian/English)
-  add_item_dialog.py # Add item form with custom styling
+  add_item_dialog.py # Add item form with optional "Initial Notes" field (stored as transaction notes)
   edit_item_dialog.py # Edit item form with serial number management
+  add_serial_number_dialog.py # Add serial number to existing type
+  remove_serial_number_dialog.py # Remove serial numbers from group
   item_details_dialog.py # Item details view
   quantity_dialog.py # Add/remove quantity dialog
   transactions_dialog.py # Transaction history view with filters
@@ -101,6 +103,20 @@ Enhanced edit dialog with serialized item support:
 - **Bulk serial deletion**: Track deleted serial numbers via `get_deleted_serial_numbers()`
 - **Edit reason**: Required notes field for audit trail
 
+### AddSerialNumberDialog
+Streamlined dialog for adding a new serialized item to an existing ItemType:
+- **Serial number field**: Required, validated for uniqueness against existing serials
+- **Optional fields**: Location, condition, notes (notes become `transaction_notes` on the ADD transaction)
+- Does not call the service layer — the caller (main_window) handles creation
+
+### RemoveSerialNumberDialog
+Dialog for selecting serial numbers to delete from a grouped serialized item:
+- **Scrollable checkbox list** of all serial numbers in the group
+- **Dynamic counter**: "Selected: X of Y" updates as checkboxes are toggled
+- **Required notes field** for audit trail
+- **Validation**: At least one must be selected; cannot select all (use "Delete" instead)
+- Creates REMOVE transaction records for each deleted serial
+
 ### GroupedInventoryItem
 Aggregated DTO that groups all items of the same ItemType into a single list row:
 - Stores `item_ids`, `serial_numbers`, `total_quantity`, `item_count`
@@ -130,7 +146,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - `is_serialized`: Boolean flag indicating if items of this type have unique serial numbers
 
 ### Item (Inventory Instances)
-- **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location`, `condition`, `notes`
+- **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location`, `condition`
 - Represents actual inventory units
 - If serialized: quantity=1, serial_number required and unique
 - If not serialized: quantity>0, no serial_number allowed
@@ -139,7 +155,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 ### Transaction
 - **Transaction**: `item_id` (FK), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`
 - Tracks all inventory changes with full audit trail (before/after quantities)
-- ItemType `details` = type description; Item `notes` = item-specific notes; Transaction `notes` = reason for change
+- ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE)
 
 ## Theme System 🎨
 

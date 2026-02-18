@@ -99,7 +99,6 @@ class Item(Base):
     serial_number = Column(String(255), nullable=True, unique=True, index=True)
     location = Column(String(255), nullable=True)
     condition = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -140,6 +139,7 @@ class Transaction(Base):
     quantity_before = Column(Integer, nullable=False)
     quantity_after = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)
+    serial_number = Column(String(255), nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), index=True
     )

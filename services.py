@@ -22,8 +22,8 @@ class InventoryService:
         serial_number: str = None,
         location: str = "",
         condition: str = "",
-        notes: str = "",
-        details: str = ""
+        details: str = "",
+        transaction_notes: str = "",
     ) -> InventoryItem:
         """Create a new inventory item.
 
@@ -35,8 +35,8 @@ class InventoryService:
             serial_number: Serial number (required if serialized)
             location: Storage location
             condition: Item condition
-            notes: Item notes
             details: Type details (description)
+            transaction_notes: Optional notes for the initial ADD transaction
 
         Returns:
             The created InventoryItem.
@@ -58,7 +58,7 @@ class InventoryService:
                 serial_number=serial_number,
                 location=location,
                 condition=condition,
-                notes=notes
+                transaction_notes=transaction_notes or None,
             )
 
             logger.info(f"Item created successfully: id={db_item.id}")
@@ -77,7 +77,7 @@ class InventoryService:
         details: str = "",
         location: str = "",
         condition: str = "",
-        notes: str = "",
+        transaction_notes: str = "",
     ) -> Tuple[InventoryItem, bool]:
         """Create a new item or merge with existing item if type matches.
 
@@ -93,7 +93,7 @@ class InventoryService:
             details: Type details/description (optional)
             location: Storage location (optional)
             condition: Item condition (optional)
-            notes: Item notes (optional)
+            transaction_notes: Custom notes for the ADD transaction (optional)
 
         Returns:
             Tuple of (InventoryItem, was_merged: bool).
@@ -115,7 +115,7 @@ class InventoryService:
                 serial_number=serial_number,
                 location=location,
                 condition=condition,
-                notes=notes
+                transaction_notes=transaction_notes or None,
             )
             return InventoryItem.from_db_models(db_item, item_type), False
 
@@ -141,7 +141,6 @@ class InventoryService:
             serial_number=None,
             location=location,
             condition=condition,
-            notes=notes
         )
         return InventoryItem.from_db_models(db_item, item_type), False
 
@@ -248,7 +247,6 @@ class InventoryService:
         serial_number: str = None,
         location: str = None,
         condition: str = None,
-        notes: str = None,
     ) -> Optional[InventoryItem]:
         """Update an item's instance properties.
 
@@ -259,7 +257,6 @@ class InventoryService:
             serial_number: New serial number (optional)
             location: New location (optional)
             condition: New condition (optional)
-            notes: New notes (optional)
 
         Returns:
             The updated InventoryItem or None if not found.
@@ -269,7 +266,6 @@ class InventoryService:
             serial_number=serial_number,
             location=location,
             condition=condition,
-            notes=notes,
         )
         if not db_item:
             return None
@@ -287,7 +283,6 @@ class InventoryService:
         details: str = "",
         location: str = "",
         condition: str = "",
-        notes: str = "",
         edit_reason: str = "",
     ) -> Optional[InventoryItem]:
         """Edit an item's properties with full transaction logging.
@@ -302,7 +297,6 @@ class InventoryService:
             details: Type details/description.
             location: Storage location.
             condition: Item condition.
-            notes: Item notes.
             edit_reason: Reason for the edit (required).
 
         Returns:
@@ -325,7 +319,6 @@ class InventoryService:
                 serial_number=serial_number,
                 location=location,
                 condition=condition,
-                notes=notes,
                 edit_reason=edit_reason,
             )
             if db_item:
@@ -356,11 +349,12 @@ class InventoryService:
         return result
 
     @staticmethod
-    def delete_items_by_serial_numbers(serial_numbers: List[str]) -> int:
+    def delete_items_by_serial_numbers(serial_numbers: List[str], notes: str = "") -> int:
         """Delete items by their serial numbers in a single transaction.
 
         Args:
             serial_numbers: List of serial numbers to delete.
+            notes: Reason/notes for the deletion (for audit trail).
 
         Returns:
             Number of items deleted.
@@ -369,7 +363,7 @@ class InventoryService:
             return 0
 
         logger.info(f"Deleting {len(serial_numbers)} items by serial numbers")
-        deleted_count = ItemRepository.delete_by_serial_numbers(serial_numbers)
+        deleted_count = ItemRepository.delete_by_serial_numbers(serial_numbers, notes)
         logger.info(f"Deleted {deleted_count} of {len(serial_numbers)} items by serial numbers")
         return deleted_count
 
@@ -430,7 +424,7 @@ class SearchService:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
             save_to_history: Whether to save this search to history.
 
         Returns:
@@ -453,7 +447,7 @@ class SearchService:
 
         Args:
             prefix: The prefix to search for.
-            field: Field to search in ('item_type', 'sub_type', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
 
         Returns:
             List of unique suggestion strings.
@@ -496,20 +490,24 @@ class TransactionService:
 
     @staticmethod
     def get_transactions_by_date_range(
-        start_date: datetime, end_date: datetime, item_id: int = None
+        start_date: datetime,
+        end_date: datetime,
+        item_id: int = None,
+        item_ids: List[int] = None,
     ) -> List[dict]:
         """Get transactions within a date range.
 
         Args:
             start_date: Start of the date range.
             end_date: End of the date range.
-            item_id: Optional item ID to filter by.
+            item_id: Optional single item ID to filter by.
+            item_ids: Optional list of item IDs to filter by (overrides item_id).
 
         Returns:
             List of transaction dictionaries.
         """
         transactions = TransactionRepository.get_by_date_range(
-            start_date, end_date, item_id
+            start_date, end_date, item_id, item_ids
         )
         return [_transaction_to_dict(t) for t in transactions]
 
@@ -538,5 +536,6 @@ def _transaction_to_dict(trans) -> dict:
         "quantity_before": trans.quantity_before,
         "quantity_after": trans.quantity_after,
         "notes": trans.notes,
+        "serial_number": trans.serial_number,
         "created_at": trans.created_at,
     }

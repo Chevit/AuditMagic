@@ -60,14 +60,21 @@ class InventoryListView(QListView):
 
         menu.addSeparator()
 
-        # Quantity actions
-        add_qty_action = QAction(tr("menu.add_quantity"), self)
+        # Quantity actions — dynamic labels for serialized items
+        if item.is_serialized:
+            add_qty_label = tr("menu.add_serial_number")
+            remove_qty_label = tr("menu.remove_serial_number")
+        else:
+            add_qty_label = tr("menu.add_quantity")
+            remove_qty_label = tr("menu.remove_quantity")
+
+        add_qty_action = QAction(add_qty_label, self)
         add_qty_action.triggered.connect(
             lambda: self.add_quantity_requested.emit(row, item)
         )
         menu.addAction(add_qty_action)
 
-        remove_qty_action = QAction(tr("menu.remove_quantity"), self)
+        remove_qty_action = QAction(remove_qty_label, self)
         remove_qty_action.triggered.connect(
             lambda: self.remove_quantity_requested.emit(row, item)
         )

@@ -128,6 +128,14 @@ class AddItemDialog(QDialog):
         apply_text_edit_style(self.details_edit)
         form_layout.addRow(details_label, self.details_edit)
 
+        # Initial notes (optional) — stored as transaction notes on first ADD
+        initial_notes_label = QLabel(tr("label.initial_notes"))
+        self.initial_notes_edit = QTextEdit()
+        self.initial_notes_edit.setPlaceholderText(tr("placeholder.initial_notes"))
+        self.initial_notes_edit.setMaximumHeight(60)
+        apply_text_edit_style(self.initial_notes_edit)
+        form_layout.addRow(initial_notes_label, self.initial_notes_edit)
+
         layout.addLayout(form_layout)
 
         # Spacer
@@ -250,6 +258,7 @@ class AddItemDialog(QDialog):
         quantity_text = self.quantity_input.text().strip()
         serial_number = self.serial_edit.text().strip()
         details = self.details_edit.toPlainText().strip()
+        initial_notes = self.initial_notes_edit.toPlainText().strip()
         is_serialized = self.serialized_checkbox.isChecked()
 
         # Validation
@@ -307,6 +316,14 @@ class AddItemDialog(QDialog):
             if not valid:
                 errors.append(error)
 
+        # Validate initial notes length if provided
+        if initial_notes:
+            valid, error = validate_length(
+                initial_notes, tr("label.initial_notes"), max_length=1000
+            )
+            if not valid:
+                errors.append(error)
+
         # Show errors if any
         if errors:
             QMessageBox.warning(
@@ -338,7 +355,8 @@ class AddItemDialog(QDialog):
                 quantity=quantity,
                 is_serialized=is_serialized,
                 serial_number=serial_number if is_serialized else None,
-                details=details
+                details=details,
+                transaction_notes=initial_notes or None,
             )
             logger.info(f"Item created successfully: id={self._result_item.id}")
             self.accept()

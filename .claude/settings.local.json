@@ -8,7 +8,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(.venv/Scripts/python.exe:*)"
     ]
   }
 }

@@ -16,7 +16,6 @@ class InventoryItem:
     serial_number: Optional[str]
     location: Optional[str]
     condition: Optional[str]
-    notes: Optional[str]
     details: Optional[str]  # From ItemType.details
     created_at: datetime
     updated_at: datetime
@@ -42,7 +41,6 @@ class InventoryItem:
             serial_number=item.serial_number,
             location=item.location or "",
             condition=item.condition or "",
-            notes=item.notes or "",
             details=item_type.details or "",
             created_at=item.created_at,
             updated_at=item.updated_at
@@ -90,7 +88,6 @@ class InventoryItem:
             "serial_number": self.serial_number,
             "location": self.location,
             "condition": self.condition,
-            "notes": self.notes,
             "details": self.details,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -199,11 +196,6 @@ class GroupedInventoryItem:
     @property
     def condition(self) -> str:
         """Grouped items don't have a single condition."""
-        return ""
-
-    @property
-    def notes(self) -> str:
-        """Grouped items don't have single notes."""
         return ""
 
     def to_dict(self) -> dict:

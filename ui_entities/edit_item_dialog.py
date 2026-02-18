@@ -425,7 +425,6 @@ class EditItemDialog(QDialog):
             serial_number=serial_number or None,
             location=self._original_item.location,
             condition=self._original_item.condition,
-            notes=self._original_item.notes,
             details=item_details,
             created_at=self._original_item.created_at,
             updated_at=self._original_item.updated_at,

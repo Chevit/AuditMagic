@@ -309,7 +309,7 @@ class ItemRepository:
         serial_number: str = None,
         location: str = None,
         condition: str = None,
-        notes: str = None
+        transaction_notes: str = None,
     ) -> Item:
         """Create a new item instance.
 
@@ -319,7 +319,8 @@ class ItemRepository:
             serial_number: Serial number (required if type is serialized)
             location: Storage location
             condition: Item condition
-            notes: Additional notes
+            transaction_notes: Custom notes for the initial ADD transaction
+                (defaults to "Initial inventory" translation)
 
         Returns:
             The created Item instance.
@@ -353,7 +354,6 @@ class ItemRepository:
                 serial_number=serial_number or None,
                 location=location or "",
                 condition=condition or "",
-                notes=notes or ""
             )
             session.add(item)
             session.flush()
@@ -366,7 +366,8 @@ class ItemRepository:
                     quantity_change=quantity,
                     quantity_before=0,
                     quantity_after=quantity,
-                    notes=tr("transaction.notes.initial")
+                    serial_number=serial_number or None,
+                    notes=transaction_notes or tr("transaction.notes.initial"),
                 )
                 session.add(transaction)
 
@@ -406,7 +407,6 @@ class ItemRepository:
         serial_number: str = None,
         location: str = None,
         condition: str = None,
-        notes: str = None,
     ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
@@ -418,7 +418,6 @@ class ItemRepository:
             serial_number: New serial number (optional)
             location: New location (optional)
             condition: New condition (optional)
-            notes: New notes (optional)
 
         Returns:
             The updated Item instance or None if not found.
@@ -434,8 +433,6 @@ class ItemRepository:
                 item.location = location
             if condition is not None:
                 item.condition = condition
-            if notes is not None:
-                item.notes = notes
 
             session.commit()
             session.refresh(item)
@@ -449,7 +446,6 @@ class ItemRepository:
         serial_number: str,
         location: str,
         condition: str,
-        notes: str,
         edit_reason: str,
     ) -> Optional[Item]:
         """Edit an item's properties and quantity, recording all changes as transactions.
@@ -464,7 +460,6 @@ class ItemRepository:
             serial_number: New serial number (or empty string for none).
             location: New location.
             condition: New condition.
-            notes: New item notes.
             edit_reason: Reason for the edit (required, stored in transaction notes).
 
         Returns:
@@ -484,7 +479,6 @@ class ItemRepository:
             item.serial_number = serial_number or None
             item.location = location or ""
             item.condition = condition or ""
-            item.notes = notes or ""
 
             # Record a single EDIT transaction capturing all changes
             quantity_diff = quantity - quantity_before
@@ -652,7 +646,7 @@ class ItemRepository:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
 
         Returns:
             List of matching Item instances.
@@ -676,12 +670,6 @@ class ItemRepository:
                     .filter(Item.serial_number.ilike(search_pattern))
                     .all()
                 )
-            elif field == "notes":
-                items = (
-                    session.query(Item)
-                    .filter(Item.notes.ilike(search_pattern))
-                    .all()
-                )
             else:
                 # Search in all relevant fields
                 items = (
@@ -691,7 +679,6 @@ class ItemRepository:
                             ItemType.sub_type.ilike(search_pattern),
                             ItemType.details.ilike(search_pattern),
                             Item.serial_number.ilike(search_pattern),
-                            Item.notes.ilike(search_pattern),
                         )
                     )
                     .all()
@@ -707,7 +694,7 @@ class ItemRepository:
 
         Args:
             prefix: The prefix to search for.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', 'notes', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
             limit: Maximum number of suggestions.
 
         Returns:
@@ -763,20 +750,6 @@ class ItemRepository:
                     .all()
                 )
                 suggestions.update(s[0] for s in serials if s[0])
-
-            if field == "notes" or field is None:
-                # For notes, extract words that start with the prefix
-                notes_rows = (
-                    session.query(Item.notes)
-                    .filter(Item.notes.ilike(f"%{prefix}%"))
-                    .all()
-                )
-                for (note,) in notes_rows:
-                    if note:
-                        words = note.split()
-                        for word in words:
-                            if word.lower().startswith(prefix.lower()):
-                                suggestions.add(word)
 
             return sorted(list(suggestions))[:limit]
 
@@ -841,11 +814,14 @@ class ItemRepository:
             return [row[0] for row in results if row[0]]
 
     @staticmethod
-    def delete_by_serial_numbers(serial_numbers: List[str]) -> int:
+    def delete_by_serial_numbers(serial_numbers: List[str], notes: str = "") -> int:
         """Delete items by their serial numbers in a single transaction.
+
+        Creates REMOVE transaction records for each deleted item before deletion.
 
         Args:
             serial_numbers: List of serial numbers to delete.
+            notes: Reason/notes for the deletion (for audit trail).
 
         Returns:
             Number of items deleted.
@@ -861,6 +837,16 @@ class ItemRepository:
             )
             count = len(items)
             for item in items:
+                transaction = Transaction(
+                    item_id=item.id,
+                    transaction_type=TransactionType.REMOVE,
+                    quantity_change=1,
+                    quantity_before=1,
+                    quantity_after=0,
+                    serial_number=item.serial_number,
+                    notes=notes,
+                )
+                session.add(transaction)
                 session.delete(item)
             logger.debug(f"Repository: Bulk deleted {count} items by serial numbers")
             return count
@@ -909,14 +895,18 @@ class TransactionRepository:
 
     @staticmethod
     def get_by_date_range(
-        start_date: datetime, end_date: datetime, item_id: int = None
+        start_date: datetime,
+        end_date: datetime,
+        item_id: int = None,
+        item_ids: List[int] = None,
     ) -> List[Transaction]:
         """Get transactions within a date range.
 
         Args:
             start_date: Start of the date range.
             end_date: End of the date range.
-            item_id: Optional item ID to filter by.
+            item_id: Optional single item ID to filter by.
+            item_ids: Optional list of item IDs to filter by (overrides item_id).
 
         Returns:
             List of Transaction instances ordered by date (newest first).
@@ -926,7 +916,9 @@ class TransactionRepository:
                 Transaction.created_at >= start_date, Transaction.created_at <= end_date
             )
 
-            if item_id is not None:
+            if item_ids is not None:
+                query = query.filter(Transaction.item_id.in_(item_ids))
+            elif item_id is not None:
                 query = query.filter(Transaction.item_id == item_id)
 
             transactions = query.order_by(Transaction.created_at.desc()).all()
@@ -1047,7 +1039,6 @@ def _detach_item(item: Item) -> Item:
         serial_number=item.serial_number,
         location=item.location,
         condition=item.condition,
-        notes=item.notes,
         created_at=item.created_at,
         updated_at=item.updated_at,
     )
@@ -1065,6 +1056,7 @@ def _detach_transaction(trans: Transaction) -> Transaction:
         quantity_before=trans.quantity_before,
         quantity_after=trans.quantity_after,
         notes=trans.notes,
+        serial_number=trans.serial_number,
         created_at=trans.created_at,
     )
 

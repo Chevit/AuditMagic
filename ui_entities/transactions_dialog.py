@@ -27,9 +27,16 @@ from ui_entities.translations import tr
 class TransactionsDialog(QDialog):
     """Dialog for displaying transaction history."""
 
-    def __init__(self, item_id: int = None, item_name: str = "", parent=None):
+    def __init__(
+        self,
+        item_id: int = None,
+        item_ids: list = None,
+        item_name: str = "",
+        parent=None,
+    ):
         super().__init__(parent)
         self._item_id = item_id
+        self._item_ids = item_ids
         self._item_name = item_name
         self._transactions_callback = None
         self._setup_ui()
@@ -100,11 +107,12 @@ class TransactionsDialog(QDialog):
 
         # Transactions table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels(
             [
                 tr("transaction.column.date"),
                 tr("transaction.column.type"),
+                tr("field.serial_number"),
                 tr("transaction.column.change"),
                 tr("transaction.column.before"),
                 tr("transaction.column.after"),
@@ -122,7 +130,8 @@ class TransactionsDialog(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
 
         layout.addWidget(self.table)
 
@@ -162,9 +171,14 @@ class TransactionsDialog(QDialog):
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
-        transactions = self._transactions_callback(
-            start_datetime, end_datetime, self._item_id
-        )
+        if self._item_ids:
+            transactions = self._transactions_callback(
+                start_datetime, end_datetime, item_ids=self._item_ids
+            )
+        else:
+            transactions = self._transactions_callback(
+                start_datetime, end_datetime, self._item_id
+            )
 
         self._populate_table(transactions)
 
@@ -193,6 +207,11 @@ class TransactionsDialog(QDialog):
                 type_item.setForeground(QColor(192, 0, 0))  # Red
             self.table.setItem(row, 1, type_item)
 
+            # Serial Number
+            serial = trans.get("serial_number", "") or "—"
+            serial_item = QTableWidgetItem(serial)
+            self.table.setItem(row, 2, serial_item)
+
             # Change
             change = trans["quantity_change"]
             if trans_type == "edit":
@@ -208,16 +227,16 @@ class TransactionsDialog(QDialog):
                 change_item.setForeground(QColor(0, 0, 192))
             else:
                 change_item.setForeground(QColor(192, 0, 0))
-            self.table.setItem(row, 2, change_item)
+            self.table.setItem(row, 3, change_item)
 
             # Before
             before_item = QTableWidgetItem(str(trans["quantity_before"]))
-            self.table.setItem(row, 3, before_item)
+            self.table.setItem(row, 4, before_item)
 
             # After
             after_item = QTableWidgetItem(str(trans["quantity_after"]))
-            self.table.setItem(row, 4, after_item)
+            self.table.setItem(row, 5, after_item)
 
             # Notes
             notes_item = QTableWidgetItem(trans.get("notes", "") or "")
-            self.table.setItem(row, 5, notes_item)
+            self.table.setItem(row, 6, notes_item)
