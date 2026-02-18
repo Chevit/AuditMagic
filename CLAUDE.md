@@ -23,7 +23,7 @@ styles.py            # Centralized UI styles (complements qt-material)
 db.py                # Database init, session management, migrations
 models.py            # SQLAlchemy models (ItemType, Item, Transaction, SearchHistory)
 repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, SearchHistoryRepository)
-services.py          # Business logic (InventoryService, SearchService)
+services.py          # Business logic (InventoryService, SearchService, TransactionService)
 validators.py        # QValidator subclasses and validation helpers
 requirements.txt     # Core dependencies
 requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort)
@@ -45,7 +45,7 @@ ui_entities/         # UI components and models
   remove_serial_number_dialog.py # Remove serial numbers from group
   item_details_dialog.py # Item details view
   quantity_dialog.py # Add/remove quantity dialog
-  transactions_dialog.py # Transaction history view with filters
+  transactions_dialog.py # Transaction history view filtered by ItemType and date range
   search_widget.py   # Search with autocomplete and styled inputs
 ```
 
@@ -153,7 +153,9 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - Database constraint enforces: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
 
 ### Transaction
-- **Transaction**: `item_id` (FK), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`
+- **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`
+- Belongs to **ItemType**, not Item — audit trail is preserved even when items are deleted
+- `serial_number` on the transaction identifies the specific serialized unit involved
 - Tracks all inventory changes with full audit trail (before/after quantities)
 - ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE)
 
@@ -290,8 +292,9 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Context menu actions: Edit, Details, Add/Remove Quantity, Transactions, Delete
 - Double-click opens details dialog
 - Modal dialogs for all CRUD operations
-- Transaction audit trail for all inventory changes (with before/after quantities)
-- GroupedInventoryItem aggregation: items grouped by ItemType in list view
+- **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
+- `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
+- GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`
 - Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
 - Serialized item management: serial number listing, deletion in edit dialog
 - Centralized styling with helper functions
@@ -301,10 +304,5 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
-- **IMPROVEMENTS.md**: Comprehensive improvement guide with step-by-step instructions
 - **README.md**: Project readme
-- **DIALOGS_UPDATED.md**: Dialog update documentation
-- **IMPLEMENT_HIERARCHICAL_MODEL.md / _PART2.md**: Hierarchical data model implementation guide
-- **IMPLEMENTATION_COMPLETE.md**: Implementation completion notes
-- **MIGRATION_SUCCESS.md**: Database migration documentation
-- **SERIAL_NUMBER_PROPOSAL.md**: Serial number feature proposal
+- **IMPROVEMENTS.md**: Improvement guide with step-by-step instructions
