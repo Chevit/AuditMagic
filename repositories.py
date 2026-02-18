@@ -279,6 +279,36 @@ class ItemTypeRepository:
 
             return result
 
+    @staticmethod
+    def get_serialized_with_items() -> list:
+        """Get all serialized item types with their items.
+
+        Returns:
+            List of tuples (ItemType, List[Item]) for each serialized type that has items.
+        """
+        with session_scope() as session:
+            types_with_items = (
+                session.query(ItemType)
+                .join(Item)
+                .filter(ItemType.is_serialized.is_(True))
+                .order_by(ItemType.name, ItemType.sub_type)
+                .all()
+            )
+
+            result = []
+            for item_type in types_with_items:
+                items = (
+                    session.query(Item)
+                    .filter(Item.item_type_id == item_type.id)
+                    .order_by(Item.serial_number, Item.id)
+                    .all()
+                )
+                detached_type = _detach_item_type(item_type)
+                detached_items = [_detach_item(item) for item in items]
+                result.append((detached_type, detached_items))
+
+            return result
+
 
 class ItemRepository:
     """Repository for Item CRUD operations."""
