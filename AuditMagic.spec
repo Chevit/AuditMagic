@@ -16,6 +16,8 @@ a = Analysis(
     ],
     hiddenimports=[
         'sqlalchemy.dialects.sqlite',
+        'logging.config',
+        'logging.handlers',
     ],
     hookspath=[],
     hooksconfig={},
