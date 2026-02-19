@@ -1,5 +1,6 @@
 import sys
 
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 from config import config
@@ -8,6 +9,19 @@ from logger import logger
 from theme_config import Theme
 from theme_manager import init_theme_manager
 from ui_entities.main_window import MainWindow
+from update_checker import UpdateInfo, check_for_update
+from version import __version__
+
+
+class UpdateCheckWorker(QThread):
+    """Background thread for checking for application updates."""
+
+    update_available = pyqtSignal(object)  # emits UpdateInfo
+
+    def run(self) -> None:
+        result = check_for_update()
+        if result:
+            self.update_available.emit(result)
 
 
 def main():
@@ -39,9 +53,21 @@ def main():
         window = MainWindow()
         logger.info("MainWindow created successfully")
 
+        window.setWindowTitle(f"{window.windowTitle()} v{__version__}")
 
         window.show()
         logger.info("MainWindow displayed")
+
+        def _show_update_dialog(update_info: UpdateInfo) -> None:
+            from ui_entities.update_dialog import UpdateDialog
+
+            dialog = UpdateDialog(update_info, window)
+            dialog.exec()
+
+        update_worker = UpdateCheckWorker()
+        update_worker.update_available.connect(_show_update_dialog)
+        update_worker.start()
+        logger.info("Update check started in background")
 
         exit_code = app.exec()
         logger.info(f"Application exited with code: {exit_code}")

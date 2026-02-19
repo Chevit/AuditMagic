@@ -1,4 +1,5 @@
 from PyQt6 import uic
+from runtime import resource_path
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -32,7 +33,7 @@ from ui_entities.translations import tr
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/MainWindow.ui", self)
+        uic.loadUi(resource_path("ui/MainWindow.ui"), self)
 
         # Initialize database
         init_database()

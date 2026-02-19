@@ -27,10 +27,18 @@ def get_language() -> Language:
     return _current_language
 
 
-def tr(key: str) -> str:
-    """Translate a key to the current language."""
+def tr(key: str, **kwargs) -> str:
+    """Translate a key to the current language.
+
+    Args:
+        key: Translation key.
+        **kwargs: Optional format arguments applied to the translated string.
+    """
     translations = _TRANSLATIONS.get(_current_language, _TRANSLATIONS[Language.ENGLISH])
-    return translations.get(key, _TRANSLATIONS[Language.ENGLISH].get(key, key))
+    text = translations.get(key, _TRANSLATIONS[Language.ENGLISH].get(key, key))
+    if kwargs:
+        text = text.format(**kwargs)
+    return text
 
 
 # Translation dictionaries
@@ -184,6 +192,13 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "transaction.notes.initial": "Початковий інвентар",
         "transaction.notes.merged": "Додано через створення нового елемента",
         "transaction.notes.added_serial": "Додано серійний номер",
+        # Update dialog
+        "update.title": "Доступне оновлення",
+        "update.available": "Доступна нова версія {version}!",
+        "update.current_version": "Поточна версія: {version}",
+        "update.release_notes": "Примітки до випуску:",
+        "update.skip": "Пропустити",
+        "update.download": "Завантажити",
     },
     Language.ENGLISH: {
         # Common
@@ -334,5 +349,12 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "transaction.notes.initial": "Initial inventory",
         "transaction.notes.merged": "Added via new item entry",
         "transaction.notes.added_serial": "Added serial number",
+        # Update dialog
+        "update.title": "Update Available",
+        "update.available": "A new version {version} is available!",
+        "update.current_version": "Current version: {version}",
+        "update.release_notes": "Release Notes:",
+        "update.skip": "Skip",
+        "update.download": "Download",
     },
 }

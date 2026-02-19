@@ -14,7 +14,11 @@ PyQt6 desktop inventory management application with Material Design theming.
 
 ## Project Structure
 ```
-main.py              # Entry point with theme initialization
+main.py              # Entry point with theme initialization and update checker
+version.py           # Single source of truth for app version (__version__)
+runtime.py           # PyInstaller resource path helpers (resource_path)
+update_checker.py    # GitHub release update checker (check_for_update, UpdateInfo)
+AuditMagic.spec      # PyInstaller build specification
 config.py            # Configuration management (JSON, dot-notation)
 logger.py            # Centralized logging system
 theme_config.py      # Theme configuration with enum-based parameters
@@ -27,9 +31,11 @@ services.py          # Business logic (InventoryService, SearchService, Transact
 validators.py        # QValidator subclasses and validation helpers
 test_serialized_feature.py # Automated tests for is_serialized feature (34 checks)
 requirements.txt     # Core dependencies
-requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort)
+requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort, pyinstaller)
 mypy.ini             # MyPy configuration
 alembic.ini          # Alembic configuration
+.github/workflows/
+  build.yml          # GitHub Actions: build & release on version tag push
 alembic/             # Database migration scripts
   versions/          # Migration files
 ui/                  # Qt Designer .ui files
@@ -48,6 +54,7 @@ ui_entities/         # UI components and models
   quantity_dialog.py # Add/remove quantity dialog
   transactions_dialog.py # Transaction history view filtered by ItemType and date range
   search_widget.py   # Search with autocomplete and styled inputs
+  update_dialog.py   # Update notification dialog (shown on startup if newer version found)
 ```
 
 ## Setup
@@ -310,6 +317,33 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Theme switching with instant preview
 - Configuration persistence with dot-notation access
 - Enum-based theme configuration for maintainability
+
+## Auto-Update System
+
+### Version Management
+- Version defined in `version.py` (`__version__`)
+- Displayed in main window title bar as `"<title> v<version>"`
+- Compared against GitHub Releases API on every startup
+
+### Packaging (PyInstaller)
+- Spec file: `AuditMagic.spec`
+- Bundled data: `ui/MainWindow.ui`, `alembic/`, `alembic.ini`, `qt_material`
+- Resource paths resolved via `runtime.resource_path()` (handles both dev and bundled modes)
+- Build: `pyinstaller AuditMagic.spec`
+- Output: `dist/AuditMagic.exe`
+
+### Update Checker
+- Checks `https://api.github.com/repos/Chevit/AuditMagic/releases/latest`
+- Runs in `UpdateCheckWorker(QThread)` on startup — non-blocking
+- Shows `UpdateDialog` with download/skip buttons if newer version found
+- Uses `urllib` (stdlib only — no extra dependencies)
+
+### Release Process
+1. Update `__version__` in `version.py`
+2. Commit: `git commit -am "Bump version to X.Y.Z"`
+3. Tag: `git tag vX.Y.Z`
+4. Push: `git push && git push --tags`
+5. GitHub Actions builds `.exe` and creates a release automatically
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions

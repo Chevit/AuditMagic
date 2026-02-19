@@ -100,10 +100,12 @@ def run_migrations() -> None:
     """Run database migrations using Alembic."""
     from alembic import command
     from alembic.config import Config
+    from runtime import resource_path
 
     logger.info("Running database migrations...")
 
-    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+    alembic_cfg = Config(resource_path("alembic.ini"))
+    alembic_cfg.set_main_option("script_location", resource_path("alembic"))
 
     try:
         command.upgrade(alembic_cfg, "head")
