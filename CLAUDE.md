@@ -25,6 +25,7 @@ models.py            # SQLAlchemy models (ItemType, Item, Transaction, SearchHis
 repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, SearchHistoryRepository)
 services.py          # Business logic (InventoryService, SearchService, TransactionService)
 validators.py        # QValidator subclasses and validation helpers
+test_serialized_feature.py # Automated tests for is_serialized feature (34 checks)
 requirements.txt     # Core dependencies
 requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort)
 mypy.ini             # MyPy configuration
@@ -108,8 +109,8 @@ Enhanced edit dialog with serialized item support:
 ### AddSerialNumberDialog
 Streamlined dialog for adding a new serialized item to an existing ItemType:
 - **Serial number field**: Required, validated for uniqueness against existing serials
-- **Optional fields**: Location, condition, notes (notes become `transaction_notes` on the ADD transaction)
-- Does not call the service layer — the caller (main_window) handles creation
+- **Notes field**: Optional; passed as transaction notes for non-first items
+- Caller (`main_window`) invokes `InventoryService.create_serialized_item` on accept
 
 ### RemoveSerialNumberDialog
 Dialog for selecting serial numbers to delete from a grouped serialized item:
@@ -158,7 +159,8 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`
 - Belongs to **ItemType**, not Item — audit trail is preserved even when items are deleted
 - `serial_number` on the transaction identifies the specific serialized unit involved
-- Tracks all inventory changes with full audit trail (before/after quantities)
+- For **serialized items**: `quantity_before/after` reflect the total group count (how many items of that type exist), not the individual item quantity (which is always 1)
+- For **non-serialized items**: `quantity_before/after` reflect the single Item row's quantity
 - ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE)
 
 ## Theme System 🎨
@@ -295,6 +297,8 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Double-click opens details dialog
 - Modal dialogs for all CRUD operations
 - **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
+- **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). These count existing items of the type first to set `quantity_before/after` correctly for the grouped view. Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
+- **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction rows via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item rows via ORM cascade from ItemType, (3) ItemType itself.
 - `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
 - GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`
 - Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
