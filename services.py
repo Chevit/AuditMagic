@@ -226,14 +226,15 @@ class InventoryService:
             List of all InventoryItem instances.
         """
         db_items = ItemRepository.get_all()
-        result = []
-
-        for db_item in db_items:
-            item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
-            if item_type:
-                result.append(InventoryItem.from_db_models(db_item, item_type))
-
-        return result
+        if not db_items:
+            return []
+        type_ids = list({item.item_type_id for item in db_items})
+        type_map = ItemTypeRepository.get_by_ids(type_ids)
+        return [
+            InventoryItem.from_db_models(item, type_map[item.item_type_id])
+            for item in db_items
+            if item.item_type_id in type_map
+        ]
 
     @staticmethod
     def get_all_items_grouped() -> List[GroupedInventoryItem]:
@@ -524,12 +525,15 @@ class SearchService:
             SearchHistoryRepository.add(query, field)
 
         db_items = ItemRepository.search(query, field)
-        result = []
-        for item in db_items:
-            item_type = ItemTypeRepository.get_by_id(item.item_type_id)
-            if item_type:
-                result.append(InventoryItem.from_db_models(item, item_type))
-        return result
+        if not db_items:
+            return []
+        type_ids = list({item.item_type_id for item in db_items})
+        type_map = ItemTypeRepository.get_by_ids(type_ids)
+        return [
+            InventoryItem.from_db_models(item, type_map[item.item_type_id])
+            for item in db_items
+            if item.item_type_id in type_map
+        ]
 
     @staticmethod
     def get_autocomplete_suggestions(prefix: str, field: str = None) -> List[str]:

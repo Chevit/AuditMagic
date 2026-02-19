@@ -1,7 +1,7 @@
 """Repository layer for database operations."""
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import delete as sql_delete, func, or_
 from sqlalchemy.orm import Session
@@ -141,6 +141,22 @@ class ItemTypeRepository:
                 .first()
             )
             return _detach_item_type(item_type) if item_type else None
+
+    @staticmethod
+    def get_by_ids(type_ids: List[int]) -> Dict[int, "ItemType"]:
+        """Batch-fetch ItemTypes by IDs in a single query.
+
+        Args:
+            type_ids: List of ItemType IDs to fetch.
+
+        Returns:
+            Dict mapping id → ItemType for each found type.
+        """
+        if not type_ids:
+            return {}
+        with session_scope() as session:
+            types = session.query(ItemType).filter(ItemType.id.in_(type_ids)).all()
+            return {t.id: _detach_item_type(t) for t in types}
 
     @staticmethod
     def get_all() -> List[ItemType]:
@@ -314,23 +330,27 @@ class ItemTypeRepository:
         Returns:
             List of tuples (ItemType, List[Item]) for each matching type that has items.
         """
-        query = session.query(ItemType).join(Item)
+        query = (
+            session.query(ItemType, Item)
+            .join(Item, Item.item_type_id == ItemType.id)
+            .order_by(ItemType.name, ItemType.sub_type, Item.serial_number, Item.id)
+        )
         if type_filter is not None:
             query = query.filter(type_filter)
-        types_with_items = query.order_by(ItemType.name, ItemType.sub_type).all()
+        rows = query.all()
 
-        result = []
-        for item_type in types_with_items:
-            items = (
-                session.query(Item)
-                .filter(Item.item_type_id == item_type.id)
-                .order_by(Item.serial_number, Item.id)
-                .all()
-            )
-            detached_type = _detach_item_type(item_type)
-            detached_items = [_detach_item(item) for item in items]
-            result.append((detached_type, detached_items))
-        return result
+        seen: dict = {}
+        order: list = []
+        for item_type, item in rows:
+            if item_type.id not in seen:
+                seen[item_type.id] = (item_type, [])
+                order.append(item_type.id)
+            seen[item_type.id][1].append(item)
+
+        return [
+            (_detach_item_type(seen[tid][0]), [_detach_item(i) for i in seen[tid][1]])
+            for tid in order
+        ]
 
     @staticmethod
     def get_all_with_items() -> list:
@@ -869,16 +889,17 @@ class ItemRepository:
 
             if field == "details" or field is None:
                 # For details, extract words that start with the prefix
+                prefix_lower = prefix.lower()
                 details_rows = (
                     session.query(ItemType.details)
                     .filter(ItemType.details.ilike(f"%{prefix}%"))
+                    .limit(limit)
                     .all()
                 )
                 for (detail,) in details_rows:
                     if detail:
-                        words = detail.split()
-                        for word in words:
-                            if word.lower().startswith(prefix.lower()):
+                        for word in detail.split():
+                            if word.lower().startswith(prefix_lower):
                                 suggestions.add(word)
 
             if field == "serial_number" or field is None:
@@ -1107,7 +1128,7 @@ class SearchHistoryRepository:
             if existing:
                 # Update timestamp to move it to the top
                 existing.created_at = datetime.now(timezone.utc)
-                session.commit()
+                session.flush()
                 return _detach_search_history(existing)
 
             # Add new search
@@ -1125,10 +1146,12 @@ class SearchHistoryRepository:
             )
 
             if len(all_history) > SearchHistoryRepository.MAX_HISTORY:
-                for old_entry in all_history[SearchHistoryRepository.MAX_HISTORY :]:
-                    session.delete(old_entry)
+                keep_ids = [h.id for h in all_history[:SearchHistoryRepository.MAX_HISTORY]]
+                session.execute(
+                    sql_delete(SearchHistory).where(SearchHistory.id.notin_(keep_ids))
+                )
 
-            session.commit()
+            session.flush()
             return _detach_search_history(history)
 
     @staticmethod
