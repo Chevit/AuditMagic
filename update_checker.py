@@ -11,6 +11,7 @@ from version import __version__
 
 GITHUB_API_URL = "https://api.github.com/repos/Chevit/AuditMagic/releases/latest"
 REQUEST_TIMEOUT = 10  # seconds
+MAX_RESPONSE_SIZE = 512 * 1024  # 512 KB — guard against oversized responses
 
 
 @dataclass
@@ -40,7 +41,7 @@ def check_for_update() -> Optional[UpdateInfo]:
             },
         )
         with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            data = json.loads(response.read(MAX_RESPONSE_SIZE).decode("utf-8"))
 
         latest_tag = data.get("tag_name", "")
         latest_version = latest_tag.lstrip("v")
@@ -54,7 +55,9 @@ def check_for_update() -> Optional[UpdateInfo]:
             download_url = ""
             for asset in data.get("assets", []):
                 if asset["name"].lower().endswith(".exe"):
-                    download_url = asset["browser_download_url"]
+                    url = asset.get("browser_download_url", "")
+                    if url.startswith("https://"):
+                        download_url = url
                     break
 
             info = UpdateInfo(

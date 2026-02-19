@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from logger import logger
 from styles import apply_button_style
 from ui_entities.translations import tr
 
@@ -179,10 +180,20 @@ class TransactionsDialog(QDialog):
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
-        transactions = self._transactions_callback(
-            self._item_type_id, start_datetime, end_datetime
-        )
-        self._populate_table(transactions)
+        try:
+            transactions = self._transactions_callback(
+                self._item_type_id, start_datetime, end_datetime
+            )
+            self._populate_table(transactions)
+        except Exception as e:
+            logger.error(f"Failed to load transactions: {e}", exc_info=True)
+            self.table.setRowCount(0)
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                tr("error.generic.title"),
+                f"{tr('error.generic.message')}\n{e}",
+            )
 
     def _populate_table(self, transactions: List[dict]):
         """Populate the table with transaction data."""

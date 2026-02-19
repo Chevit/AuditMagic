@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QStringListModel
+from PyQt6.QtCore import Qt, QStringListModel, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -37,6 +37,9 @@ class AddItemDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._result_item: Optional[InventoryItem] = None
+        self._type_debounce_timer = QTimer(self)
+        self._type_debounce_timer.setSingleShot(True)
+        self._type_debounce_timer.timeout.connect(self._on_type_or_subtype_changed)
         self._setup_ui()
         self._setup_validators()
         self._setup_autocomplete()
@@ -188,9 +191,9 @@ class AddItemDialog(QDialog):
         self.type_edit.textChanged.connect(self._update_type_autocomplete)
         self.type_edit.textChanged.connect(self._update_subtype_autocomplete)
 
-        # Existing-type lookup — locks serialized checkbox if type already exists
-        self.type_edit.textChanged.connect(self._on_type_or_subtype_changed)
-        self.subtype_edit.textChanged.connect(self._on_type_or_subtype_changed)
+        # Existing-type lookup — debounced to avoid a DB query on every keystroke
+        self.type_edit.textChanged.connect(self._restart_type_debounce)
+        self.subtype_edit.textChanged.connect(self._restart_type_debounce)
 
         logger.debug("Autocomplete configured")
 
@@ -255,6 +258,11 @@ class AddItemDialog(QDialog):
             self.quantity_input.setEnabled(True)
             self.quantity_input.setStyleSheet("")
             apply_input_style(self.quantity_input, large=True)
+
+    def _restart_type_debounce(self):
+        """Restart 300ms debounce timer for the type/subtype lookup."""
+        self._type_debounce_timer.stop()
+        self._type_debounce_timer.start(300)
 
     def _on_type_or_subtype_changed(self):
         """Check if the current type/subtype combination already exists in the DB.

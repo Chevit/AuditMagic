@@ -102,9 +102,12 @@ class SearchWidget(QWidget):
         text = self.search_input.text()
         if self._autocomplete_callback and len(text) >= 1:
             field = self.field_combo.currentData()
-            suggestions = self._autocomplete_callback(text, field)
-            model = QStringListModel(suggestions)
-            self.completer.setModel(model)
+            try:
+                suggestions = self._autocomplete_callback(text, field)
+                model = QStringListModel(suggestions)
+                self.completer.setModel(model)
+            except Exception:
+                pass  # autocomplete is non-critical; silently skip on error
 
     def _on_search_clicked(self):
         """Handle search button click."""

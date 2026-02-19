@@ -289,12 +289,20 @@ class MainWindow(QMainWindow):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            if is_grouped:
-                # Delete the entire ItemType (cascades to all items + transactions)
-                InventoryService.delete_item_type(item.item_type_id)
-            elif item.id is not None:
-                InventoryService.delete_item(item.id)
-            self.inventory_model.remove_item(row)
+            try:
+                if is_grouped:
+                    # Delete the entire ItemType (cascades to all items + transactions)
+                    InventoryService.delete_item_type(item.item_type_id)
+                elif item.id is not None:
+                    InventoryService.delete_item(item.id)
+                self.inventory_model.remove_item(row)
+            except Exception as e:
+                logger.error(f"Failed to delete item: {e}")
+                QMessageBox.warning(
+                    self,
+                    tr("error.generic.title"),
+                    f"{tr('error.generic.message')}\n{e}",
+                )
 
     def _on_add_clicked(self):
         """Handle add button click - open add item dialog."""
@@ -350,13 +358,9 @@ class MainWindow(QMainWindow):
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        # For grouped items, use the actual quantity of the target item
+        # For grouped items, use the total_quantity already present in the DTO
         target_item_id = item.item_ids[0] if is_grouped else item.id
-        if is_grouped:
-            target_item = InventoryService.get_item(target_item_id)
-            actual_quantity = target_item.quantity if target_item else item.quantity
-        else:
-            actual_quantity = item.quantity
+        actual_quantity = item.total_quantity if is_grouped else item.quantity
         dialog = QuantityDialog(item_name, actual_quantity, is_add=True, parent=self)
         if dialog.exec():
             quantity = dialog.get_quantity()
@@ -397,13 +401,9 @@ class MainWindow(QMainWindow):
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        # For grouped items, use the actual quantity of the target item
+        # For grouped items, use the total_quantity already present in the DTO
         target_item_id = item.item_ids[0] if is_grouped else item.id
-        if is_grouped:
-            target_item = InventoryService.get_item(target_item_id)
-            actual_quantity = target_item.quantity if target_item else item.quantity
-        else:
-            actual_quantity = item.quantity
+        actual_quantity = item.total_quantity if is_grouped else item.quantity
         dialog = QuantityDialog(item_name, actual_quantity, is_add=False, parent=self)
         if dialog.exec():
             quantity = dialog.get_quantity()
@@ -467,8 +467,11 @@ class MainWindow(QMainWindow):
         """Restore window size and position from config."""
         geometry = config.get("window.geometry")
         if geometry:
-            self.restoreGeometry(bytes.fromhex(geometry))
-            logger.debug("Window geometry restored from config")
+            try:
+                self.restoreGeometry(bytes.fromhex(geometry))
+                logger.debug("Window geometry restored from config")
+            except (ValueError, Exception):
+                logger.warning("Corrupted window geometry in config, ignoring")
 
         if config.get("window.maximized", False):
             self.showMaximized()

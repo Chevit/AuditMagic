@@ -65,12 +65,22 @@ class ItemType(Base):
 
     @property
     def total_quantity(self) -> int:
-        """Get total quantity across all items of this type."""
+        """Get total quantity across all items of this type.
+
+        Note: Requires the `items` relationship to be loaded (i.e., valid only
+        within an active session). Returns 0 on detached objects created by
+        _detach_item_type(), which do not populate the relationship.
+        """
         return sum(item.quantity for item in self.items)
 
     @property
     def serial_numbers(self) -> list:
-        """Get all serial numbers for this type (if serialized)."""
+        """Get all serial numbers for this type (if serialized).
+
+        Note: Requires the `items` relationship to be loaded (i.e., valid only
+        within an active session). Returns [] on detached objects created by
+        _detach_item_type(), which do not populate the relationship.
+        """
         if not self.is_serialized:
             return []
         return [item.serial_number for item in self.items if item.serial_number]

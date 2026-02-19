@@ -1,5 +1,6 @@
 """Application configuration management."""
 
+import copy
 import json
 import os
 from typing import Any, Dict
@@ -54,9 +55,9 @@ class Config:
                 logger.info(f"Configuration loaded from: {CONFIG_FILE}")
             except Exception as e:
                 logger.error(f"Failed to load config, using defaults: {e}")
-                self._config = DEFAULT_CONFIG.copy()
+                self._config = copy.deepcopy(DEFAULT_CONFIG)
         else:
-            self._config = DEFAULT_CONFIG.copy()
+            self._config = copy.deepcopy(DEFAULT_CONFIG)
             self.save()
             logger.info(f"Default configuration created at: {CONFIG_FILE}")
 
@@ -116,7 +117,7 @@ class Config:
 
     def reset(self) -> None:
         """Reset configuration to defaults."""
-        self._config = DEFAULT_CONFIG.copy()
+        self._config = copy.deepcopy(DEFAULT_CONFIG)
         self.save()
         logger.info("Configuration reset to defaults")
 

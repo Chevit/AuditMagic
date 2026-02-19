@@ -804,12 +804,13 @@ class ItemRepository:
             return _detach_item(item) if item else None
 
     @staticmethod
-    def search(query: str, field: str = None) -> List[Item]:
+    def search(query: str, field: str = None, limit: int = 200) -> List[Item]:
         """Search items by query string.
 
         Args:
             query: Search query string.
             field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
+            limit: Maximum number of results to return.
 
         Returns:
             List of matching Item instances.
@@ -822,15 +823,16 @@ class ItemRepository:
             base_query = session.query(Item).join(ItemType)
 
             if field == "item_type":
-                items = base_query.filter(ItemType.name.ilike(search_pattern)).all()
+                items = base_query.filter(ItemType.name.ilike(search_pattern)).limit(limit).all()
             elif field == "sub_type":
-                items = base_query.filter(ItemType.sub_type.ilike(search_pattern)).all()
+                items = base_query.filter(ItemType.sub_type.ilike(search_pattern)).limit(limit).all()
             elif field == "details":
-                items = base_query.filter(ItemType.details.ilike(search_pattern)).all()
+                items = base_query.filter(ItemType.details.ilike(search_pattern)).limit(limit).all()
             elif field == "serial_number":
                 items = (
                     session.query(Item)
                     .filter(Item.serial_number.ilike(search_pattern))
+                    .limit(limit)
                     .all()
                 )
             else:
@@ -844,6 +846,7 @@ class ItemRepository:
                             Item.serial_number.ilike(search_pattern),
                         )
                     )
+                    .limit(limit)
                     .all()
                 )
 
@@ -1054,6 +1057,7 @@ class TransactionRepository:
         type_id: int,
         start_date: datetime,
         end_date: datetime,
+        limit: int = 1000,
     ) -> List[Transaction]:
         """Get all transactions for an ItemType within a date range.
 
@@ -1061,6 +1065,7 @@ class TransactionRepository:
             type_id: ItemType ID to filter by.
             start_date: Start of the date range.
             end_date: End of the date range.
+            limit: Maximum number of rows to return (default 1000).
 
         Returns:
             List of Transaction instances ordered by date (newest first).
@@ -1074,6 +1079,7 @@ class TransactionRepository:
                     Transaction.created_at <= end_date,
                 )
                 .order_by(Transaction.created_at.desc())
+                .limit(limit)
                 .all()
             )
             return [_detach_transaction(t) for t in transactions]

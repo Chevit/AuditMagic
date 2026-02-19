@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QDialog,
@@ -57,6 +57,9 @@ class EditItemDialog(QDialog):
         self._deleted_serial_numbers: List[str] = []
         self._serial_numbers: List[str] = []
         self._type_conflict: bool = False
+        self._type_debounce_timer = QTimer(self)
+        self._type_debounce_timer.setSingleShot(True)
+        self._type_debounce_timer.timeout.connect(self._on_edit_type_changed)
 
         # Get serial numbers list
         if self._is_grouped and item.serial_numbers:
@@ -318,10 +321,15 @@ class EditItemDialog(QDialog):
         self.type_edit.setValidator(ItemTypeValidator(self))
         if self.serial_edit:
             self.serial_edit.setValidator(SerialNumberValidator(self))
-        # Detect serialization conflicts on type/subtype rename
-        self.type_edit.textChanged.connect(self._on_edit_type_changed)
-        self.subtype_edit.textChanged.connect(self._on_edit_type_changed)
+        # Detect serialization conflicts on type/subtype rename — debounced
+        self.type_edit.textChanged.connect(self._restart_type_debounce)
+        self.subtype_edit.textChanged.connect(self._restart_type_debounce)
         logger.debug("Edit form validators configured")
+
+    def _restart_type_debounce(self):
+        """Restart 300ms debounce timer for the type/subtype conflict lookup."""
+        self._type_debounce_timer.stop()
+        self._type_debounce_timer.start(300)
 
     def _on_edit_type_changed(self):
         """Warn if the new type name/subtype maps to a type with different is_serialized."""
