@@ -41,5 +41,5 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,           # windowed mode, no console
     disable_windowed_traceback=False,
-    # icon='icon.ico',       # Uncomment when icon file is added
+    icon='icon.ico',
 )
