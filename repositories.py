@@ -577,7 +577,7 @@ class ItemRepository:
             if condition is not None:
                 item.condition = condition
 
-            session.commit()
+            session.flush()
             session.refresh(item)
             return _detach_item(item)
 
@@ -635,7 +635,7 @@ class ItemRepository:
             )
             session.add(edit_transaction)
 
-            session.commit()
+            session.flush()
             session.refresh(item)
             logger.debug(
                 f"Repository: Item edited: id={item_id}, reason='{edit_reason}'"
@@ -696,7 +696,7 @@ class ItemRepository:
                 notes=notes or "",
             )
             session.add(transaction)
-            session.commit()
+            session.flush()
             session.refresh(item)
             logger.debug(
                 f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}"
@@ -751,7 +751,7 @@ class ItemRepository:
                 notes=notes or "",
             )
             session.add(transaction)
-            session.commit()
+            session.flush()
             session.refresh(item)
             logger.debug(
                 f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}"
