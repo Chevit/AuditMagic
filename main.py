@@ -1,9 +1,11 @@
 import sys
 
 from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
 from config import config
+from runtime import resource_path
 from db import run_migrations
 from logger import logger
 from theme_config import Theme
@@ -31,6 +33,7 @@ def main():
 
     try:
         app = QApplication(sys.argv)
+        app.setWindowIcon(QIcon(resource_path("icon.ico")))
         logger.info("QApplication created successfully")
 
         # Initialize theme manager and apply saved theme

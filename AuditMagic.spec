@@ -13,6 +13,7 @@ a = Analysis(
         ('alembic.ini', '.'),
         ('alembic', 'alembic'),
         (qt_material_path, 'qt_material'),
+        (os.path.join(SPECPATH, 'icon.ico'), '.'),
     ],
     hiddenimports=[
         'sqlalchemy.dialects.sqlite',
@@ -43,5 +44,5 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,           # windowed mode, no console
     disable_windowed_traceback=False,
-    icon='icon.ico',
+    icon=os.path.join(SPECPATH, 'icon.ico'),
 )
