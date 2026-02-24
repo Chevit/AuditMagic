@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
 
         # 4. Set up UI components
         self._setup_ui()
+        self._setup_file_menu()
         self._setup_theme_menu()
         self._setup_location_selector()
         self._setup_search_widget()
@@ -90,6 +91,115 @@ class MainWindow(QMainWindow):
             self.all_transactions_btn = QPushButton(tr("button.all_transactions"))
             apply_button_style(self.all_transactions_btn, "info")
             self.horizontalLayout.addWidget(self.all_transactions_btn)
+
+    def _setup_file_menu(self) -> None:
+        """Set up File menu with export action."""
+        file_menu = self.menuBar().addMenu(tr("export.menu.file"))
+        export_action = file_menu.addAction(tr("export.action"))
+        export_action.triggered.connect(self._on_export_excel)
+
+    def _on_export_excel(self) -> None:
+        """Handle File → Export to Excel…"""
+        import re
+        from datetime import date
+
+        from PyQt6.QtWidgets import QDialog, QFileDialog, QMessageBox
+
+        from export_service import ExportService
+        from repositories import ItemTypeRepository
+        from services import LocationService, TransactionService
+        from ui_entities.export_options_dialog import ExportOptionsDialog
+
+        # Determine current location name
+        current_loc_id = self._current_location_id  # None means "All Locations"
+        if current_loc_id is not None:
+            loc = LocationService.get_location_by_id(current_loc_id)
+            location_name = loc.name if loc else tr("location.all")
+        else:
+            location_name = tr("location.all")
+
+        # Guard: no items in the current view
+        items = self.inventory_model.items()
+        if not items:
+            QMessageBox.warning(
+                self,
+                tr("export.dialog.title"),
+                tr("export.error.no_items"),
+            )
+            return
+
+        # Export options dialog
+        has_filter = bool(self.search_widget.get_current_query())
+        dlg = ExportOptionsDialog(
+            location_name=location_name,
+            has_active_filter=has_filter,
+            parent=self,
+        )
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        # Build suggested filename
+        safe_loc = re.sub(r"[^\w\-]", "_", location_name)
+        today = date.today().strftime("%Y-%m-%d")
+        suggested = tr("export.filename_default").format(location=safe_loc, date=today)
+
+        # Save As dialog
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("export.dialog.title"),
+            suggested,
+            "Excel Files (*.xlsx)",
+        )
+        if not path:
+            return  # user cancelled
+
+        # Load transactions if requested
+        transactions = None
+        loc_map = None
+        type_map = None
+        if dlg.include_transactions():
+            scope = dlg.transaction_scope()
+            if scope == "filtered":
+                type_ids = list({item.item_type_id for item in items})
+                transactions = TransactionService.get_for_export(
+                    location_id=current_loc_id, item_type_ids=type_ids
+                )
+            else:
+                transactions = TransactionService.get_for_export(location_id=current_loc_id)
+            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            # Build type_map with " - " separator (hyphen) so ExportService can split Name / Sub-type
+            type_map = {
+                t.id: f"{t.name} - {t.sub_type}" if t.sub_type else t.name
+                for t in ItemTypeRepository.get_all()
+            }
+
+        # Build and save workbook
+        try:
+            wb = ExportService.build_workbook(
+                items=items,
+                location_name=location_name,
+                transactions=transactions,
+                loc_map=loc_map,
+                type_map=type_map,
+            )
+            wb.save(path)
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                tr("export.dialog.title"),
+                "Could not save file. Is it open in another program?",
+            )
+            return
+        except Exception as e:
+            logger.error(f"Export failed: {e}", exc_info=True)
+            QMessageBox.critical(self, tr("export.dialog.title"), str(e))
+            return
+
+        QMessageBox.information(
+            self,
+            tr("export.success.title"),
+            tr("export.success.message").format(path=path),
+        )
 
     def _setup_theme_menu(self):
         """Set up theme switching menu."""
