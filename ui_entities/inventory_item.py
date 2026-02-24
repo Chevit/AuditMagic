@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -14,19 +14,21 @@ class InventoryItem:
     is_serialized: bool  # From ItemType.is_serialized
     quantity: int
     serial_number: Optional[str]
-    location: Optional[str]
+    location_id: Optional[int]   # FK to Location
+    location_name: str           # Resolved location name (empty string if unresolved)
     condition: Optional[str]
     details: Optional[str]  # From ItemType.details
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_db_models(cls, item, item_type):
+    def from_db_models(cls, item, item_type, location_name: str = ""):
         """Create InventoryItem from Item and ItemType models.
 
         Args:
             item: Item model instance
             item_type: ItemType model instance
+            location_name: Resolved name of the item's location (optional)
 
         Returns:
             InventoryItem instance.
@@ -39,12 +41,18 @@ class InventoryItem:
             is_serialized=item_type.is_serialized,
             quantity=item.quantity,
             serial_number=item.serial_number,
-            location=item.location or "",
+            location_id=item.location_id,
+            location_name=location_name,
             condition=item.condition or "",
             details=item_type.details or "",
             created_at=item.created_at,
-            updated_at=item.updated_at
+            updated_at=item.updated_at,
         )
+
+    @property
+    def location(self) -> str:
+        """Backward-compat property. Returns location_name."""
+        return self.location_name
 
     @property
     def display_name(self) -> str:
@@ -61,8 +69,8 @@ class InventoryItem:
             parts.append(f"SN: {self.serial_number}")
         else:
             parts.append(f"Qty: {self.quantity}")
-        if self.location:
-            parts.append(f"@ {self.location}")
+        if self.location_name:
+            parts.append(f"@ {self.location_name}")
         return " | ".join(parts)
 
     # Legacy compatibility methods (for gradual migration)
@@ -86,7 +94,8 @@ class InventoryItem:
             "is_serialized": self.is_serialized,
             "quantity": self.quantity,
             "serial_number": self.serial_number,
-            "location": self.location,
+            "location_id": self.location_id,
+            "location_name": self.location_name,
             "condition": self.condition,
             "details": self.details,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -112,14 +121,25 @@ class GroupedInventoryItem:
     item_ids: List[int] = field(default_factory=list)  # All Item IDs for this type
     created_at: Optional[datetime] = None  # Earliest created_at
     updated_at: Optional[datetime] = None  # Latest updated_at
+    # Location fields
+    location_id: Optional[int] = None      # Set when all items are at one location; None if multi
+    location_name: str = ""                # Name of single location; "" if multi or unresolved
+    is_multi_location: bool = False        # True when items span 2+ locations
 
     @classmethod
-    def from_item_type_and_items(cls, item_type, items: list):
+    def from_item_type_and_items(
+        cls,
+        item_type,
+        items: list,
+        location_map: Optional[Dict[int, str]] = None,
+    ):
         """Create GroupedInventoryItem from ItemType and list of Items.
 
         Args:
             item_type: ItemType model instance
             items: List of Item model instances belonging to this type
+            location_map: Optional dict {location_id: location_name} for name resolution.
+                          When provided, sets location_id, location_name, is_multi_location.
 
         Returns:
             GroupedInventoryItem instance.
@@ -135,6 +155,19 @@ class GroupedInventoryItem:
         created_dates = [item.created_at for item in items if item.created_at]
         updated_dates = [item.updated_at for item in items if item.updated_at]
 
+        # Determine location info
+        unique_location_ids = {item.location_id for item in items if item.location_id is not None}
+        is_multi = len(unique_location_ids) > 1
+        if is_multi:
+            loc_id = None
+            loc_name = ""
+        elif len(unique_location_ids) == 1:
+            loc_id = next(iter(unique_location_ids))
+            loc_name = (location_map or {}).get(loc_id, "") if loc_id else ""
+        else:
+            loc_id = None
+            loc_name = ""
+
         return cls(
             item_type_id=item_type.id,
             item_type_name=item_type.name,
@@ -147,6 +180,9 @@ class GroupedInventoryItem:
             item_ids=item_ids,
             created_at=min(created_dates) if created_dates else None,
             updated_at=max(updated_dates) if updated_dates else None,
+            location_id=loc_id,
+            location_name=loc_name,
+            is_multi_location=is_multi,
         )
 
     @property
@@ -190,8 +226,8 @@ class GroupedInventoryItem:
 
     @property
     def location(self) -> str:
-        """Grouped items don't have a single location."""
-        return ""
+        """Backward-compat property. Returns location_name."""
+        return self.location_name
 
     @property
     def condition(self) -> str:
@@ -210,6 +246,9 @@ class GroupedInventoryItem:
             "item_count": self.item_count,
             "serial_numbers": self.serial_numbers,
             "item_ids": self.item_ids,
+            "location_id": self.location_id,
+            "location_name": self.location_name,
+            "is_multi_location": self.is_multi_location,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

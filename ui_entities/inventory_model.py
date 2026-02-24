@@ -20,6 +20,9 @@ class InventoryItemRole:
     SerialNumbers = Qt.ItemDataRole.UserRole + 7  # List of serial numbers for grouped items
     IsSerialized = Qt.ItemDataRole.UserRole + 8
     ItemTypeId = Qt.ItemDataRole.UserRole + 9
+    LocationId = Qt.ItemDataRole.UserRole + 10
+    LocationName = Qt.ItemDataRole.UserRole + 11
+    IsMultiLocation = Qt.ItemDataRole.UserRole + 12
 
 
 class InventoryModel(QAbstractListModel):
@@ -79,6 +82,15 @@ class InventoryModel(QAbstractListModel):
 
         if role == InventoryItemRole.ItemTypeId:
             return item.item_type_id
+
+        if role == InventoryItemRole.LocationId:
+            return item.location_id
+
+        if role == InventoryItemRole.LocationName:
+            return item.location_name
+
+        if role == InventoryItemRole.IsMultiLocation:
+            return getattr(item, "is_multi_location", False)
 
         return None
 

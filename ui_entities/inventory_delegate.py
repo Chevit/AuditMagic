@@ -10,7 +10,7 @@ from ui_entities.translations import tr
 class InventoryItemDelegate(QStyledItemDelegate):
     """Custom delegate for rendering inventory items with labels."""
 
-    ROW_HEIGHT = 80
+    ROW_HEIGHT = 96
     PADDING = 10
     LABEL_HEIGHT = 20
     LABEL_SPACING = 5
@@ -45,6 +45,8 @@ class InventoryItemDelegate(QStyledItemDelegate):
         quantity = index.data(InventoryItemRole.Quantity)
         serial_numbers = index.data(InventoryItemRole.SerialNumbers) or []
         is_serialized = index.data(InventoryItemRole.IsSerialized)
+        location_name = index.data(InventoryItemRole.LocationName) or ""
+        is_multi_location = index.data(InventoryItemRole.IsMultiLocation) or False
 
         quantity_str = str(quantity) if quantity is not None else ""
 
@@ -128,5 +130,30 @@ class InventoryItemDelegate(QStyledItemDelegate):
         painter.setPen(QColor("#ffffff"))
         painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
         painter.restore()
+
+        # ── Location footer ───────────────────────────────────────────────────────
+        if is_multi_location or location_name:
+            if is_multi_location:
+                loc_text = f"{tr('location.title')}: {tr('location.multiple')}"
+            else:
+                loc_text = f"{tr('location.title')}: {location_name}"
+            footer_font = QFont(self._label_font)
+            footer_font.setBold(False)
+            footer_y = option.rect.bottom() - 18
+            footer_rect = QRect(
+                option.rect.left() + self.PADDING,
+                footer_y,
+                option.rect.width() - 2 * self.PADDING,
+                16,
+            )
+            painter.save()
+            painter.setFont(footer_font)
+            painter.setPen(QColor(Colors.get_text_secondary()))
+            painter.drawText(
+                footer_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                loc_text,
+            )
+            painter.restore()
 
         painter.restore()

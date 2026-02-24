@@ -3,6 +3,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -14,7 +15,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from styles import apply_button_style, apply_input_style
+from services import LocationService
+from styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui_entities.translations import tr
 from validators import SerialNumberValidator
 
@@ -27,6 +29,7 @@ class AddSerialNumberDialog(QDialog):
         item_type_name: str,
         sub_type: str,
         existing_serials: list[str],
+        current_location_id: int = None,
         parent=None,
     ):
         """Initialize the dialog.
@@ -35,12 +38,14 @@ class AddSerialNumberDialog(QDialog):
             item_type_name: The item type name (displayed read-only).
             sub_type: The sub-type name (displayed read-only).
             existing_serials: List of existing serial numbers for uniqueness validation.
+            current_location_id: Pre-selected location ID.
             parent: Parent widget.
         """
         super().__init__(parent)
         self._existing_serials = existing_serials
         self._item_type_name = item_type_name
         self._sub_type = sub_type
+        self._current_location_id = current_location_id
         self._setup_ui()
 
     def _setup_ui(self):
@@ -93,17 +98,19 @@ class AddSerialNumberDialog(QDialog):
         apply_input_style(self.serial_edit)
         form_layout.addRow(serial_label, self.serial_edit)
 
-        # # Location (optional)
-        # location_label = QLabel("Location:")
-        # self.location_edit = QLineEdit()
-        # apply_input_style(self.location_edit)
-        # form_layout.addRow(location_label, self.location_edit)
-        #
-        # # Condition (optional)
-        # condition_label = QLabel("Condition:")
-        # self.condition_edit = QLineEdit()
-        # apply_input_style(self.condition_edit)
-        # form_layout.addRow(condition_label, self.condition_edit)
+        # Location (mandatory)
+        loc_label = QLabel(tr("location.title"))
+        loc_label.setFont(label_font)
+        self.location_combo = QComboBox()
+        apply_combo_box_style(self.location_combo)
+        for loc in LocationService.get_all_locations():
+            self.location_combo.addItem(loc.name, userData=loc.id)
+        if self._current_location_id is not None:
+            for i in range(self.location_combo.count()):
+                if self.location_combo.itemData(i) == self._current_location_id:
+                    self.location_combo.setCurrentIndex(i)
+                    break
+        form_layout.addRow(loc_label, self.location_combo)
 
         # Notes (optional)
         notes_label = QLabel(tr("label.notes"))
@@ -163,13 +170,9 @@ class AddSerialNumberDialog(QDialog):
         """Return the entered serial number."""
         return self.serial_edit.text().strip()
 
-    # def get_location(self) -> str:
-    #     """Return the entered location."""
-    #     return self.location_edit.text().strip()
-    #
-    # def get_condition(self) -> str:
-    #     """Return the entered condition."""
-    #     return self.condition_edit.text().strip()
+    def get_location_id(self) -> int:
+        """Return the selected location ID."""
+        return self.location_combo.currentData()
 
     def get_notes(self) -> str:
         """Return the entered notes."""

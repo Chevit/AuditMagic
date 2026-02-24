@@ -4,12 +4,121 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import delete as sql_delete, func, or_
-from sqlalchemy.orm import Session
 
 from db import session_scope
 from logger import logger
-from models import Item, ItemType, SearchHistory, Transaction, TransactionType
+from models import Item, ItemType, Location, SearchHistory, Transaction, TransactionType
 from ui_entities.translations import tr
+
+
+class LocationRepository:
+    """Repository for Location CRUD operations."""
+
+    @staticmethod
+    def create(name: str, description: str = "") -> Location:
+        """Create a new location."""
+        with session_scope() as session:
+            loc = Location(name=name.strip(), description=description or "")
+            session.add(loc)
+            session.flush()
+            session.refresh(loc)
+            return _detach_location(loc)
+
+    @staticmethod
+    def get_by_id(location_id: int) -> Optional[Location]:
+        """Get location by ID."""
+        with session_scope() as session:
+            loc = session.query(Location).filter(Location.id == location_id).first()
+            return _detach_location(loc) if loc else None
+
+    @staticmethod
+    def get_by_name(name: str) -> Optional[Location]:
+        """Get location by exact name."""
+        with session_scope() as session:
+            loc = session.query(Location).filter(Location.name == name.strip()).first()
+            return _detach_location(loc) if loc else None
+
+    @staticmethod
+    def get_all() -> List[Location]:
+        """Get all locations ordered by name."""
+        with session_scope() as session:
+            locs = session.query(Location).order_by(Location.name).all()
+            return [_detach_location(loc) for loc in locs]
+
+    @staticmethod
+    def get_count() -> int:
+        """Return the total number of locations."""
+        with session_scope() as session:
+            return session.query(func.count(Location.id)).scalar() or 0
+
+    @staticmethod
+    def get_item_count(location_id: int) -> int:
+        """Return number of items at a given location."""
+        with session_scope() as session:
+            return (
+                session.query(func.count(Item.id))
+                .filter(Item.location_id == location_id)
+                .scalar()
+            ) or 0
+
+    @staticmethod
+    def rename(location_id: int, new_name: str) -> Optional[Location]:
+        """Rename a location."""
+        with session_scope() as session:
+            loc = session.query(Location).filter(Location.id == location_id).first()
+            if not loc:
+                return None
+            loc.name = new_name.strip()
+            session.flush()
+            session.refresh(loc)
+            return _detach_location(loc)
+
+    @staticmethod
+    def delete(location_id: int) -> bool:
+        """Delete a location. Raises ValueError if it still has items."""
+        with session_scope() as session:
+            loc = session.query(Location).filter(Location.id == location_id).first()
+            if not loc:
+                return False
+            item_count = (
+                             session.query(func.count(Item.id))
+                             .filter(Item.location_id == location_id)
+                             .scalar()
+                         ) or 0
+            if item_count > 0:
+                raise ValueError(
+                    f"Location '{loc.name}' still has {item_count} item(s). "
+                    "Move them first before deleting."
+                )
+            session.delete(loc)
+            logger.debug(
+                f"Repository: Location deleted: id={location_id}, name='{loc.name}'"
+            )
+            return True
+
+    @staticmethod
+    def get_unassigned_item_count() -> int:
+        """Return count of items with location_id IS NULL."""
+        with session_scope() as session:
+            return (
+                session.query(func.count(Item.id))
+                .filter(Item.location_id.is_(None))
+                .scalar()
+            ) or 0
+
+    @staticmethod
+    def assign_all_unassigned(location_id: int) -> int:
+        """Set location_id on all items that currently have NULL location_id."""
+        with session_scope() as session:
+            count = (
+                session.query(Item)
+                .filter(Item.location_id.is_(None))
+                .update({"location_id": location_id}, synchronize_session=False)
+            )
+            logger.debug(
+                f"Repository: Assigned {count} unassigned items to location_id={location_id}"
+            )
+            return count
 
 
 class ItemTypeRepository:
@@ -17,10 +126,7 @@ class ItemTypeRepository:
 
     @staticmethod
     def create(
-        name: str,
-        sub_type: str = "",
-        is_serialized: bool = False,
-        details: str = ""
+            name: str, sub_type: str = "", is_serialized: bool = False, details: str = ""
     ) -> ItemType:
         """Create a new item type.
 
@@ -33,13 +139,15 @@ class ItemTypeRepository:
         Returns:
             The created ItemType instance.
         """
-        logger.debug(f"Repository: Creating item type name='{name}', sub_type='{sub_type}'")
+        logger.debug(
+            f"Repository: Creating item type name='{name}', sub_type='{sub_type}'"
+        )
         with session_scope() as session:
             item_type = ItemType(
                 name=name,
                 sub_type=sub_type or "",
                 is_serialized=is_serialized,
-                details=details or ""
+                details=details or "",
             )
             session.add(item_type)
             session.flush()
@@ -49,10 +157,10 @@ class ItemTypeRepository:
 
     @staticmethod
     def get_or_create(
-        name: str,
-        sub_type: str = "",
-        is_serialized: bool = False,
-        details: str = "",
+            name: str,
+            sub_type: str = "",
+            is_serialized: bool = False,
+            details: str = "",
     ) -> ItemType:
         """Get existing type or create new one.
 
@@ -72,18 +180,19 @@ class ItemTypeRepository:
             # Try to find existing
             item_type = (
                 session.query(ItemType)
-                .filter(
-                    ItemType.name == name,
-                    ItemType.sub_type == (sub_type or "")
-                )
+                .filter(ItemType.name == name, ItemType.sub_type == (sub_type or ""))
                 .first()
             )
 
             if item_type:
                 # Conflict guard — is_serialized is immutable after creation
                 if item_type.is_serialized != is_serialized:
-                    existing_state = "serialized" if item_type.is_serialized else "non-serialized"
-                    requested_state = "serialized" if is_serialized else "non-serialized"
+                    existing_state = (
+                        "serialized" if item_type.is_serialized else "non-serialized"
+                    )
+                    requested_state = (
+                        "serialized" if is_serialized else "non-serialized"
+                    )
                     raise ValueError(
                         f"ItemType '{name}' (sub_type='{sub_type}') already exists as "
                         f"{existing_state}. Cannot use it as {requested_state}. "
@@ -134,10 +243,7 @@ class ItemTypeRepository:
         with session_scope() as session:
             item_type = (
                 session.query(ItemType)
-                .filter(
-                    ItemType.name == name,
-                    ItemType.sub_type == (sub_type or "")
-                )
+                .filter(ItemType.name == name, ItemType.sub_type == (sub_type or ""))
                 .first()
             )
             return _detach_item_type(item_type) if item_type else None
@@ -166,7 +272,9 @@ class ItemTypeRepository:
             List of all ItemType instances.
         """
         with session_scope() as session:
-            types = session.query(ItemType).order_by(ItemType.name, ItemType.sub_type).all()
+            types = (
+                session.query(ItemType).order_by(ItemType.name, ItemType.sub_type).all()
+            )
             return [_detach_item_type(t) for t in types]
 
     @staticmethod
@@ -189,9 +297,7 @@ class ItemTypeRepository:
 
     @staticmethod
     def get_autocomplete_subtypes(
-        type_name: str,
-        prefix: str = "",
-        limit: int = 20
+            type_name: str, prefix: str = "", limit: int = 20
     ) -> List[str]:
         """Get autocomplete suggestions for subtypes given a type name.
 
@@ -209,7 +315,7 @@ class ItemTypeRepository:
                 .filter(
                     ItemType.name == type_name,
                     ItemType.sub_type.isnot(None),
-                    ItemType.sub_type != ""
+                    ItemType.sub_type != "",
                 )
                 .distinct()
             )
@@ -220,11 +326,11 @@ class ItemTypeRepository:
 
     @staticmethod
     def update(
-        type_id: int,
-        name: str = None,
-        sub_type: str = None,
-        is_serialized: bool = None,
-        details: str = None
+            type_id: int,
+            name: str = None,
+            sub_type: str = None,
+            is_serialized: bool = None,
+            details: str = None,
     ) -> Optional[ItemType]:
         """Update an item type.
 
@@ -248,7 +354,9 @@ class ItemTypeRepository:
             if sub_type is not None:
                 item_type.sub_type = sub_type
             if is_serialized is not None and item_type.is_serialized != is_serialized:
-                item_count = session.query(Item).filter(Item.item_type_id == type_id).count()
+                item_count = (
+                    session.query(Item).filter(Item.item_type_id == type_id).count()
+                )
                 if item_count > 0:
                     raise ValueError(
                         f"Cannot change is_serialized for '{item_type.name}': "
@@ -280,16 +388,22 @@ class ItemTypeRepository:
         with session_scope() as session:
             item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
             if not item_type:
-                logger.warning(f"Repository: ItemType not found for deletion: id={type_id}")
+                logger.warning(
+                    f"Repository: ItemType not found for deletion: id={type_id}"
+                )
                 return False
 
             # 1. Delete transactions (FK item_type_id NOT NULL — no ORM cascade)
-            session.execute(sql_delete(Transaction).where(Transaction.item_type_id == type_id))
+            session.execute(
+                sql_delete(Transaction).where(Transaction.item_type_id == type_id)
+            )
             session.flush()
 
             # 2+3. Delete items + item type (ORM cascade="all, delete-orphan" handles items)
             session.delete(item_type)
-            logger.debug(f"Repository: ItemType deleted: id={type_id}, name='{item_type.name}'")
+            logger.debug(
+                f"Repository: ItemType deleted: id={type_id}, name='{item_type.name}'"
+            )
             return True
 
     @staticmethod
@@ -310,7 +424,7 @@ class ItemTypeRepository:
                 .filter(
                     or_(
                         ItemType.name.ilike(search_pattern),
-                        ItemType.sub_type.ilike(search_pattern)
+                        ItemType.sub_type.ilike(search_pattern),
                     )
                 )
                 .order_by(ItemType.name, ItemType.sub_type)
@@ -320,12 +434,14 @@ class ItemTypeRepository:
             return [_detach_item_type(t) for t in types]
 
     @staticmethod
-    def _get_types_with_items(session, type_filter=None) -> list:
+    def _get_types_with_items(session, type_filter=None, location_id=None) -> list:
         """Shared helper to query item types with their items.
 
         Args:
             session: Database session.
-            type_filter: Optional SQLAlchemy filter clause to apply to the ItemType query.
+            type_filter: Optional SQLAlchemy filter clause on ItemType.
+            location_id: If provided, only return items at this location.
+                         If None, return items across all locations.
 
         Returns:
             List of tuples (ItemType, List[Item]) for each matching type that has items.
@@ -337,6 +453,8 @@ class ItemTypeRepository:
         )
         if type_filter is not None:
             query = query.filter(type_filter)
+        if location_id is not None:
+            query = query.filter(Item.location_id == location_id)
         rows = query.all()
 
         seen: dict = {}
@@ -353,25 +471,35 @@ class ItemTypeRepository:
         ]
 
     @staticmethod
-    def get_all_with_items() -> list:
+    def get_all_with_items(location_id: int = None) -> list:
         """Get all item types with their items for grouped display.
+
+        Args:
+            location_id: Filter items to this location. None = all locations.
 
         Returns:
             List of tuples (ItemType, List[Item]) for each type that has items.
         """
         with session_scope() as session:
-            return ItemTypeRepository._get_types_with_items(session)
+            return ItemTypeRepository._get_types_with_items(
+                session, location_id=location_id
+            )
 
     @staticmethod
-    def get_serialized_with_items() -> list:
+    def get_serialized_with_items(location_id: int = None) -> list:
         """Get all serialized item types with their items.
+
+        Args:
+            location_id: Filter items to this location. None = all locations.
 
         Returns:
             List of tuples (ItemType, List[Item]) for each serialized type that has items.
         """
         with session_scope() as session:
             return ItemTypeRepository._get_types_with_items(
-                session, ItemType.is_serialized.is_(True)
+                session,
+                type_filter=ItemType.is_serialized.is_(True),
+                location_id=location_id,
             )
 
 
@@ -380,12 +508,12 @@ class ItemRepository:
 
     @staticmethod
     def create(
-        item_type_id: int,
-        quantity: int = 1,
-        serial_number: str = None,
-        location: str = None,
-        condition: str = None,
-        transaction_notes: str = None,
+            item_type_id: int,
+            quantity: int = 1,
+            serial_number: str = None,
+            location_id: int = None,
+            condition: str = None,
+            transaction_notes: str = None,
     ) -> Item:
         """Create a new item instance.
 
@@ -393,7 +521,7 @@ class ItemRepository:
             item_type_id: FK to ItemType
             quantity: Quantity (must be 1 if serialized)
             serial_number: Serial number (required if type is serialized)
-            location: Storage location
+            location_id: FK to Location
             condition: Item condition
             transaction_notes: Custom notes for the initial ADD transaction
                 (defaults to "Initial inventory" translation)
@@ -404,11 +532,15 @@ class ItemRepository:
         Raises:
             ValueError: If validation fails
         """
-        logger.debug(f"Repository: Creating item for type_id={item_type_id}, qty={quantity}")
+        logger.debug(
+            f"Repository: Creating item for type_id={item_type_id}, qty={quantity}"
+        )
 
         with session_scope() as session:
             # Validate type exists and get serialization status
-            item_type = session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            item_type = (
+                session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            )
             if not item_type:
                 raise ValueError(f"ItemType with id {item_type_id} not found")
 
@@ -420,7 +552,9 @@ class ItemRepository:
                     raise ValueError("Quantity must be 1 for serialized items")
             else:
                 if serial_number:
-                    raise ValueError("Serial number not allowed for non-serialized items")
+                    raise ValueError(
+                        "Serial number not allowed for non-serialized items"
+                    )
                 if quantity < 1:
                     raise ValueError("Quantity must be at least 1")
 
@@ -428,7 +562,7 @@ class ItemRepository:
                 item_type_id=item_type_id,
                 quantity=quantity,
                 serial_number=serial_number or None,
-                location=location or "",
+                location_id=location_id,
                 condition=condition or "",
             )
             session.add(item)
@@ -444,6 +578,7 @@ class ItemRepository:
                     quantity_after=quantity,
                     serial_number=serial_number or None,
                     notes=transaction_notes or tr("transaction.notes.initial"),
+                    location_id=location_id,
                 )
                 session.add(transaction)
 
@@ -454,11 +589,11 @@ class ItemRepository:
 
     @staticmethod
     def create_serialized(
-        item_type_id: int,
-        serial_number: str,
-        location: str = "",
-        condition: str = "",
-        notes: str = "",
+            item_type_id: int,
+            serial_number: str,
+            location_id: int = None,
+            condition: str = "",
+            notes: str = "",
     ) -> Item:
         """Create a new serialized item with grouped-quantity-aware transactions.
 
@@ -474,7 +609,7 @@ class ItemRepository:
         Args:
             item_type_id: FK to ItemType (must be is_serialized=True).
             serial_number: Unique serial number (required).
-            location: Storage location (optional).
+            location_id: FK to Location (optional).
             condition: Item condition (optional).
             notes: Transaction notes for non-first items (optional).
 
@@ -489,7 +624,9 @@ class ItemRepository:
             raise ValueError("Serial number is required for serialized items")
 
         with session_scope() as session:
-            item_type = session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            item_type = (
+                session.query(ItemType).filter(ItemType.id == item_type_id).first()
+            )
             if not item_type:
                 raise ValueError(f"ItemType with id {item_type_id} not found")
             if not item_type.is_serialized:
@@ -499,16 +636,16 @@ class ItemRepository:
 
             # Count existing items so the transaction reflects the group quantity
             existing_count = (
-                session.query(func.count(Item.id))
-                .filter(Item.item_type_id == item_type_id)
-                .scalar()
-            ) or 0
+                                 session.query(func.count(Item.id))
+                                 .filter(Item.item_type_id == item_type_id)
+                                 .scalar()
+                             ) or 0
 
             item = Item(
                 item_type_id=item_type_id,
                 quantity=1,
                 serial_number=serial_number,
-                location=location or "",
+                location_id=location_id,
                 condition=condition or "",
             )
             session.add(item)
@@ -529,6 +666,7 @@ class ItemRepository:
                 quantity_after=existing_count + 1,
                 serial_number=serial_number,
                 notes=transaction_notes,
+                location_id=location_id,
             )
             session.add(transaction)
             session.flush()
@@ -554,22 +692,27 @@ class ItemRepository:
             return _detach_item(item) if item else None
 
     @staticmethod
-    def get_all() -> List[Item]:
-        """Get all items.
+    def get_all(location_id: int = None) -> List[Item]:
+        """Get all items, optionally filtered by location.
+
+        Args:
+            location_id: Filter to this location. None = all locations.
 
         Returns:
-            List of all Item instances.
+            List of Item instances.
         """
         with session_scope() as session:
-            items = session.query(Item).order_by(Item.item_type_id, Item.serial_number).all()
-            return [_detach_item(item) for item in items]
+            query = session.query(Item).order_by(Item.item_type_id, Item.serial_number)
+            if location_id is not None:
+                query = query.filter(Item.location_id == location_id)
+            return [_detach_item(item) for item in query.all()]
 
     @staticmethod
     def update(
-        item_id: int,
-        serial_number: str = None,
-        location: str = None,
-        condition: str = None,
+            item_id: int,
+            serial_number: str = None,
+            location_id: int = None,
+            condition: str = None,
     ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
@@ -579,7 +722,7 @@ class ItemRepository:
         Args:
             item_id: The item's ID.
             serial_number: New serial number (optional)
-            location: New location (optional)
+            location_id: New Location FK (optional)
             condition: New condition (optional)
 
         Returns:
@@ -592,8 +735,8 @@ class ItemRepository:
 
             if serial_number is not None:
                 item.serial_number = serial_number or None
-            if location is not None:
-                item.location = location
+            if location_id is not None:
+                item.location_id = location_id
             if condition is not None:
                 item.condition = condition
 
@@ -603,13 +746,13 @@ class ItemRepository:
 
     @staticmethod
     def edit_item(
-        item_id: int,
-        item_type_id: int,
-        quantity: int,
-        serial_number: str,
-        location: str,
-        condition: str,
-        edit_reason: str,
+            item_id: int,
+            item_type_id: int,
+            quantity: int,
+            serial_number: str,
+            location_id: int,
+            condition: str,
+            edit_reason: str,
     ) -> Optional[Item]:
         """Edit an item's properties and quantity, recording all changes as transactions.
 
@@ -621,7 +764,7 @@ class ItemRepository:
             item_type_id: New ItemType ID (can change the type).
             quantity: New quantity.
             serial_number: New serial number (or empty string for none).
-            location: New location.
+            location_id: New Location FK.
             condition: New condition.
             edit_reason: Reason for the edit (required, stored in transaction notes).
 
@@ -640,7 +783,7 @@ class ItemRepository:
             item.item_type_id = item_type_id
             item.quantity = quantity
             item.serial_number = serial_number or None
-            item.location = location or ""
+            item.location_id = location_id
             item.condition = condition or ""
 
             # Record a single EDIT transaction capturing all changes
@@ -652,6 +795,7 @@ class ItemRepository:
                 quantity_before=quantity_before,
                 quantity_after=quantity,
                 notes=edit_reason,
+                location_id=location_id,
             )
             session.add(edit_transaction)
 
@@ -714,6 +858,7 @@ class ItemRepository:
                 quantity_before=quantity_before,
                 quantity_after=item.quantity,
                 notes=notes or "",
+                location_id=item.location_id,
             )
             session.add(transaction)
             session.flush()
@@ -725,7 +870,7 @@ class ItemRepository:
 
     @staticmethod
     def remove_quantity(
-        item_id: int, quantity: int, notes: str = None
+            item_id: int, quantity: int, notes: str = None
     ) -> Optional[Item]:
         """Remove quantity from an item and record the transaction.
 
@@ -769,6 +914,7 @@ class ItemRepository:
                 quantity_before=quantity_before,
                 quantity_after=item.quantity,
                 notes=notes or "",
+                location_id=item.location_id,
             )
             session.add(transaction)
             session.flush()
@@ -780,7 +926,7 @@ class ItemRepository:
 
     @staticmethod
     def find_by_type_and_serial(
-        item_type_id: int, serial_number: str = None
+            item_type_id: int, serial_number: str = None
     ) -> Optional[Item]:
         """Find an existing item by type ID and serial number.
 
@@ -804,13 +950,16 @@ class ItemRepository:
             return _detach_item(item) if item else None
 
     @staticmethod
-    def search(query: str, field: str = None, limit: int = 200) -> List[Item]:
+    def search(
+            query: str, field: str = None, limit: int = 200, location_id: int = None
+    ) -> List[Item]:
         """Search items by query string.
 
         Args:
             query: Search query string.
             field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
             limit: Maximum number of results to return.
+            location_id: Filter to this location. None = all locations.
 
         Returns:
             List of matching Item instances.
@@ -821,20 +970,32 @@ class ItemRepository:
 
             # Join Item with ItemType for searching type-related fields
             base_query = session.query(Item).join(ItemType)
+            if location_id is not None:
+                base_query = base_query.filter(Item.location_id == location_id)
 
             if field == "item_type":
-                items = base_query.filter(ItemType.name.ilike(search_pattern)).limit(limit).all()
-            elif field == "sub_type":
-                items = base_query.filter(ItemType.sub_type.ilike(search_pattern)).limit(limit).all()
-            elif field == "details":
-                items = base_query.filter(ItemType.details.ilike(search_pattern)).limit(limit).all()
-            elif field == "serial_number":
                 items = (
-                    session.query(Item)
-                    .filter(Item.serial_number.ilike(search_pattern))
+                    base_query.filter(ItemType.name.ilike(search_pattern))
                     .limit(limit)
                     .all()
                 )
+            elif field == "sub_type":
+                items = (
+                    base_query.filter(ItemType.sub_type.ilike(search_pattern))
+                    .limit(limit)
+                    .all()
+                )
+            elif field == "details":
+                items = (
+                    base_query.filter(ItemType.details.ilike(search_pattern))
+                    .limit(limit)
+                    .all()
+                )
+            elif field == "serial_number":
+                q = session.query(Item).filter(Item.serial_number.ilike(search_pattern))
+                if location_id is not None:
+                    q = q.filter(Item.location_id == location_id)
+                items = q.limit(limit).all()
             else:
                 # Search in all relevant fields
                 items = (
@@ -854,7 +1015,7 @@ class ItemRepository:
 
     @staticmethod
     def get_autocomplete_suggestions(
-        prefix: str, field: str = None, limit: int = 10
+            prefix: str, field: str = None, limit: int = 10
     ) -> List[str]:
         """Get autocomplete suggestions for a search prefix.
 
@@ -910,7 +1071,7 @@ class ItemRepository:
                     session.query(Item.serial_number)
                     .filter(
                         Item.serial_number.isnot(None),
-                        Item.serial_number.ilike(search_pattern)
+                        Item.serial_number.ilike(search_pattern),
                     )
                     .distinct()
                     .limit(limit)
@@ -922,22 +1083,258 @@ class ItemRepository:
 
     @staticmethod
     def get_by_type(type_id: int) -> List[Item]:
-        """Get all items of a specific type.
+        """Get all items of a specific type across all locations.
+
+        Used by TransferDialog when opened from the "All Locations" view.
 
         Args:
             type_id: ItemType ID
 
         Returns:
-            List of Item instances.
+            List of Item instances ordered by location then serial number.
         """
         with session_scope() as session:
             items = (
                 session.query(Item)
                 .filter(Item.item_type_id == type_id)
-                .order_by(Item.serial_number, Item.location)
+                .order_by(Item.location_id, Item.serial_number)
                 .all()
             )
             return [_detach_item(item) for item in items]
+
+    @staticmethod
+    def get_by_type_and_location(type_id: int, location_id: int) -> List[Item]:
+        """Get all items of a specific type at a specific location."""
+        with session_scope() as session:
+            items = (
+                session.query(Item)
+                .filter(
+                    Item.item_type_id == type_id,
+                    Item.location_id == location_id,
+                )
+                .order_by(Item.serial_number)
+                .all()
+            )
+            return [_detach_item(item) for item in items]
+
+    @staticmethod
+    def find_non_serialized_at_location(
+            item_type_id: int, location_id: int
+    ) -> Optional[Item]:
+        """Find a non-serialized item of a given type at a specific location.
+
+        Used by transfer merge logic to check for an existing row at the
+        destination before deciding whether to merge or create a new row.
+
+        Args:
+            item_type_id: ItemType ID.
+            location_id: Location ID to search in.
+
+        Returns:
+            Item instance or None.
+        """
+        with session_scope() as session:
+            item = (
+                session.query(Item)
+                .filter(
+                    Item.item_type_id == item_type_id,
+                    Item.location_id == location_id,
+                    Item.serial_number.is_(None),
+                )
+                .first()
+            )
+            return _detach_item(item) if item else None
+
+    @staticmethod
+    def transfer_item(
+            item_id: int,
+            quantity: int,
+            from_location_id: int,
+            to_location_id: int,
+            notes: str = "",
+    ) -> bool:
+        """Transfer quantity of a non-serialized item between locations.
+
+        Merge logic:
+        - Partial transfer: reduce source qty, add to existing dest row or create new.
+        - Full transfer with merge target: add to dest row, delete source row.
+        - Full transfer without merge target: update source location_id in-place.
+        Creates two TRANSFER transactions (one for each side).
+
+        Returns:
+            True on success.
+
+        Raises:
+            ValueError: If item not found or quantity exceeds available.
+        """
+        with session_scope() as session:
+            src = session.query(Item).filter(Item.id == item_id).first()
+            if not src:
+                raise ValueError(f"Item id={item_id} not found")
+            if src.quantity < quantity:
+                raise ValueError(
+                    f"Cannot transfer {quantity}: only {src.quantity} available"
+                )
+
+            src_qty_before = src.quantity
+            dest = (
+                session.query(Item)
+                .filter(
+                    Item.item_type_id == src.item_type_id,
+                    Item.location_id == to_location_id,
+                    Item.serial_number.is_(None),
+                )
+                .first()
+            )
+            dest_qty_before = dest.quantity if dest else 0
+            is_full = quantity == src.quantity
+
+            if is_full and dest is None:
+                # Full transfer, no merge target — move the row in-place
+                src.location_id = to_location_id
+            elif is_full and dest is not None:
+                # Full transfer with merge — add to dest, delete source
+                dest.quantity += quantity
+                session.flush()
+                session.execute(sql_delete(Item).where(Item.id == item_id))
+            else:
+                # Partial transfer
+                src.quantity -= quantity
+                if dest is not None:
+                    dest.quantity += quantity
+                else:
+                    new_item = Item(
+                        item_type_id=src.item_type_id,
+                        quantity=quantity,
+                        location_id=to_location_id,
+                        condition=src.condition,
+                    )
+                    session.add(new_item)
+
+            session.flush()
+            dest_qty_after = (dest.quantity if dest else 0) + (
+                0 if (is_full and dest is None) else quantity
+            )
+            if is_full and dest is None:
+                dest_qty_after = src_qty_before  # the row moved entirely
+
+            # Source transaction
+            session.add(
+                Transaction(
+                    item_type_id=src.item_type_id,
+                    transaction_type=TransactionType.TRANSFER,
+                    quantity_change=quantity,
+                    quantity_before=src_qty_before,
+                    quantity_after=(
+                        src_qty_before - quantity
+                        if not (is_full and dest is None)
+                        else 0
+                    ),
+                    notes=notes,
+                    location_id=from_location_id,
+                    from_location_id=from_location_id,
+                    to_location_id=to_location_id,
+                )
+            )
+            # Destination transaction
+            session.add(
+                Transaction(
+                    item_type_id=src.item_type_id,
+                    transaction_type=TransactionType.TRANSFER,
+                    quantity_change=quantity,
+                    quantity_before=dest_qty_before,
+                    quantity_after=dest_qty_before + quantity,
+                    notes=notes,
+                    location_id=to_location_id,
+                    from_location_id=from_location_id,
+                    to_location_id=to_location_id,
+                )
+            )
+
+            logger.debug(
+                f"Repository: Transferred {quantity} of type_id={src.item_type_id} "
+                f"from loc={from_location_id} to loc={to_location_id}"
+            )
+            return True
+
+    @staticmethod
+    def transfer_serialized_items(
+            serial_numbers: List[str],
+            from_location_id: int,
+            to_location_id: int,
+            notes: str = "",
+    ) -> int:
+        """Transfer serialized items (by serial number) to a new location.
+
+        Each serial is a distinct row; moves location_id in-place.
+        Creates two TRANSFER transactions per serial.
+
+        Returns:
+            Number of items transferred.
+        """
+        if not serial_numbers:
+            return 0
+
+        with session_scope() as session:
+            items = (
+                session.query(Item).filter(Item.serial_number.in_(serial_numbers)).all()
+            )
+            # Count existing at destination for accurate qty_before
+            type_ids = {item.item_type_id for item in items}
+            dest_counts: dict = {}
+            for tid in type_ids:
+                dest_counts[tid] = (
+                                       session.query(func.count(Item.id))
+                                       .filter(
+                                           Item.item_type_id == tid, Item.location_id == to_location_id
+                                       )
+                                       .scalar()
+                                   ) or 0
+
+            for i, item in enumerate(items):
+                src_count_for_type = sum(
+                    1
+                    for it in items
+                    if it.item_type_id == item.item_type_id and items.index(it) <= i
+                )
+                qty_before_dest = dest_counts[item.item_type_id]
+                item.location_id = to_location_id
+                session.add(
+                    Transaction(
+                        item_type_id=item.item_type_id,
+                        transaction_type=TransactionType.TRANSFER,
+                        quantity_change=1,
+                        quantity_before=1,
+                        quantity_after=0,
+                        serial_number=item.serial_number,
+                        notes=notes,
+                        location_id=from_location_id,
+                        from_location_id=from_location_id,
+                        to_location_id=to_location_id,
+                    )
+                )
+                session.add(
+                    Transaction(
+                        item_type_id=item.item_type_id,
+                        transaction_type=TransactionType.TRANSFER,
+                        quantity_change=1,
+                        quantity_before=qty_before_dest,
+                        quantity_after=qty_before_dest + 1,
+                        serial_number=item.serial_number,
+                        notes=notes,
+                        location_id=to_location_id,
+                        from_location_id=from_location_id,
+                        to_location_id=to_location_id,
+                    )
+                )
+                dest_counts[item.item_type_id] += 1
+
+            session.flush()
+            logger.debug(
+                f"Repository: Transferred {len(items)} serialized items "
+                f"from loc={from_location_id} to loc={to_location_id}"
+            )
+            return len(items)
 
     @staticmethod
     def search_by_serial(serial_number: str) -> Optional[Item]:
@@ -951,9 +1348,7 @@ class ItemRepository:
         """
         with session_scope() as session:
             item = (
-                session.query(Item)
-                .filter(Item.serial_number == serial_number)
-                .first()
+                session.query(Item).filter(Item.serial_number == serial_number).first()
             )
             return _detach_item(item) if item else None
 
@@ -973,7 +1368,7 @@ class ItemRepository:
                 .filter(
                     Item.item_type_id == type_id,
                     Item.serial_number.isnot(None),
-                    Item.serial_number != ""
+                    Item.serial_number != "",
                 )
                 .order_by(Item.serial_number)
                 .all()
@@ -998,9 +1393,7 @@ class ItemRepository:
 
         with session_scope() as session:
             items = (
-                session.query(Item)
-                .filter(Item.serial_number.in_(serial_numbers))
-                .all()
+                session.query(Item).filter(Item.serial_number.in_(serial_numbers)).all()
             )
             count = len(items)
 
@@ -1014,6 +1407,7 @@ class ItemRepository:
                     quantity_after=0,
                     serial_number=item.serial_number,
                     notes=notes,
+                    location_id=item.location_id,
                 )
                 session.add(transaction)
 
@@ -1030,11 +1424,11 @@ class ItemRepository:
             return count
 
     @staticmethod
-    def get_items_at_location(location: str) -> List[Item]:
+    def get_items_at_location(location_id: int) -> List[Item]:
         """Get all items at a specific location.
 
         Args:
-            location: Location name
+            location_id: Location FK
 
         Returns:
             List of Item instances.
@@ -1042,7 +1436,7 @@ class ItemRepository:
         with session_scope() as session:
             items = (
                 session.query(Item)
-                .filter(Item.location == location)
+                .filter(Item.location_id == location_id)
                 .order_by(Item.item_type_id, Item.serial_number)
                 .all()
             )
@@ -1054,34 +1448,42 @@ class TransactionRepository:
 
     @staticmethod
     def get_by_type_and_date_range(
-        type_id: int,
-        start_date: datetime,
-        end_date: datetime,
-        limit: int = 1000,
+            type_id: int,
+            start_date: datetime,
+            end_date: datetime,
+            location_id: int = None,
+            limit: int = 1000,
     ) -> List[Transaction]:
-        """Get all transactions for an ItemType within a date range.
+        """Get transactions for an ItemType within a date range.
+
+        When location_id is given, only returns transactions relevant to that
+        location: for regular transactions Transaction.location_id must match;
+        for TRANSFER transactions either from_location_id or to_location_id
+        must match.  When location_id is None all transactions are returned.
 
         Args:
             type_id: ItemType ID to filter by.
             start_date: Start of the date range.
             end_date: End of the date range.
+            location_id: Optional location filter.
             limit: Maximum number of rows to return (default 1000).
 
         Returns:
             List of Transaction instances ordered by date (newest first).
         """
         with session_scope() as session:
-            transactions = (
-                session.query(Transaction)
-                .filter(
-                    Transaction.item_type_id == type_id,
-                    Transaction.created_at >= start_date,
-                    Transaction.created_at <= end_date,
-                )
-                .order_by(Transaction.created_at.desc())
-                .limit(limit)
-                .all()
+            q = session.query(Transaction).filter(
+                Transaction.item_type_id == type_id,
+                Transaction.created_at >= start_date,
+                Transaction.created_at <= end_date,
             )
+            if location_id is not None:
+                q = q.filter(
+                    or_(
+                        Transaction.location_id == location_id,
+                    )
+                )
+            transactions = q.order_by(Transaction.created_at.desc()).limit(limit).all()
             return [_detach_transaction(t) for t in transactions]
 
     @staticmethod
@@ -1097,6 +1499,70 @@ class TransactionRepository:
         with session_scope() as session:
             transactions = (
                 session.query(Transaction)
+                .order_by(Transaction.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+            return [_detach_transaction(t) for t in transactions]
+
+    @staticmethod
+    def get_by_location_and_date_range(
+            location_id: int,
+            start_date: datetime,
+            end_date: datetime,
+            limit: int = 1000,
+    ) -> List[Transaction]:
+        """Get transactions at a specific location within a date range.
+
+        Filters on Transaction.location_id (historically accurate — the location
+        where the transaction occurred, not the item's current location).
+
+        Args:
+            location_id: Location ID to filter by.
+            start_date: Start of the date range (inclusive).
+            end_date: End of the date range (inclusive).
+            limit: Maximum rows to return.
+
+        Returns:
+            List of Transaction instances ordered by date (newest first).
+        """
+        with session_scope() as session:
+            transactions = (
+                session.query(Transaction)
+                .filter(
+                    Transaction.location_id == location_id,
+                    Transaction.created_at >= start_date,
+                    Transaction.created_at <= end_date,
+                )
+                .order_by(Transaction.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+            return [_detach_transaction(t) for t in transactions]
+
+    @staticmethod
+    def get_all_by_date_range(
+            start_date: datetime,
+            end_date: datetime,
+            limit: int = 5000,
+    ) -> List[Transaction]:
+        """Get all transactions within a date range (no location filter).
+
+        Args:
+            start_date: Start of the date range (inclusive).
+            end_date: End of the date range (inclusive).
+            limit: Maximum rows to return.
+
+        Returns:
+            List of Transaction instances ordered by date (newest first).
+        """
+        with session_scope() as session:
+            transactions = (
+                session.query(Transaction)
+                .filter(
+                    Transaction.created_at >= start_date,
+                    Transaction.created_at <= end_date,
+                )
                 .order_by(Transaction.created_at.desc())
                 .limit(limit)
                 .all()
@@ -1152,7 +1618,9 @@ class SearchHistoryRepository:
             )
 
             if len(all_history) > SearchHistoryRepository.MAX_HISTORY:
-                keep_ids = [h.id for h in all_history[:SearchHistoryRepository.MAX_HISTORY]]
+                keep_ids = [
+                    h.id for h in all_history[: SearchHistoryRepository.MAX_HISTORY]
+                ]
                 session.execute(
                     sql_delete(SearchHistory).where(SearchHistory.id.notin_(keep_ids))
                 )
@@ -1187,8 +1655,25 @@ class SearchHistoryRepository:
 
 
 # Helper functions to detach objects from session
+def _detach_location(loc: Location) -> Location:
+    """Create a detached copy of a Location."""
+    if loc is None:
+        return None
+    return Location(
+        id=loc.id,
+        name=loc.name,
+        description=loc.description,
+        created_at=loc.created_at,
+        updated_at=loc.updated_at,
+    )
+
+
 def _detach_item(item: Item) -> Item:
-    """Create a detached copy of an Item."""
+    """Create a detached copy of an Item.
+
+    Note: location_id is copied as a plain int. The compat `location` property
+    on detached Item objects always returns "" — use location_id instead.
+    """
     if item is None:
         return None
     return Item(
@@ -1196,7 +1681,7 @@ def _detach_item(item: Item) -> Item:
         item_type_id=item.item_type_id,
         quantity=item.quantity,
         serial_number=item.serial_number,
-        location=item.location,
+        location_id=item.location_id,
         condition=item.condition,
         created_at=item.created_at,
         updated_at=item.updated_at,
@@ -1216,6 +1701,9 @@ def _detach_transaction(trans: Transaction) -> Transaction:
         quantity_after=trans.quantity_after,
         notes=trans.notes,
         serial_number=trans.serial_number,
+        location_id=trans.location_id,
+        from_location_id=trans.from_location_id,
+        to_location_id=trans.to_location_id,
         created_at=trans.created_at,
     )
 
@@ -1243,5 +1731,5 @@ def _detach_item_type(item_type: ItemType) -> ItemType:
         is_serialized=item_type.is_serialized,
         details=item_type.details,
         created_at=item_type.created_at,
-        updated_at=item_type.updated_at
+        updated_at=item_type.updated_at,
     )

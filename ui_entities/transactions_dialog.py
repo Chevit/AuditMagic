@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from logger import logger
+from services import LocationService
 from styles import apply_button_style
 from ui_entities.translations import tr
 
@@ -107,24 +108,25 @@ class TransactionsDialog(QDialog):
         layout.addWidget(filter_group)
 
         # Transactions table
+        # Columns: Date, Type, [Serial], Change, Before, After, Notes, From Location, To Location
+        col_count = 9 if self._item_is_serialized else 8
         self.table = QTableWidget()
-        self.table.setColumnCount(7 if self._item_is_serialized else 6)
+        self.table.setColumnCount(col_count)
         horizontal_header_labels = [
             tr("transaction.column.date"),
             tr("transaction.column.type"),
         ]
-        if self._item_is_serialized == True:
+        if self._item_is_serialized:
             horizontal_header_labels.append(tr("field.serial_number"))
-
-        horizontal_header_labels = horizontal_header_labels + [
+        horizontal_header_labels += [
             tr("transaction.column.change"),
             tr("transaction.column.before"),
             tr("transaction.column.after"),
             tr("transaction.column.notes"),
+            tr("transaction.column.from_location"),
+            tr("transaction.column.to_location"),
         ]
-        self.table.setHorizontalHeaderLabels(
-            horizontal_header_labels
-        )
+        self.table.setHorizontalHeaderLabels(horizontal_header_labels)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -136,11 +138,15 @@ class TransactionsDialog(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        if self._item_is_serialized == True:
+        if self._item_is_serialized:
             header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)
         else:
             header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
 
         layout.addWidget(self.table)
 
@@ -184,7 +190,8 @@ class TransactionsDialog(QDialog):
             transactions = self._transactions_callback(
                 self._item_type_id, start_datetime, end_datetime
             )
-            self._populate_table(transactions)
+            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            self._populate_table(transactions, loc_map)
         except Exception as e:
             logger.error(f"Failed to load transactions: {e}", exc_info=True)
             self.table.setRowCount(0)
@@ -195,44 +202,46 @@ class TransactionsDialog(QDialog):
                 f"{tr('error.generic.message')}\n{e}",
             )
 
-    def _populate_table(self, transactions: List[dict]):
+    def _populate_table(self, transactions: List[dict], loc_map: dict = None):
         """Populate the table with transaction data."""
+        if loc_map is None:
+            loc_map = {}
         self.table.setRowCount(len(transactions))
 
         for row, trans in enumerate(transactions):
             column = 0
-            def incrementColumn():
-                nonlocal column
-                column += 1
+
+            def cell(text: str, col: int, color: QColor = None):
+                item = QTableWidgetItem(text)
+                if color:
+                    item.setForeground(color)
+                self.table.setItem(row, col, item)
+
+            trans_type = trans["type"]
+            if trans_type == "add":
+                type_color = QColor(0, 128, 0)    # Green
+            elif trans_type == "edit":
+                type_color = QColor(0, 0, 192)    # Blue
+            elif trans_type == "transfer":
+                type_color = QColor(80, 0, 160)   # Purple
+            else:
+                type_color = QColor(192, 0, 0)    # Red
 
             # Date
-            date_item = QTableWidgetItem(
-                trans["created_at"].strftime("%Y-%m-%d %H:%M")
-                if trans["created_at"]
-                else ""
+            cell(
+                trans["created_at"].strftime("%Y-%m-%d %H:%M") if trans["created_at"] else "",
+                column,
             )
-            self.table.setItem(row, column, date_item)
-            incrementColumn()
+            column += 1
 
             # Type
-            trans_type = trans["type"]
-            type_text = tr(f"transaction.type.{trans_type}")
-            type_item = QTableWidgetItem(type_text)
-            if trans_type == "add":
-                type_item.setForeground(QColor(0, 128, 0))  # Green
-            elif trans_type == "edit":
-                type_item.setForeground(QColor(0, 0, 192))  # Blue
-            else:
-                type_item.setForeground(QColor(192, 0, 0))  # Red
-            self.table.setItem(row, column, type_item)
-            incrementColumn()
+            cell(tr(f"transaction.type.{trans_type}"), column, type_color)
+            column += 1
 
-            if self._item_is_serialized == True:
+            if self._item_is_serialized:
                 # Serial Number
-                serial = trans.get("serial_number", "") or "—"
-                serial_item = QTableWidgetItem(serial)
-                self.table.setItem(row, column, serial_item)
-                incrementColumn()
+                cell(trans.get("serial_number") or "—", column)
+                column += 1
 
             # Change
             change = trans["quantity_change"]
@@ -240,29 +249,32 @@ class TransactionsDialog(QDialog):
                 change_text = "—"
             elif trans_type == "add":
                 change_text = f"+{change}"
+            elif trans_type == "transfer":
+                side = trans.get("transfer_side")
+                if side == "source":
+                    change_text = f"-{change}"
+                else:
+                    change_text = f"+{change}"
             else:
                 change_text = f"-{change}"
-            change_item = QTableWidgetItem(change_text)
-            if trans_type == "add":
-                change_item.setForeground(QColor(0, 128, 0))
-            elif trans_type == "edit":
-                change_item.setForeground(QColor(0, 0, 192))
-            else:
-                change_item.setForeground(QColor(192, 0, 0))
-            self.table.setItem(row, column, change_item)
-            incrementColumn()
+            cell(change_text, column, type_color)
+            column += 1
 
-            # Before
-            before_item = QTableWidgetItem(str(trans["quantity_before"]))
-            self.table.setItem(row, column, before_item)
-            incrementColumn()
-
-            # After
-            after_item = QTableWidgetItem(str(trans["quantity_after"]))
-            self.table.setItem(row, column, after_item)
-            incrementColumn()
+            # Before / After
+            cell(str(trans["quantity_before"]), column)
+            column += 1
+            cell(str(trans["quantity_after"]), column)
+            column += 1
 
             # Notes
-            notes_item = QTableWidgetItem(trans.get("notes", "") or "")
-            self.table.setItem(row, column, notes_item)
-            incrementColumn()
+            cell(trans.get("notes") or "", column)
+            column += 1
+
+            # From Location
+            from_id = trans.get("from_location_id")
+            cell(loc_map.get(from_id, "") if from_id else "", column)
+            column += 1
+
+            # To Location
+            to_id = trans.get("to_location_id")
+            cell(loc_map.get(to_id, "") if to_id else "", column)

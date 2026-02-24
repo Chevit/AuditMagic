@@ -2,4 +2,4 @@
 
 __version__ = "1.0.5"
 __author__ = "Che"
-__email__ = ""
+__email__ = "che.audit.magic@gmail.com"

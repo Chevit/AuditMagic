@@ -1,11 +1,16 @@
+from typing import Optional
+
 from PyQt6 import uic
 from runtime import resource_path
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
+    QHBoxLayout,
     QMainWindow,
     QMenu,
     QMessageBox,
     QPushButton,
+    QSpacerItem,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -13,7 +18,7 @@ from PyQt6.QtWidgets import (
 from config import config
 from db import init_database
 from logger import logger
-from services import InventoryService, SearchService, TransactionService
+from services import InventoryService, LocationService, SearchService, TransactionService
 from styles import apply_button_style
 from theme_manager import get_theme_manager
 from ui_entities.add_item_dialog import AddItemDialog
@@ -24,6 +29,11 @@ from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.inventory_list_view import InventoryListView
 from ui_entities.inventory_model import InventoryModel
 from ui_entities.item_details_dialog import ItemDetailsDialog
+from ui_entities.all_transactions_dialog import AllTransactionsDialog
+from ui_entities.first_location_dialog import FirstLocationDialog
+from ui_entities.location_management_dialog import LocationManagementDialog
+from ui_entities.location_selector import LocationSelectorWidget
+from ui_entities.transfer_dialog import TransferDialog
 from ui_entities.quantity_dialog import QuantityDialog
 from ui_entities.search_widget import SearchWidget
 from ui_entities.transactions_dialog import TransactionsDialog
@@ -32,17 +42,38 @@ from ui_entities.translations import tr
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        # _current_location_id must be set before any method that may read it
+        self._current_location_id: Optional[int] = None
+
         super().__init__()
         uic.loadUi(resource_path("ui/MainWindow.ui"), self)
 
         # Initialize database
         init_database()
 
+        # 1. Ensure at least one location exists (shows first-launch wizard if needed)
+        self._ensure_location_exists()
+
+        # 2. Restore last-selected location from config (three-case sentinel logic)
+        self._init_current_location()
+
+        # 3. Integrity check: auto-assign any NULL-location items
+        self._check_unassigned_items()
+
+        # 4. Set up UI components
         self._setup_ui()
         self._setup_theme_menu()
+        self._setup_location_selector()
         self._setup_search_widget()
         self._setup_inventory_list()
+
+        # 5. Restore location selector to current location (no signal emission)
+        self.location_selector.set_current_location(self._current_location_id)
+
+        # 6. Load data filtered by current location
         self._load_data_from_db()
+
+        # 7. Connect all signals and restore window
         self._connect_signals()
         self._restore_window_state()
 
@@ -52,6 +83,12 @@ class MainWindow(QMainWindow):
         if hasattr(self, "addButton"):
             self.addButton.setText(tr("main.add_item"))
             apply_button_style(self.addButton, "primary")
+
+        # Add "All Transactions" button to the bottom bar (right of the spacer)
+        if hasattr(self, "horizontalLayout"):
+            self.all_transactions_btn = QPushButton(tr("button.all_transactions"))
+            apply_button_style(self.all_transactions_btn, "info")
+            self.horizontalLayout.addWidget(self.all_transactions_btn)
 
     def _setup_theme_menu(self):
         """Set up theme switching menu."""
@@ -120,6 +157,103 @@ class MainWindow(QMainWindow):
                     f"Invalid theme: {theme_name}",
                 )
 
+    # ------------------------------------------------------------------ #
+    #  Location infrastructure                                            #
+    # ------------------------------------------------------------------ #
+
+    def _ensure_location_exists(self):
+        """Show the first-launch wizard if no locations exist yet."""
+        if LocationService.get_location_count() > 0:
+            return
+        while LocationService.get_location_count() == 0:
+            dlg = FirstLocationDialog(self)
+            dlg.exec()
+            new_id = dlg.get_location_id()
+            if new_id is not None:
+                self._current_location_id = new_id
+                break
+
+    def _init_current_location(self):
+        """Restore the last-selected location from config (sentinel pattern).
+
+        Three cases:
+          - Key absent  → first launch or legacy config → default to first location.
+          - Key = null  → user explicitly chose "All Locations" → keep None.
+          - Key = int   → validate the location still exists; fall back to first if gone.
+        """
+        _MISSING = object()
+        saved = config.get("ui.last_location_id", _MISSING)
+
+        if saved is _MISSING:
+            locs = LocationService.get_all_locations()
+            self._current_location_id = locs[0].id if locs else None
+        elif saved is None:
+            self._current_location_id = None
+        else:
+            loc = LocationService.get_location_by_id(int(saved))
+            if loc:
+                self._current_location_id = loc.id
+            else:
+                locs = LocationService.get_all_locations()
+                self._current_location_id = locs[0].id if locs else None
+
+    def _check_unassigned_items(self):
+        """If any items have no location, offer to assign them to a location."""
+        count = LocationService.get_unassigned_item_count()
+        if count == 0:
+            return
+        locs = LocationService.get_all_locations()
+        if not locs:
+            return
+        target_id = self._current_location_id or locs[0].id
+        target_name = next((l.name for l in locs if l.id == target_id), locs[0].name)
+        reply = QMessageBox.question(
+            self,
+            tr("location.unassigned.title"),
+            tr("location.unassigned.message").format(count=count, location=target_name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            LocationService.assign_all_unassigned_items(target_id)
+
+    def _setup_location_selector(self):
+        """Create the LocationSelectorWidget (inserted into the layout later)."""
+        self.location_selector = LocationSelectorWidget(self)
+
+    def _on_location_changed(self, location_id):
+        """Handle location dropdown change — save to config and reload list."""
+        self._current_location_id = location_id
+        config.set("ui.last_location_id", location_id)
+        # Show "Search all locations" checkbox only when a specific location is active
+        if hasattr(self, "search_widget"):
+            self.search_widget.set_all_locations_visible(location_id is not None)
+        self._refresh_item_list()
+
+    def _on_manage_locations(self):
+        """Open the location management dialog and reconcile state afterwards."""
+        dlg = LocationManagementDialog(self)
+        dlg.exec()
+
+        self.location_selector.refresh_locations()
+
+        # If the active location was deleted, fall back to first available
+        if self._current_location_id is not None:
+            loc = LocationService.get_location_by_id(self._current_location_id)
+            if not loc:
+                locs = LocationService.get_all_locations()
+                self._current_location_id = locs[0].id if locs else None
+                self.location_selector.set_current_location(self._current_location_id)
+                config.set("ui.last_location_id", self._current_location_id)
+
+        # Safety net: if somehow all locations were deleted, re-run wizard
+        if LocationService.get_location_count() == 0:
+            self._ensure_location_exists()
+            self.location_selector.refresh_locations()
+
+        self._refresh_item_list()
+
+    # ------------------------------------------------------------------ #
+
     def _setup_search_widget(self):
         """Set up the search widget above the list."""
         self.search_widget = SearchWidget(self)
@@ -154,9 +288,10 @@ class MainWindow(QMainWindow):
                     if layout.itemAt(i).widget() == self.listView:
                         layout.removeWidget(self.listView)
                         self.listView.deleteLater()
-                        # Insert search widget before the list
-                        layout.insertWidget(i, self.search_widget)
-                        layout.insertWidget(i + 1, self.inventory_list)
+                        # Insert location selector, then search widget, then list
+                        layout.insertWidget(i, self.location_selector)
+                        layout.insertWidget(i + 1, self.search_widget)
+                        layout.insertWidget(i + 2, self.inventory_list)
                         # Reapply styles after adding to layout (in case qt-material overrides)
                         self._reapply_search_widget_styles()
                         break
@@ -167,22 +302,28 @@ class MainWindow(QMainWindow):
                 self.listView.deleteLater()
 
     def _load_data_from_db(self):
-        """Load inventory items from database (grouped by type)."""
-        items = InventoryService.get_all_items_grouped()
+        """Load inventory items from database (grouped by type, filtered by location)."""
+        items = InventoryService.get_all_items_grouped(location_id=self._current_location_id)
         for item in items:
             self.inventory_model.add_item(item)
 
     def _connect_signals(self):
         """Connect signals to slots."""
+        self.location_selector.location_changed.connect(self._on_location_changed)
+        self.location_selector.manage_requested.connect(self._on_manage_locations)
+
         self.inventory_list.edit_requested.connect(self._on_edit_item)
         self.inventory_list.details_requested.connect(self._on_show_details)
         self.inventory_list.delete_requested.connect(self._on_delete_item)
         self.inventory_list.add_quantity_requested.connect(self._on_add_quantity)
         self.inventory_list.remove_quantity_requested.connect(self._on_remove_quantity)
         self.inventory_list.transactions_requested.connect(self._on_show_transactions)
+        self.inventory_list.transfer_requested.connect(self._on_transfer_item)
 
         if hasattr(self, "addButton"):
             self.addButton.clicked.connect(self._on_add_clicked)
+        if hasattr(self, "all_transactions_btn"):
+            self.all_transactions_btn.clicked.connect(self._on_show_all_transactions)
 
     def _on_edit_item(self, row: int, item):
         """Handle edit request for an inventory item."""
@@ -229,7 +370,7 @@ class MainWindow(QMainWindow):
                         is_serialized=edited_item.is_serialized,
                         serial_number=serial_to_use,
                         details=edited_item.details or "",
-                        location=edited_item.location or "",
+                        location_id=edited_item.location_id,
                         condition=edited_item.condition or "",
                         edit_reason=edit_notes,
                     )
@@ -306,7 +447,7 @@ class MainWindow(QMainWindow):
 
     def _on_add_clicked(self):
         """Handle add button click - open add item dialog."""
-        dialog = AddItemDialog(self)
+        dialog = AddItemDialog(current_location_id=self._current_location_id, parent=self)
         if dialog.exec():
             new_item = dialog.get_item()
             if new_item:
@@ -337,6 +478,7 @@ class MainWindow(QMainWindow):
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
                 existing_serials=existing_serials,
+                current_location_id=self._current_location_id,
                 parent=self,
             )
             if dialog.exec():
@@ -345,8 +487,7 @@ class MainWindow(QMainWindow):
                         item_type_name=item.item_type,
                         item_sub_type=item.sub_type or "",
                         serial_number=dialog.get_serial_number(),
-                        # location=dialog.get_location(),
-                        # condition=dialog.get_condition(),
+                        location_id=dialog.get_location_id(),
                         notes=dialog.get_notes(),
                     )
                     if new_item:
@@ -429,8 +570,24 @@ class MainWindow(QMainWindow):
             item_is_serialized=item.is_serialized,
             parent=self,
         )
+        loc_id = self._current_location_id
         dialog.set_transactions_callback(
-            TransactionService.get_transactions_by_type_and_date_range
+            lambda type_id, start, end: TransactionService.get_transactions_by_type_and_date_range(
+                type_id, start, end, location_id=loc_id
+            )
+        )
+        dialog.exec()
+
+    def _on_transfer_item(self, row: int, item):
+        """Open the transfer dialog for an inventory item."""
+        dialog = TransferDialog(item, current_location_id=self._current_location_id, parent=self)
+        if dialog.exec():
+            self._refresh_item_list()
+
+    def _on_show_all_transactions(self):
+        """Open the all-transactions dialog filtered to current location by default."""
+        dialog = AllTransactionsDialog(
+            current_location_id=self._current_location_id, parent=self
         )
         dialog.exec()
 
@@ -441,9 +598,18 @@ class MainWindow(QMainWindow):
         )
 
     def _on_search(self, query: str, field: str):
-        """Handle search request."""
+        """Handle search request (scoped to current location unless checkbox is set)."""
         field_value = field if field else None
-        results = SearchService.search(query, field_value, save_to_history=False)
+        search_all = (
+            hasattr(self, "search_widget")
+            and self.search_widget.is_search_all_locations()
+        )
+        results = SearchService.search(
+            query,
+            field_value,
+            save_to_history=False,
+            location_id=None if search_all else self._current_location_id,
+        )
         self._display_search_results(results)
 
     def _on_search_cleared(self):
@@ -457,9 +623,9 @@ class MainWindow(QMainWindow):
             self.inventory_model.add_item(item)
 
     def _refresh_item_list(self):
-        """Refresh the item list from database (grouped by type)."""
+        """Refresh the item list from database (grouped by type, filtered by location)."""
         self.inventory_model.clear()
-        items = InventoryService.get_all_items_grouped()
+        items = InventoryService.get_all_items_grouped(location_id=self._current_location_id)
         for item in items:
             self.inventory_model.add_item(item)
 
