@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 import openpyxl
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 
 from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 
@@ -33,7 +34,10 @@ class ExportService:
 
         Args:
             items: List of InventoryItem or GroupedInventoryItem for the Items sheet.
-            location_name: Display name used in the sheet title.
+                Location context is embedded per-row via each item's location_name field.
+            location_name: Accepted for API compatibility; not embedded in the workbook
+                (sheets are named "Items"/"Transactions" per spec, and each row carries
+                its own location value).
             transactions: Optional list of transaction dicts (from _transaction_to_dict).
             loc_map: Optional {location_id: name} for resolving location IDs in transactions.
             type_map: Optional {item_type_id: display_name} for transaction sheet.
@@ -57,7 +61,7 @@ class ExportService:
 
     @staticmethod
     def _write_items_sheet(
-        ws,
+        ws: Worksheet,
         items: List[Union[InventoryItem, GroupedInventoryItem]],
     ) -> None:
         bold = Font(bold=True)
@@ -101,7 +105,7 @@ class ExportService:
 
     @staticmethod
     def _write_transactions_sheet(
-        ws,
+        ws: Worksheet,
         transactions: List[dict],
         loc_map: Dict[int, str],
         type_map: Dict[int, str],
@@ -143,7 +147,7 @@ class ExportService:
             max_len = 0
             for cell in ws[get_column_letter(col)]:
                 try:
-                    max_len = max(max_len, len(str(cell.value or "")))
+                    max_len = max(max_len, len(str(cell.value if cell.value is not None else "")))
                 except Exception:
                     pass
             ws.column_dimensions[get_column_letter(col)].width = max(

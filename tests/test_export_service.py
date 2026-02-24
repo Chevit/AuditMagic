@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from datetime import datetime
 import pytest
 from ui_entities.inventory_item import InventoryItem, GroupedInventoryItem
+from export_service import ExportService
 
 
 def _make_item(name="Laptop", sub="X1", qty=3, sn=None, loc="Warehouse", cond="Good"):
@@ -27,27 +28,23 @@ def _make_grouped(name="Laptop", sub="X1", qty=6, serials=None, loc="Warehouse")
 
 
 def test_build_workbook_returns_workbook():
-    from export_service import ExportService
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
     import openpyxl
     assert isinstance(wb, openpyxl.Workbook)
 
 
 def test_items_sheet_exists():
-    from export_service import ExportService
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
     assert "Items" in wb.sheetnames
 
 
 def test_items_sheet_has_bold_header():
-    from export_service import ExportService
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
     ws = wb["Items"]
     assert ws.cell(1, 1).font.bold is True
 
 
 def test_items_sheet_header_columns():
-    from export_service import ExportService
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
     ws = wb["Items"]
     headers = [ws.cell(1, c).value for c in range(1, 7)]
@@ -55,7 +52,6 @@ def test_items_sheet_header_columns():
 
 
 def test_non_serialized_item_one_row():
-    from export_service import ExportService
     item = _make_grouped("Laptop", qty=5)
     wb = ExportService.build_workbook([item], location_name="Warehouse")
     ws = wb["Items"]
@@ -65,7 +61,6 @@ def test_non_serialized_item_one_row():
 
 
 def test_serialized_item_one_row_per_serial():
-    from export_service import ExportService
     item = _make_grouped("Laptop", serials=["SN1", "SN2", "SN3"])
     wb = ExportService.build_workbook([item], location_name="Warehouse")
     ws = wb["Items"]
@@ -73,7 +68,6 @@ def test_serialized_item_one_row_per_serial():
 
 
 def test_no_transactions_sheet_by_default():
-    from export_service import ExportService
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
     assert "Transactions" not in wb.sheetnames
 
@@ -92,7 +86,6 @@ def _make_transaction(type_id=1, tx_type="add", qty_before=0, qty_after=5,
 
 
 def test_transactions_sheet_created_when_passed():
-    from export_service import ExportService
     wb = ExportService.build_workbook(
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
@@ -103,7 +96,6 @@ def test_transactions_sheet_created_when_passed():
 
 
 def test_transactions_sheet_has_bold_header():
-    from export_service import ExportService
     wb = ExportService.build_workbook(
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
@@ -113,7 +105,6 @@ def test_transactions_sheet_has_bold_header():
 
 
 def test_transactions_sheet_header_columns():
-    from export_service import ExportService
     wb = ExportService.build_workbook(
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
@@ -127,7 +118,6 @@ def test_transactions_sheet_header_columns():
 
 
 def test_transactions_sheet_data_row():
-    from export_service import ExportService
     wb = ExportService.build_workbook(
         [_make_item()], "Warehouse",
         transactions=[_make_transaction(type_id=1, tx_type="add", qty_before=0, qty_after=5)],
@@ -143,7 +133,6 @@ def test_transactions_sheet_data_row():
 
 
 def test_transactions_location_names_resolved():
-    from export_service import ExportService
     tx = _make_transaction(tx_type="transfer", from_id=1, to_id=2)
     wb = ExportService.build_workbook(
         [_make_item()], "Warehouse",
