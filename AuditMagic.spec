@@ -19,6 +19,7 @@ a = Analysis(
         'sqlalchemy.dialects.sqlite',
         'logging.config',
         'logging.handlers',
+        'openpyxl',
     ],
     hookspath=[],
     hooksconfig={},
