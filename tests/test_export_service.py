@@ -90,7 +90,7 @@ def test_transactions_sheet_created_when_passed():
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
         loc_map={1: "Warehouse"},
-        type_map={1: "Laptop - X1"},
+        type_map={1: "Laptop \u2014 X1"},
     )
     assert "Transactions" in wb.sheetnames
 
@@ -122,7 +122,7 @@ def test_transactions_sheet_data_row():
         [_make_item()], "Warehouse",
         transactions=[_make_transaction(type_id=1, tx_type="add", qty_before=0, qty_after=5)],
         loc_map={1: "Warehouse"},
-        type_map={1: "Laptop - X1"},
+        type_map={1: "Laptop \u2014 X1"},
     )
     ws = wb["Transactions"]
     assert ws.cell(2, 2).value == "ADD"

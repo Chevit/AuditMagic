@@ -121,7 +121,7 @@ class ExportService:
             date_str = created.strftime("%d.%m.%Y %H:%M") if created else ""
             type_name = trans.get("type", "").upper()
             item_type_id = trans.get("item_type_id")
-            name_parts = (type_map.get(item_type_id) or str(item_type_id)).split(" - ", 1)
+            name_parts = (type_map.get(item_type_id) or str(item_type_id)).split(" \u2014 ", 1)
             item_name = name_parts[0]
             item_sub = name_parts[1] if len(name_parts) > 1 else ""
             from_id = trans.get("from_location_id")

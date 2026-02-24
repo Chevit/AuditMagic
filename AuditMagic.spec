@@ -1,8 +1,10 @@
 # AuditMagic.spec
 import os
 import qt_material
+import openpyxl
 
 qt_material_path = os.path.dirname(qt_material.__file__)
+openpyxl_path = os.path.dirname(openpyxl.__file__)
 
 a = Analysis(
     ['main.py'],
@@ -13,6 +15,7 @@ a = Analysis(
         ('alembic.ini', '.'),
         ('alembic', 'alembic'),
         (qt_material_path, 'qt_material'),
+        (openpyxl_path, 'openpyxl'),
         (os.path.join(SPECPATH, 'icon.ico'), '.'),
     ],
     hiddenimports=[

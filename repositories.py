@@ -1602,6 +1602,13 @@ class TransactionRepository:
 
         Returns:
             Transactions ordered by created_at descending.
+
+        Note:
+            TRANSFER operations create two rows (source and destination).  Both rows
+            carry the same from_location_id / to_location_id, so when filtering by a
+            specific location the OR filter will match both sides.  This is intentional
+            and consistent with AllTransactionsDialog — each row represents one side of
+            the transfer (outgoing vs incoming) with its own qty_before/after context.
         """
         with session_scope() as session:
             q = session.query(Transaction)
