@@ -20,9 +20,9 @@ class LocationService:
     """Service for location management operations."""
 
     @staticmethod
-    def create_location(name: str, description: str = "") -> Location:
+    def create_location(name: str) -> Location:
         """Create a new location."""
-        return LocationRepository.create(name, description)
+        return LocationRepository.create(name)
 
     @staticmethod
     def get_location_by_id(location_id: int) -> Optional[Location]:
@@ -48,6 +48,11 @@ class LocationService:
     def get_item_count(location_id: int) -> int:
         """Return number of items at a location."""
         return LocationRepository.get_item_count(location_id)
+
+    @staticmethod
+    def get_all_with_item_counts() -> list:
+        """Get all locations with their item counts in a single query."""
+        return LocationRepository.get_all_with_item_counts()
 
     @staticmethod
     def rename_location(location_id: int, new_name: str) -> Optional[Location]:
@@ -151,14 +156,14 @@ class InventoryService:
 
     @staticmethod
     def create_item(
-            item_type_name: str,
-            item_sub_type: str = "",
-            quantity: int = 1,
-            is_serialized: bool = False,
-            serial_number: str = None,
-            location_id: int = None,
-            condition: str = "",
-            transaction_notes: str = "",
+        item_type_name: str,
+        item_sub_type: str = "",
+        quantity: int = 1,
+        is_serialized: bool = False,
+        serial_number: str = None,
+        location_id: int = None,
+        condition: str = "",
+        transaction_notes: str = "",
     ) -> InventoryItem:
         """Create a new inventory item.
 
@@ -204,13 +209,13 @@ class InventoryService:
 
     @staticmethod
     def create_serialized_item(
-            item_type_name: str,
-            item_sub_type: str = "",
-            serial_number: str = "",
-            location_id: int = None,
-            condition: str = "",
-            details: str = "",
-            notes: str = "",
+        item_type_name: str,
+        item_sub_type: str = "",
+        serial_number: str = "",
+        location_id: int = None,
+        condition: str = "",
+        details: str = "",
+        notes: str = "",
     ) -> InventoryItem:
         """Create a new serialized inventory item.
 
@@ -264,15 +269,15 @@ class InventoryService:
 
     @staticmethod
     def create_or_merge_item(
-            item_type_name: str,
-            quantity: int,
-            sub_type: str = "",
-            is_serialized: bool = False,
-            serial_number: str = "",
-            details: str = "",
-            location_id: int = None,
-            condition: str = "",
-            transaction_notes: str = "",
+        item_type_name: str,
+        quantity: int,
+        sub_type: str = "",
+        is_serialized: bool = False,
+        serial_number: str = "",
+        details: str = "",
+        location_id: int = None,
+        condition: str = "",
+        transaction_notes: str = "",
     ) -> Tuple[InventoryItem, bool]:
         """Create a new item or merge with existing item if type+location matches.
 
@@ -411,7 +416,7 @@ class InventoryService:
 
     @staticmethod
     def get_serialized_items_grouped(
-            location_id: int = None,
+        location_id: int = None,
     ) -> List[GroupedInventoryItem]:
         """Get serialized inventory items grouped by type.
 
@@ -441,11 +446,11 @@ class InventoryService:
 
     @staticmethod
     def transfer_item(
-            item_id: int,
-            quantity: int,
-            from_location_id: int,
-            to_location_id: int,
-            notes: str = "",
+        item_id: int,
+        quantity: int,
+        from_location_id: int,
+        to_location_id: int,
+        notes: str = "",
     ) -> bool:
         """Transfer quantity of a non-serialized item to another location."""
         return ItemRepository.transfer_item(
@@ -458,10 +463,10 @@ class InventoryService:
 
     @staticmethod
     def transfer_serialized_items(
-            serial_numbers: List[str],
-            from_location_id: int,
-            to_location_id: int,
-            notes: str = "",
+        serial_numbers: List[str],
+        from_location_id: int,
+        to_location_id: int,
+        notes: str = "",
     ) -> int:
         """Transfer serialized items (by serial number) to another location."""
         return ItemRepository.transfer_serialized_items(
@@ -537,10 +542,10 @@ class InventoryService:
 
     @staticmethod
     def update_item(
-            item_id: int,
-            serial_number: str = None,
-            location_id: int = None,
-            condition: str = None,
+        item_id: int,
+        serial_number: str = None,
+        location_id: int = None,
+        condition: str = None,
     ) -> Optional[InventoryItem]:
         """Update an item's instance properties.
 
@@ -568,16 +573,16 @@ class InventoryService:
 
     @staticmethod
     def edit_item(
-            item_id: int,
-            item_type_name: str,
-            sub_type: str = "",
-            quantity: int = 1,
-            is_serialized: bool = False,
-            serial_number: str = "",
-            details: str = "",
-            location_id: int = None,
-            condition: str = "",
-            edit_reason: str = "",
+        item_id: int,
+        item_type_name: str,
+        sub_type: str = "",
+        quantity: int = 1,
+        is_serialized: bool = False,
+        serial_number: str = "",
+        details: str = "",
+        location_id: int = None,
+        condition: str = "",
+        edit_reason: str = "",
     ) -> Optional[InventoryItem]:
         """Edit an item's properties with full transaction logging.
 
@@ -661,7 +666,7 @@ class InventoryService:
 
     @staticmethod
     def delete_items_by_serial_numbers(
-            serial_numbers: List[str], notes: str = ""
+        serial_numbers: List[str], notes: str = ""
     ) -> int:
         """Delete items by their serial numbers in a single transaction.
 
@@ -684,7 +689,7 @@ class InventoryService:
 
     @staticmethod
     def add_quantity(
-            item_id: int, quantity: int, notes: str = ""
+        item_id: int, quantity: int, notes: str = ""
     ) -> Optional[InventoryItem]:
         """Add quantity to an item.
 
@@ -705,7 +710,7 @@ class InventoryService:
 
     @staticmethod
     def remove_quantity(
-            item_id: int, quantity: int, notes: str = ""
+        item_id: int, quantity: int, notes: str = ""
     ) -> Optional[InventoryItem]:
         """Remove quantity from an item.
 
@@ -733,10 +738,10 @@ class SearchService:
 
     @staticmethod
     def search(
-            query: str,
-            field: str = None,
-            save_to_history: bool = True,
-            location_id: int = None,
+        query: str,
+        field: str = None,
+        save_to_history: bool = True,
+        location_id: int = None,
     ) -> List[InventoryItem]:
         """Search for items and optionally save to history.
 
@@ -799,10 +804,10 @@ class TransactionService:
 
     @staticmethod
     def get_transactions_by_type_and_date_range(
-            type_id: int,
-            start_date: datetime,
-            end_date: datetime,
-            location_id: int = None,
+        type_id: int,
+        start_date: datetime,
+        end_date: datetime,
+        location_id: int = None,
     ) -> List[dict]:
         """Get transactions for an ItemType within a date range.
 
@@ -843,9 +848,9 @@ class TransactionService:
 
     @staticmethod
     def get_transactions_by_location_and_date_range(
-            location_id: int,
-            start_date: datetime,
-            end_date: datetime,
+        location_id: int,
+        start_date: datetime,
+        end_date: datetime,
     ) -> List[dict]:
         """Get transactions at a specific location within a date range.
 
@@ -866,8 +871,8 @@ class TransactionService:
 
     @staticmethod
     def get_all_transactions_by_date_range(
-            start_date: datetime,
-            end_date: datetime,
+        start_date: datetime,
+        end_date: datetime,
     ) -> List[dict]:
         """Get all transactions within a date range (no location filter).
 
@@ -882,7 +887,7 @@ class TransactionService:
         return [_transaction_to_dict(t) for t in transactions]
 
 
-def _transaction_to_dict(trans, viewer_location_id: int = None) -> dict:
+def _transaction_to_dict(trans) -> dict:
     """Convert a Transaction to a dictionary.
 
     For TRANSFER transactions, when viewer_location_id is provided, adds a

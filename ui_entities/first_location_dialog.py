@@ -11,12 +11,11 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
-    QTextEdit,
     QVBoxLayout,
 )
 
 from services import LocationService
-from styles import apply_button_style, apply_input_style, apply_text_edit_style
+from styles import apply_button_style, apply_input_style
 from ui_entities.translations import tr
 
 
@@ -49,14 +48,6 @@ class FirstLocationDialog(QDialog):
         apply_input_style(self.name_edit)
         layout.addWidget(self.name_edit)
 
-        desc_label = QLabel(tr("location.description"))
-        layout.addWidget(desc_label)
-        self.desc_edit = QTextEdit()
-        self.desc_edit.setPlaceholderText(tr("location.description.placeholder"))
-        self.desc_edit.setMaximumHeight(70)
-        apply_text_edit_style(self.desc_edit)
-        layout.addWidget(self.desc_edit)
-
         self.error_label = QLabel("")
         self.error_label.setStyleSheet("color: red;")
         self.error_label.hide()
@@ -81,10 +72,7 @@ class FirstLocationDialog(QDialog):
             return
 
         try:
-            loc = LocationService.create_location(
-                name=name,
-                description=self.desc_edit.toPlainText().strip(),
-            )
+            loc = LocationService.create_location(name=name)
             self._location_id = loc.id
             self.accept()
         except Exception as e:

@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 from PyQt6 import uic
@@ -162,7 +163,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
 
     def _ensure_location_exists(self):
-        """Show the first-launch wizard if no locations exist yet."""
+        """Show the first-launch wizard if no locations exist yet.
+
+        If the user cancels without creating a location they are prompted to
+        exit the application, since at least one location is required.
+        """
         if LocationService.get_location_count() > 0:
             return
         while LocationService.get_location_count() == 0:
@@ -172,6 +177,16 @@ class MainWindow(QMainWindow):
             if new_id is not None:
                 self._current_location_id = new_id
                 break
+            # User closed the dialog without creating a location.
+            # A location is required — ask whether to exit.
+            answer = QMessageBox.question(
+                self,
+                tr("location.required.title"),
+                tr("location.required.message"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                sys.exit(0)
 
     def _init_current_location(self):
         """Restore the last-selected location from config (sentinel pattern).

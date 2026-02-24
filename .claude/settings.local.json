@@ -12,7 +12,8 @@
       "Bash(.venv/Scripts/python:*)",
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(.venv/Scripts/alembic revision --autogenerate -m \"add_locations_table_and_transfer\")",
-      "Bash(.venv/Scripts/alembic upgrade:*)"
+      "Bash(.venv/Scripts/alembic upgrade:*)",
+      "Bash(git -C \"C:\\\\Users\\\\chevi\\\\PycharmProjects\\\\AuditMagic\" diff repositories.py)"
     ]
   }
 }

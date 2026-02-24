@@ -39,13 +39,14 @@ class Location(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False, unique=True, index=True)
-    description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    items = relationship("Item", back_populates="location_ref")
 
     def __repr__(self):
         return f"<Location(id={self.id}, name='{self.name}')>"
@@ -127,7 +128,7 @@ class Item(Base):
     item_type_id = Column(Integer, ForeignKey("item_types.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     serial_number = Column(String(255), nullable=True, unique=True, index=True)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, index=True)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, index=True)  # nullable: legacy rows pre-locations; wizard assigns them on startup
     condition = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -138,7 +139,7 @@ class Item(Base):
 
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
-    location_ref = relationship("Location", foreign_keys=[location_id])
+    location_ref = relationship("Location", foreign_keys=[location_id], back_populates="items")
 
     @property
     def location(self) -> str:

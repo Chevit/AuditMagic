@@ -15,10 +15,10 @@ class LocationRepository:
     """Repository for Location CRUD operations."""
 
     @staticmethod
-    def create(name: str, description: str = "") -> Location:
+    def create(name: str) -> Location:
         """Create a new location."""
         with session_scope() as session:
-            loc = Location(name=name.strip(), description=description or "")
+            loc = Location(name=name.strip())
             session.add(loc)
             session.flush()
             session.refresh(loc)
@@ -62,6 +62,19 @@ class LocationRepository:
             ) or 0
 
     @staticmethod
+    def get_all_with_item_counts() -> List[tuple]:
+        """Get all locations with their item counts in a single query."""
+        with session_scope() as session:
+            rows = (
+                session.query(Location, func.count(Item.id).label("item_count"))
+                .outerjoin(Item, Item.location_id == Location.id)
+                .group_by(Location.id)
+                .order_by(Location.name)
+                .all()
+            )
+            return [(_detach_location(loc), count) for loc, count in rows]
+
+    @staticmethod
     def rename(location_id: int, new_name: str) -> Optional[Location]:
         """Rename a location."""
         with session_scope() as session:
@@ -81,10 +94,10 @@ class LocationRepository:
             if not loc:
                 return False
             item_count = (
-                             session.query(func.count(Item.id))
-                             .filter(Item.location_id == location_id)
-                             .scalar()
-                         ) or 0
+                session.query(func.count(Item.id))
+                .filter(Item.location_id == location_id)
+                .scalar()
+            ) or 0
             if item_count > 0:
                 raise ValueError(
                     f"Location '{loc.name}' still has {item_count} item(s). "
@@ -126,7 +139,7 @@ class ItemTypeRepository:
 
     @staticmethod
     def create(
-            name: str, sub_type: str = "", is_serialized: bool = False, details: str = ""
+        name: str, sub_type: str = "", is_serialized: bool = False, details: str = ""
     ) -> ItemType:
         """Create a new item type.
 
@@ -157,10 +170,10 @@ class ItemTypeRepository:
 
     @staticmethod
     def get_or_create(
-            name: str,
-            sub_type: str = "",
-            is_serialized: bool = False,
-            details: str = "",
+        name: str,
+        sub_type: str = "",
+        is_serialized: bool = False,
+        details: str = "",
     ) -> ItemType:
         """Get existing type or create new one.
 
@@ -297,7 +310,7 @@ class ItemTypeRepository:
 
     @staticmethod
     def get_autocomplete_subtypes(
-            type_name: str, prefix: str = "", limit: int = 20
+        type_name: str, prefix: str = "", limit: int = 20
     ) -> List[str]:
         """Get autocomplete suggestions for subtypes given a type name.
 
@@ -326,11 +339,11 @@ class ItemTypeRepository:
 
     @staticmethod
     def update(
-            type_id: int,
-            name: str = None,
-            sub_type: str = None,
-            is_serialized: bool = None,
-            details: str = None,
+        type_id: int,
+        name: str = None,
+        sub_type: str = None,
+        is_serialized: bool = None,
+        details: str = None,
     ) -> Optional[ItemType]:
         """Update an item type.
 
@@ -508,12 +521,12 @@ class ItemRepository:
 
     @staticmethod
     def create(
-            item_type_id: int,
-            quantity: int = 1,
-            serial_number: str = None,
-            location_id: int = None,
-            condition: str = None,
-            transaction_notes: str = None,
+        item_type_id: int,
+        quantity: int = 1,
+        serial_number: str = None,
+        location_id: int = None,
+        condition: str = None,
+        transaction_notes: str = None,
     ) -> Item:
         """Create a new item instance.
 
@@ -589,11 +602,11 @@ class ItemRepository:
 
     @staticmethod
     def create_serialized(
-            item_type_id: int,
-            serial_number: str,
-            location_id: int = None,
-            condition: str = "",
-            notes: str = "",
+        item_type_id: int,
+        serial_number: str,
+        location_id: int = None,
+        condition: str = "",
+        notes: str = "",
     ) -> Item:
         """Create a new serialized item with grouped-quantity-aware transactions.
 
@@ -636,10 +649,10 @@ class ItemRepository:
 
             # Count existing items so the transaction reflects the group quantity
             existing_count = (
-                                 session.query(func.count(Item.id))
-                                 .filter(Item.item_type_id == item_type_id)
-                                 .scalar()
-                             ) or 0
+                session.query(func.count(Item.id))
+                .filter(Item.item_type_id == item_type_id)
+                .scalar()
+            ) or 0
 
             item = Item(
                 item_type_id=item_type_id,
@@ -709,10 +722,10 @@ class ItemRepository:
 
     @staticmethod
     def update(
-            item_id: int,
-            serial_number: str = None,
-            location_id: int = None,
-            condition: str = None,
+        item_id: int,
+        serial_number: str = None,
+        location_id: int = None,
+        condition: str = None,
     ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
@@ -746,13 +759,13 @@ class ItemRepository:
 
     @staticmethod
     def edit_item(
-            item_id: int,
-            item_type_id: int,
-            quantity: int,
-            serial_number: str,
-            location_id: int,
-            condition: str,
-            edit_reason: str,
+        item_id: int,
+        item_type_id: int,
+        quantity: int,
+        serial_number: str,
+        location_id: int,
+        condition: str,
+        edit_reason: str,
     ) -> Optional[Item]:
         """Edit an item's properties and quantity, recording all changes as transactions.
 
@@ -870,7 +883,7 @@ class ItemRepository:
 
     @staticmethod
     def remove_quantity(
-            item_id: int, quantity: int, notes: str = None
+        item_id: int, quantity: int, notes: str = None
     ) -> Optional[Item]:
         """Remove quantity from an item and record the transaction.
 
@@ -926,7 +939,7 @@ class ItemRepository:
 
     @staticmethod
     def find_by_type_and_serial(
-            item_type_id: int, serial_number: str = None
+        item_type_id: int, serial_number: str = None
     ) -> Optional[Item]:
         """Find an existing item by type ID and serial number.
 
@@ -951,7 +964,7 @@ class ItemRepository:
 
     @staticmethod
     def search(
-            query: str, field: str = None, limit: int = 200, location_id: int = None
+        query: str, field: str = None, limit: int = 200, location_id: int = None
     ) -> List[Item]:
         """Search items by query string.
 
@@ -1015,7 +1028,7 @@ class ItemRepository:
 
     @staticmethod
     def get_autocomplete_suggestions(
-            prefix: str, field: str = None, limit: int = 10
+        prefix: str, field: str = None, limit: int = 10
     ) -> List[str]:
         """Get autocomplete suggestions for a search prefix.
 
@@ -1119,7 +1132,7 @@ class ItemRepository:
 
     @staticmethod
     def find_non_serialized_at_location(
-            item_type_id: int, location_id: int
+        item_type_id: int, location_id: int
     ) -> Optional[Item]:
         """Find a non-serialized item of a given type at a specific location.
 
@@ -1147,11 +1160,11 @@ class ItemRepository:
 
     @staticmethod
     def transfer_item(
-            item_id: int,
-            quantity: int,
-            from_location_id: int,
-            to_location_id: int,
-            notes: str = "",
+        item_id: int,
+        quantity: int,
+        from_location_id: int,
+        to_location_id: int,
+        notes: str = "",
     ) -> bool:
         """Transfer quantity of a non-serialized item between locations.
 
@@ -1212,11 +1225,6 @@ class ItemRepository:
                     session.add(new_item)
 
             session.flush()
-            dest_qty_after = (dest.quantity if dest else 0) + (
-                0 if (is_full and dest is None) else quantity
-            )
-            if is_full and dest is None:
-                dest_qty_after = src_qty_before  # the row moved entirely
 
             # Source transaction
             session.add(
@@ -1259,10 +1267,10 @@ class ItemRepository:
 
     @staticmethod
     def transfer_serialized_items(
-            serial_numbers: List[str],
-            from_location_id: int,
-            to_location_id: int,
-            notes: str = "",
+        serial_numbers: List[str],
+        from_location_id: int,
+        to_location_id: int,
+        notes: str = "",
     ) -> int:
         """Transfer serialized items (by serial number) to a new location.
 
@@ -1279,24 +1287,24 @@ class ItemRepository:
             items = (
                 session.query(Item).filter(Item.serial_number.in_(serial_numbers)).all()
             )
-            # Count existing at destination for accurate qty_before
+            # Count existing at source and destination for accurate qty_before/after
             type_ids = {item.item_type_id for item in items}
+            src_counts: dict = {}
             dest_counts: dict = {}
             for tid in type_ids:
+                src_counts[tid] = (
+                    session.query(func.count(Item.id))
+                    .filter(Item.item_type_id == tid, Item.location_id == from_location_id)
+                    .scalar()
+                ) or 0
                 dest_counts[tid] = (
-                                       session.query(func.count(Item.id))
-                                       .filter(
-                                           Item.item_type_id == tid, Item.location_id == to_location_id
-                                       )
-                                       .scalar()
-                                   ) or 0
+                    session.query(func.count(Item.id))
+                    .filter(Item.item_type_id == tid, Item.location_id == to_location_id)
+                    .scalar()
+                ) or 0
 
-            for i, item in enumerate(items):
-                src_count_for_type = sum(
-                    1
-                    for it in items
-                    if it.item_type_id == item.item_type_id and items.index(it) <= i
-                )
+            for item in items:
+                qty_before_src = src_counts[item.item_type_id]
                 qty_before_dest = dest_counts[item.item_type_id]
                 item.location_id = to_location_id
                 session.add(
@@ -1304,8 +1312,8 @@ class ItemRepository:
                         item_type_id=item.item_type_id,
                         transaction_type=TransactionType.TRANSFER,
                         quantity_change=1,
-                        quantity_before=1,
-                        quantity_after=0,
+                        quantity_before=qty_before_src,
+                        quantity_after=qty_before_src - 1,
                         serial_number=item.serial_number,
                         notes=notes,
                         location_id=from_location_id,
@@ -1327,6 +1335,7 @@ class ItemRepository:
                         to_location_id=to_location_id,
                     )
                 )
+                src_counts[item.item_type_id] -= 1
                 dest_counts[item.item_type_id] += 1
 
             session.flush()
@@ -1448,11 +1457,11 @@ class TransactionRepository:
 
     @staticmethod
     def get_by_type_and_date_range(
-            type_id: int,
-            start_date: datetime,
-            end_date: datetime,
-            location_id: int = None,
-            limit: int = 1000,
+        type_id: int,
+        start_date: datetime,
+        end_date: datetime,
+        location_id: int = None,
+        limit: int = 1000,
     ) -> List[Transaction]:
         """Get transactions for an ItemType within a date range.
 
@@ -1479,9 +1488,7 @@ class TransactionRepository:
             )
             if location_id is not None:
                 q = q.filter(
-                    or_(
-                        Transaction.location_id == location_id,
-                    )
+                    Transaction.location_id == location_id,
                 )
             transactions = q.order_by(Transaction.created_at.desc()).limit(limit).all()
             return [_detach_transaction(t) for t in transactions]
@@ -1507,10 +1514,10 @@ class TransactionRepository:
 
     @staticmethod
     def get_by_location_and_date_range(
-            location_id: int,
-            start_date: datetime,
-            end_date: datetime,
-            limit: int = 1000,
+        location_id: int,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 1000,
     ) -> List[Transaction]:
         """Get transactions at a specific location within a date range.
 
@@ -1542,9 +1549,9 @@ class TransactionRepository:
 
     @staticmethod
     def get_all_by_date_range(
-            start_date: datetime,
-            end_date: datetime,
-            limit: int = 5000,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 5000,
     ) -> List[Transaction]:
         """Get all transactions within a date range (no location filter).
 
@@ -1662,7 +1669,6 @@ def _detach_location(loc: Location) -> Location:
     return Location(
         id=loc.id,
         name=loc.name,
-        description=loc.description,
         created_at=loc.created_at,
         updated_at=loc.updated_at,
     )

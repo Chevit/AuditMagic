@@ -47,7 +47,7 @@ class _AddRenameDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "danger")
+        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary")
         btns.accepted.connect(self._validate)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
@@ -111,8 +111,7 @@ class LocationManagementDialog(QDialog):
 
     def _load_locations(self):
         self.list_widget.clear()
-        for loc in LocationService.get_all_locations():
-            count = LocationService.get_item_count(loc.id)
+        for loc, count in LocationService.get_all_with_item_counts():
             item = QListWidgetItem(
                 f"{loc.name}  —  {tr('location.item_count').format(count=count)}"
             )
