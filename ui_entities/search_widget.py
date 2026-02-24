@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QCompleter,
     QHBoxLayout,
@@ -48,7 +49,6 @@ class SearchWidget(QWidget):
         self.field_combo.addItem(tr("search.field.item_type"), "item_type")
         self.field_combo.addItem(tr("search.field.sub_type"), "sub_type")
         self.field_combo.addItem(tr("search.field.serial"), "serial_number")
-        self.field_combo.addItem(tr("search.field.location"), "location")
         self.field_combo.addItem(tr("search.field.details"), "details")
         self.field_combo.setMinimumWidth(120)
         apply_combo_box_style(self.field_combo)
@@ -80,6 +80,11 @@ class SearchWidget(QWidget):
         apply_button_style(self.clear_button, "secondary")
         self.clear_button.clicked.connect(self._on_clear_clicked)
         search_row.addWidget(self.clear_button)
+
+        # "Search all locations" checkbox — hidden when already in All-Locations view
+        self.all_locations_checkbox = QCheckBox(tr("search.all_locations"))
+        self.all_locations_checkbox.setVisible(False)
+        search_row.addWidget(self.all_locations_checkbox)
 
         layout.addLayout(search_row)
 
@@ -128,3 +133,17 @@ class SearchWidget(QWidget):
     def get_current_field(self) -> Optional[str]:
         """Get the current search field."""
         return self.field_combo.currentData()
+
+    def set_all_locations_visible(self, visible: bool) -> None:
+        """Show or hide the 'Search all locations' checkbox.
+
+        Should be visible only when a specific location is selected,
+        not when already viewing all locations.
+        """
+        self.all_locations_checkbox.setVisible(visible)
+        if not visible:
+            self.all_locations_checkbox.setChecked(False)
+
+    def is_search_all_locations(self) -> bool:
+        """Return True if 'Search all locations' checkbox is checked."""
+        return self.all_locations_checkbox.isChecked()

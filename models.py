@@ -29,6 +29,27 @@ class TransactionType(enum.Enum):
     ADD = "add"
     REMOVE = "remove"
     EDIT = "edit"
+    TRANSFER = "transfer"
+
+
+class Location(Base):
+    """Represents a physical storage location (e.g., warehouse, room, shelf)."""
+
+    __tablename__ = "locations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    items = relationship("Item", back_populates="location_ref")
+
+    def __repr__(self):
+        return f"<Location(id={self.id}, name='{self.name}')>"
 
 
 class ItemType(Base):
@@ -107,7 +128,7 @@ class Item(Base):
     item_type_id = Column(Integer, ForeignKey("item_types.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     serial_number = Column(String(255), nullable=True, unique=True, index=True)
-    location = Column(String(255), nullable=True)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, index=True)  # nullable: legacy rows pre-locations; wizard assigns them on startup
     condition = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -118,6 +139,13 @@ class Item(Base):
 
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
+    location_ref = relationship("Location", foreign_keys=[location_id], back_populates="items")
+
+    @property
+    def location(self) -> str:
+        """Backward-compat property. Always returns '' on detached objects
+        (location_ref is not populated by _detach_item). Use location_id instead."""
+        return ""
 
     # Constraints: Either bulk (no SN, qty > 0) OR serialized (has SN, qty = 1)
     __table_args__ = (
@@ -149,12 +177,20 @@ class Transaction(Base):
     quantity_after = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)
     serial_number = Column(String(255), nullable=True)
+    # Location where this transaction occurred (set on ALL types for historical accuracy)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    # Transfer-specific: source and destination (set only on TRANSFER type)
+    from_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    to_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), index=True
     )
 
     # Relationships
     item_type = relationship("ItemType")
+    location = relationship("Location", foreign_keys=[location_id])
+    from_location = relationship("Location", foreign_keys=[from_location_id])
+    to_location = relationship("Location", foreign_keys=[to_location_id])
 
     def __repr__(self):
         return f"<Transaction(id={self.id}, type_id={self.item_type_id}, type={self.transaction_type.value}, change={self.quantity_change})>"

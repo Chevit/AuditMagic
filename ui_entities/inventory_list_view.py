@@ -16,6 +16,7 @@ class InventoryListView(QListView):
     add_quantity_requested = pyqtSignal(int, object)
     remove_quantity_requested = pyqtSignal(int, object)
     transactions_requested = pyqtSignal(int, object)
+    transfer_requested = pyqtSignal(int, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -88,6 +89,13 @@ class InventoryListView(QListView):
             lambda: self.transactions_requested.emit(row, item)
         )
         menu.addAction(transactions_action)
+
+        # Transfer action
+        transfer_action = QAction(tr("menu.transfer"), self)
+        transfer_action.triggered.connect(
+            lambda: self.transfer_requested.emit(row, item)
+        )
+        menu.addAction(transfer_action)
 
         menu.addSeparator()
 

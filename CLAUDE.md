@@ -25,9 +25,9 @@ theme_config.py      # Theme configuration with enum-based parameters
 theme_manager.py     # Theme management (light/dark modes)
 styles.py            # Centralized UI styles (complements qt-material)
 db.py                # Database init, session management, migrations
-models.py            # SQLAlchemy models (ItemType, Item, Transaction, SearchHistory)
-repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, SearchHistoryRepository)
-services.py          # Business logic (InventoryService, SearchService, TransactionService)
+models.py            # SQLAlchemy models (ItemType, Item, Transaction, Location, SearchHistory)
+repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, LocationRepository, SearchHistoryRepository)
+services.py          # Business logic (InventoryService, LocationService, SearchService, TransactionService)
 validators.py        # QValidator subclasses and validation helpers
 test_serialized_feature.py # Automated tests for is_serialized feature (34 checks)
 requirements.txt     # Core dependencies
@@ -52,8 +52,13 @@ ui_entities/         # UI components and models
   remove_serial_number_dialog.py # Remove serial numbers from group
   item_details_dialog.py # Item details view
   quantity_dialog.py # Add/remove quantity dialog
-  transactions_dialog.py # Transaction history view filtered by ItemType and date range
-  search_widget.py   # Search with autocomplete and styled inputs
+  transactions_dialog.py # Transaction history view filtered by ItemType and date range (includes TRANSFER + From/To location columns)
+  all_transactions_dialog.py # Cross-type transaction log with location filter and date range
+  transfer_dialog.py # Transfer items between locations (serialized + non-serialized)
+  location_selector.py # LocationSelectorWidget — dropdown + "Manage" button above list
+  location_management_dialog.py # CRUD for locations (add/rename/delete)
+  first_location_dialog.py # First-launch wizard for creating the initial location
+  search_widget.py   # Search with autocomplete and "Search all locations" checkbox
   update_dialog.py   # Update notification dialog (shown on startup if newer version found)
 ```
 
@@ -155,20 +160,27 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - One ItemType can have many Items
 - `is_serialized`: **immutable** once the type has any items — enforced in `get_or_create` (conflict guard) and `update` (item-count guard)
 
+### Location
+- **Location**: `id`, `name` (unique, max 100 chars)
+- Required: at least one location must exist at all times (enforced by first-launch wizard)
+- Items FK to `location_id` (nullable for legacy data; auto-assign wizard on startup handles NULL rows)
+- `LocationService.get_location_count()`, `get_all_locations()`, `get_location_by_id()`, `get_unassigned_item_count()`, `assign_all_unassigned_items()`
+
 ### Item (Inventory Instances)
-- **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location`, `condition`
+- **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location_id` (FK to Location), `condition`
 - Represents actual inventory units
 - If serialized: quantity=1, serial_number required and unique
 - If not serialized: quantity>0, no serial_number allowed
 - Database constraint enforces: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
 
 ### Transaction
-- **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`
+- **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT/TRANSFER), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`, `from_location_id` (FK, nullable), `to_location_id` (FK, nullable)
 - Belongs to **ItemType**, not Item — audit trail is preserved even when items are deleted
 - `serial_number` on the transaction identifies the specific serialized unit involved
 - For **serialized items**: `quantity_before/after` reflect the total group count (how many items of that type exist), not the individual item quantity (which is always 1)
 - For **non-serialized items**: `quantity_before/after` reflect the single Item row's quantity
-- ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE)
+- For **TRANSFER** transactions: `from_location_id` and `to_location_id` are set; quantity_change = qty moved
+- ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE/TRANSFER)
 
 ## Theme System 🎨
 
@@ -300,9 +312,14 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 ## Key Patterns
 - Form validation with QMessageBox feedback and QValidator subclasses
 - Custom InventoryListView widget with built-in context menus and signals
-- Context menu actions: Edit, Details, Add/Remove Quantity, Transactions, Delete
+- Context menu actions: Edit, Details, Add/Remove Quantity, Transactions, Transfer, Delete
 - Double-click opens details dialog
 - Modal dialogs for all CRUD operations
+- **Location system**: Items belong to a `Location` (FK). `LocationSelectorWidget` above list filters view. "All Locations" (None) shows everything. Config key `ui.last_location_id` persists selection (sentinel pattern: missing key → first location, null → All Locations, int → validate + fallback).
+- **First-launch wizard**: `FirstLocationDialog` loops until at least one location exists. `_ensure_location_exists()` called before any list load.
+- **Transfer**: `InventoryService.transfer_item(item_id, qty, to_location_id, notes)` / `transfer_serialized_items(item_ids, to_location_id, notes)`. Creates TRANSFER transaction with `from_location_id` and `to_location_id`.
+- **All Transactions view**: `AllTransactionsDialog` shows cross-type log filterable by location + date range. 10 columns including From/To Location.
+- **`InventoryItem.location_id / location_name`**: replaces old `location: str` field. Backward-compat `.location` property returns `location_name`.
 - **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
 - **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). These count existing items of the type first to set `quantity_before/after` correctly for the grouped view. Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
 - **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction rows via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item rows via ORM cascade from ItemType, (3) ItemType itself.

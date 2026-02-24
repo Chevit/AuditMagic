@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, QStringListModel, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QCompleter,
     QDialog,
     QFormLayout,
@@ -18,8 +19,8 @@ from PyQt6.QtWidgets import (
 )
 
 from logger import logger
-from services import InventoryService
-from styles import Colors, Styles, apply_button_style, apply_input_style, apply_text_edit_style
+from services import InventoryService, LocationService
+from styles import Colors, Styles, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import InventoryItem
 from ui_entities.translations import tr
 from validators import (
@@ -34,8 +35,9 @@ from validators import (
 class AddItemDialog(QDialog):
     """Dialog for adding a new inventory item with improved quantity input UX."""
 
-    def __init__(self, parent=None):
+    def __init__(self, current_location_id: Optional[int] = None, parent=None):
         super().__init__(parent)
+        self._current_location_id = current_location_id
         self._result_item: Optional[InventoryItem] = None
         self._type_debounce_timer = QTimer(self)
         self._type_debounce_timer.setSingleShot(True)
@@ -137,6 +139,20 @@ class AddItemDialog(QDialog):
         self.initial_notes_edit.setMaximumHeight(60)
         apply_text_edit_style(self.initial_notes_edit)
         form_layout.addRow(initial_notes_label, self.initial_notes_edit)
+
+        # Location (mandatory)
+        loc_label = QLabel(tr("location.title"))
+        loc_label.setFont(label_font)
+        self.location_combo = QComboBox()
+        apply_combo_box_style(self.location_combo)
+        for loc in LocationService.get_all_locations():
+            self.location_combo.addItem(loc.name, userData=loc.id)
+        if self._current_location_id is not None:
+            for i in range(self.location_combo.count()):
+                if self.location_combo.itemData(i) == self._current_location_id:
+                    self.location_combo.setCurrentIndex(i)
+                    break
+        form_layout.addRow(loc_label, self.location_combo)
 
         layout.addLayout(form_layout)
 
@@ -391,12 +407,15 @@ class AddItemDialog(QDialog):
         quantity = int(quantity_text)
         logger.info(f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}")
 
+        location_id = self.location_combo.currentData()
+
         try:
             if is_serialized:
                 self._result_item = InventoryService.create_serialized_item(
                     item_type_name=item_type,
                     item_sub_type=sub_type,
                     serial_number=serial_number,
+                    location_id=location_id,
                     notes=initial_notes or "",
                 )
             else:
@@ -405,6 +424,7 @@ class AddItemDialog(QDialog):
                     item_sub_type=sub_type,
                     quantity=quantity,
                     is_serialized=False,
+                    location_id=location_id,
                     transaction_notes=initial_notes or None,
                 )
             logger.info(f"Item created successfully: id={self._result_item.id}")

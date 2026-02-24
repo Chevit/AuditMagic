@@ -5,6 +5,7 @@ from typing import List, Optional
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -21,8 +22,8 @@ from PyQt6.QtWidgets import (
 )
 
 from logger import logger
-from services import InventoryService
-from styles import Colors, apply_button_style, apply_input_style, apply_text_edit_style
+from services import InventoryService, LocationService
+from styles import Colors, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
 from ui_entities.translations import tr
 from validators import (
@@ -176,6 +177,19 @@ class EditItemDialog(QDialog):
         self.item_details_edit.setMaximumHeight(80)
         apply_text_edit_style(self.item_details_edit)
         form_layout.addRow(item_details_label, self.item_details_edit)
+
+        # Location — combo or read-only label for multi-location groups
+        loc_label = QLabel(tr("location.title"))
+        is_multi = getattr(self._original_item, "is_multi_location", False)
+        if is_multi:
+            self.location_combo = None
+            form_layout.addRow(loc_label, QLabel(tr("location.multiple")))
+        else:
+            self.location_combo = QComboBox()
+            apply_combo_box_style(self.location_combo)
+            for loc in LocationService.get_all_locations():
+                self.location_combo.addItem(loc.name, userData=loc.id)
+            form_layout.addRow(loc_label, self.location_combo)
 
         layout.addLayout(form_layout)
 
@@ -376,6 +390,12 @@ class EditItemDialog(QDialog):
 
         self.item_details_edit.setPlainText(self._original_item.details or "")
 
+        if self.location_combo is not None and self._original_item.location_id is not None:
+            for i in range(self.location_combo.count()):
+                if self.location_combo.itemData(i) == self._original_item.location_id:
+                    self.location_combo.setCurrentIndex(i)
+                    break
+
     def _on_save_clicked(self):
         """Validate and accept the dialog."""
         if self._type_conflict:
@@ -485,6 +505,14 @@ class EditItemDialog(QDialog):
             f"Edit form validation passed - saving item with quantity {quantity}"
         )
 
+        if self.location_combo is not None:
+            location_id = self.location_combo.currentData()
+            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            location_name = loc_map.get(location_id, "")
+        else:
+            location_id = self._original_item.location_id
+            location_name = self._original_item.location_name
+
         self._result_item = InventoryItem(
             id=self._original_item.id,
             item_type_id=self._original_item.item_type_id,
@@ -493,7 +521,8 @@ class EditItemDialog(QDialog):
             is_serialized=self._original_item.is_serialized,
             quantity=quantity,
             serial_number=serial_number or None,
-            location=self._original_item.location,
+            location_id=location_id,
+            location_name=location_name,
             condition=self._original_item.condition,
             details=item_details,
             created_at=self._original_item.created_at,
