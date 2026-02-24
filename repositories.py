@@ -1285,8 +1285,19 @@ class ItemRepository:
 
         with session_scope() as session:
             items = (
-                session.query(Item).filter(Item.serial_number.in_(serial_numbers)).all()
+                session.query(Item)
+                .filter(
+                    Item.serial_number.in_(serial_numbers),
+                    Item.location_id == from_location_id,
+                )
+                .all()
             )
+            found_serials = {item.serial_number for item in items}
+            missing = set(serial_numbers) - found_serials
+            if missing:
+                raise ValueError(
+                    f"Serial(s) not found at location {from_location_id}: {sorted(missing)}"
+                )
             # Count existing at source and destination for accurate qty_before/after
             type_ids = {item.item_type_id for item in items}
             src_counts: dict = {}

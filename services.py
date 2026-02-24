@@ -829,7 +829,7 @@ class TransactionService:
             type_id, start_date, end_date, location_id=location_id
         )
         return [
-            _transaction_to_dict(t, viewer_location_id=location_id)
+            _transaction_to_dict(t)
             for t in transactions
         ]
 
@@ -890,10 +890,10 @@ class TransactionService:
 def _transaction_to_dict(trans) -> dict:
     """Convert a Transaction to a dictionary.
 
-    For TRANSFER transactions, when viewer_location_id is provided, adds a
-    ``transfer_side`` key: ``"source"`` if the viewer is the origin location,
-    ``"destination"`` if the viewer is the receiving location.  Callers that
-    don't pass a location get no ``transfer_side`` key (UI falls back to "+").
+    For TRANSFER transactions, adds a ``transfer_side`` key: ``"source"`` if
+    ``trans.location_id`` matches ``from_location_id``, ``"destination"`` if it
+    matches ``to_location_id``.  The two TRANSFER records per transfer each
+    self-identify their own side via their stored ``location_id``.
     """
     d = {
         "id": trans.id,
