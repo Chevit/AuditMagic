@@ -886,6 +886,27 @@ class TransactionService:
         transactions = TransactionRepository.get_all_by_date_range(start_date, end_date)
         return [_transaction_to_dict(t) for t in transactions]
 
+    @staticmethod
+    def get_for_export(
+        location_id: Optional[int] = None,
+        item_type_ids: Optional[List[int]] = None,
+    ) -> List[dict]:
+        """Get transactions for export — no date range constraint.
+
+        Args:
+            location_id: Filter by location (OR across all location columns).
+                         None returns all locations.
+            item_type_ids: If given, restrict to these item type IDs only.
+
+        Returns:
+            List of transaction dictionaries.
+        """
+        transactions = TransactionRepository.get_for_export(
+            location_id=location_id,
+            item_type_ids=item_type_ids,
+        )
+        return [_transaction_to_dict(t) for t in transactions]
+
 
 def _transaction_to_dict(trans) -> dict:
     """Convert a Transaction to a dictionary.

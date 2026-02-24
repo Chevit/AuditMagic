@@ -1587,6 +1587,37 @@ class TransactionRepository:
             )
             return [_detach_transaction(t) for t in transactions]
 
+    @staticmethod
+    def get_for_export(
+        location_id: Optional[int] = None,
+        item_type_ids: Optional[List[int]] = None,
+    ) -> List[Transaction]:
+        """Fetch transactions for export with no date-range constraint.
+
+        Args:
+            location_id: If given, returns transactions where location_id,
+                         from_location_id, or to_location_id matches.
+                         If None, returns all transactions.
+            item_type_ids: If given, restricts to these item type IDs.
+
+        Returns:
+            Transactions ordered by created_at descending.
+        """
+        with session_scope() as session:
+            q = session.query(Transaction)
+            if location_id is not None:
+                q = q.filter(
+                    or_(
+                        Transaction.location_id == location_id,
+                        Transaction.from_location_id == location_id,
+                        Transaction.to_location_id == location_id,
+                    )
+                )
+            if item_type_ids is not None:
+                q = q.filter(Transaction.item_type_id.in_(item_type_ids))
+            q = q.order_by(Transaction.created_at.desc())
+            return [_detach_transaction(t) for t in q.all()]
+
 
 class SearchHistoryRepository:
     """Repository for SearchHistory operations."""
