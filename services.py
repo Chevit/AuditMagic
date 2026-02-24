@@ -500,6 +500,18 @@ class InventoryService:
         }
 
     @staticmethod
+    def get_item_type_names_for_export() -> dict:
+        """Return {item_type_id: "Name - SubType"} for use in Excel export.
+
+        Uses a hyphen separator so ExportService can split the string into
+        the Type and Sub-type columns.
+        """
+        types = ItemTypeRepository.get_all()
+        return {
+            t.id: f"{t.name} - {t.sub_type}" if t.sub_type else t.name for t in types
+        }
+
+    @staticmethod
     def get_item_type_by_name_subtype(name: str, sub_type: str = ""):
         """Return ItemType info for the given name/sub_type, or None.
 

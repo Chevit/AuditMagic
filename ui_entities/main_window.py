@@ -106,8 +106,7 @@ class MainWindow(QMainWindow):
         from PyQt6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
         from export_service import ExportService
-        from repositories import ItemTypeRepository
-        from services import LocationService, TransactionService
+        from services import InventoryService, LocationService, TransactionService
         from ui_entities.export_options_dialog import ExportOptionsDialog
 
         # Determine current location name
@@ -167,11 +166,7 @@ class MainWindow(QMainWindow):
             else:
                 transactions = TransactionService.get_for_export(location_id=current_loc_id)
             loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
-            # Build type_map with " - " separator (hyphen) so ExportService can split Name / Sub-type
-            type_map = {
-                t.id: f"{t.name} - {t.sub_type}" if t.sub_type else t.name
-                for t in ItemTypeRepository.get_all()
-            }
+            type_map = InventoryService.get_item_type_names_for_export()
 
         # Build and save workbook
         try:
@@ -187,7 +182,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 tr("export.dialog.title"),
-                "Could not save file. Is it open in another program?",
+                tr("export.error.permission"),
             )
             return
         except Exception as e:

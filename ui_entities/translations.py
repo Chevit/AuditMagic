@@ -263,6 +263,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "export.success.title": "Експорт завершено",
         "export.success.message": "Файл збережено:\n{path}",
         "export.error.no_items": "У вибраній локації немає елементів для експорту.",
+        "export.error.permission": "Не вдалося зберегти файл. Чи не відкритий він в іншій програмі?",
         "export.filename_default": "AuditMagic_{location}_{date}.xlsx",
         # Update dialog
         "update.title": "Доступне оновлення",
@@ -492,6 +493,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "export.success.title": "Export Complete",
         "export.success.message": "File saved:\n{path}",
         "export.error.no_items": "No items in the selected location to export.",
+        "export.error.permission": "Could not save file. Is it open in another program?",
         "export.filename_default": "AuditMagic_{location}_{date}.xlsx",
         # Update dialog
         "update.title": "Update Available",
