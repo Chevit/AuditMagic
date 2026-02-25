@@ -15,6 +15,9 @@ import icnsutil
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / "icon.ico"
 
+if not SRC.exists():
+    raise FileNotFoundError(f"Source icon not found: {SRC}")
+
 # macOS ICNS role identifiers mapped to pixel sizes
 ICNS_ROLES = [
     ("icp4", 16),
