@@ -33,7 +33,12 @@ def main():
 
     try:
         app = QApplication(sys.argv)
-        app.setWindowIcon(QIcon(resource_path("icon.ico")))
+        _icon_file = (
+            "icon.icns" if sys.platform == "darwin"
+            else "icon.png" if sys.platform != "win32"
+            else "icon.ico"
+        )
+        app.setWindowIcon(QIcon(resource_path(_icon_file)))
         logger.info("QApplication created successfully")
 
         # Initialize theme manager and apply saved theme
