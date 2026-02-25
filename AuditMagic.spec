@@ -14,6 +14,9 @@ elif sys.platform == "win32":
 else:
     icon_file = os.path.join(SPECPATH, "icon.png")
 
+# Bundle icon.ico as a data file on Windows only (not needed on macOS/Linux)
+_extra_datas = [(os.path.join(SPECPATH, "icon.ico"), ".")] if sys.platform == "win32" else []
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -24,7 +27,7 @@ a = Analysis(
         ('alembic', 'alembic'),
         (qt_material_path, 'qt_material'),
         (openpyxl_path, 'openpyxl'),
-        (os.path.join(SPECPATH, 'icon.ico'), '.'),
+        *_extra_datas,
     ],
     hiddenimports=[
         'sqlalchemy.dialects.sqlite',
