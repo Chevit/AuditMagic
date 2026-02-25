@@ -41,6 +41,26 @@ def tr(key: str, **kwargs) -> str:
     return text
 
 
+def format_quantity_change(trans: dict) -> str:
+    """Return a display string for the quantity change of a transaction.
+
+    Rules:
+      - edit       → "—"
+      - add        → "+{qty}"
+      - transfer   → "-{qty}" if source side, "+{qty}" if destination
+      - remove/any → "-{qty}"
+    """
+    trans_type = trans.get("type", "").lower()
+    qty = trans.get("quantity_change", 0)
+    if trans_type == "edit":
+        return "—"
+    if trans_type == "add":
+        return f"+{qty}"
+    if trans_type == "transfer":
+        return f"-{qty}" if trans.get("transfer_side") == "source" else f"+{qty}"
+    return f"-{qty}"
+
+
 # Translation dictionaries
 _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
     Language.UKRAINIAN: {
@@ -252,6 +272,19 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         # Unassigned items
         "location.unassigned.title": "Непризначені елементи",
         "location.unassigned.message": "Знайдено {count} елементів без місцезнаходження. Вони будуть переміщені до «{location}».",
+        # Export
+        "export.menu.file": "Файл",
+        "export.action": "Експортувати в Excel...",
+        "export.dialog.title": "Експортувати в Excel",
+        "export.dialog.exporting": "Експортується: {name}",
+        "export.dialog.include_transactions": "Включити транзакції",
+        "export.dialog.scope.all": "Усі транзакції для локації",
+        "export.dialog.scope.filtered": "Лише відфільтровані елементи",
+        "export.success.title": "Експорт завершено",
+        "export.success.message": "Файл збережено:\n{path}",
+        "export.error.no_items": "У вибраній локації немає елементів для експорту.",
+        "export.error.permission": "Не вдалося зберегти файл. Чи не відкритий він в іншій програмі?",
+        "export.filename_default": "AuditMagic_{location}_{date}.xlsx",
         # Update dialog
         "update.title": "Доступне оновлення",
         "update.available": "Доступна нова версія {version}!",
@@ -469,6 +502,19 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         # Unassigned items
         "location.unassigned.title": "Unassigned Items",
         "location.unassigned.message": "Found {count} items without a location. They will be moved to '{location}'.",
+        # Export
+        "export.menu.file": "File",
+        "export.action": "Export to Excel...",
+        "export.dialog.title": "Export to Excel",
+        "export.dialog.exporting": "Exporting: {name}",
+        "export.dialog.include_transactions": "Include transactions",
+        "export.dialog.scope.all": "All transactions for location",
+        "export.dialog.scope.filtered": "Filtered items only",
+        "export.success.title": "Export Complete",
+        "export.success.message": "File saved:\n{path}",
+        "export.error.no_items": "No items in the selected location to export.",
+        "export.error.permission": "Could not save file. Is it open in another program?",
+        "export.filename_default": "AuditMagic_{location}_{date}.xlsx",
         # Update dialog
         "update.title": "Update Available",
         "update.available": "A new version {version} is available!",

@@ -500,6 +500,19 @@ class InventoryService:
         }
 
     @staticmethod
+    def get_item_type_names_for_export() -> dict:
+        """Return {item_type_id: "Name — SubType"} for use in Excel export.
+
+        Uses an em-dash separator (same as get_item_type_display_names) so that
+        ExportService can safely split on " — " without colliding with user-entered
+        type names that may contain hyphens.
+        """
+        types = ItemTypeRepository.get_all()
+        return {
+            t.id: f"{t.name} \u2014 {t.sub_type}" if t.sub_type else t.name for t in types
+        }
+
+    @staticmethod
     def get_item_type_by_name_subtype(name: str, sub_type: str = ""):
         """Return ItemType info for the given name/sub_type, or None.
 
@@ -884,6 +897,27 @@ class TransactionService:
             List of transaction dictionaries.
         """
         transactions = TransactionRepository.get_all_by_date_range(start_date, end_date)
+        return [_transaction_to_dict(t) for t in transactions]
+
+    @staticmethod
+    def get_for_export(
+        location_id: Optional[int] = None,
+        item_type_ids: Optional[List[int]] = None,
+    ) -> List[dict]:
+        """Get transactions for export — no date range constraint.
+
+        Args:
+            location_id: Filter by location (OR across all location columns).
+                         None returns all locations.
+            item_type_ids: If given, restrict to these item type IDs only.
+
+        Returns:
+            List of transaction dictionaries.
+        """
+        transactions = TransactionRepository.get_for_export(
+            location_id=location_id,
+            item_type_ids=item_type_ids,
+        )
         return [_transaction_to_dict(t) for t in transactions]
 
 
