@@ -14,8 +14,13 @@ elif sys.platform == "win32":
 else:
     icon_file = os.path.join(SPECPATH, "icon.png")
 
-# Bundle icon.ico as a data file on Windows only (not needed on macOS/Linux)
-_extra_datas = [(os.path.join(SPECPATH, "icon.ico"), ".")] if sys.platform == "win32" else []
+# Bundle the platform-appropriate icon as a data file for runtime use
+if sys.platform == "darwin":
+    _extra_datas = [(os.path.join(SPECPATH, "icon.icns"), ".")]
+elif sys.platform == "win32":
+    _extra_datas = [(os.path.join(SPECPATH, "icon.ico"), ".")]
+else:
+    _extra_datas = [(os.path.join(SPECPATH, "icon.png"), ".")]
 
 a = Analysis(
     ['main.py'],
