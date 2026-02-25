@@ -35,26 +35,26 @@ def test_build_workbook_returns_workbook():
 
 def test_items_sheet_exists():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    assert "Items" in wb.sheetnames
+    assert "Речі" in wb.sheetnames
 
 
 def test_items_sheet_has_bold_header():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    ws = wb["Items"]
+    ws = wb["Речі"]
     assert ws.cell(1, 1).font.bold is True
 
 
 def test_items_sheet_header_columns():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    ws = wb["Items"]
-    headers = [ws.cell(1, c).value for c in range(1, 7)]
-    assert headers == ["Type", "Sub-type", "Quantity", "Serial Number", "Condition", "Location"]
+    ws = wb["Речі"]
+    headers = [ws.cell(1, c).value for c in range(1, 6)]
+    assert headers == ["Тип", "Підтип", "Кількість", "Серійний номер", "Склад"]
 
 
 def test_non_serialized_item_one_row():
     item = _make_grouped("Laptop", qty=5)
     wb = ExportService.build_workbook([item], location_name="Warehouse")
-    ws = wb["Items"]
+    ws = wb["Речі"]
     # Row 1 = header, row 2 = data
     assert ws.max_row == 2
     assert ws.cell(2, 3).value == 5  # quantity
@@ -63,13 +63,13 @@ def test_non_serialized_item_one_row():
 def test_serialized_item_one_row_per_serial():
     item = _make_grouped("Laptop", serials=["SN1", "SN2", "SN3"])
     wb = ExportService.build_workbook([item], location_name="Warehouse")
-    ws = wb["Items"]
+    ws = wb["Речі"]
     assert ws.max_row == 4  # 1 header + 3 serials
 
 
 def test_no_transactions_sheet_by_default():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    assert "Transactions" not in wb.sheetnames
+    assert "Транзакції" not in wb.sheetnames
 
 
 def _make_transaction(type_id=1, tx_type="add", qty_before=0, qty_after=5,
@@ -92,7 +92,7 @@ def test_transactions_sheet_created_when_passed():
         loc_map={1: "Warehouse"},
         type_map={1: "Laptop \u2014 X1"},
     )
-    assert "Transactions" in wb.sheetnames
+    assert "Транзакції" in wb.sheetnames
 
 
 def test_transactions_sheet_has_bold_header():
@@ -100,7 +100,7 @@ def test_transactions_sheet_has_bold_header():
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
     )
-    ws = wb["Transactions"]
+    ws = wb["Транзакції"]
     assert ws.cell(1, 1).font.bold is True
 
 
@@ -109,11 +109,11 @@ def test_transactions_sheet_header_columns():
         [_make_item()], "Warehouse",
         transactions=[_make_transaction()],
     )
-    ws = wb["Transactions"]
-    headers = [ws.cell(1, c).value for c in range(1, 11)]
+    ws = wb["Транзакції"]
+    headers = [ws.cell(1, c).value for c in range(1, 13)]
     assert headers == [
-        "Date", "Type", "Item Type", "Sub-type", "Serial Number",
-        "Qty Before", "Qty After", "Notes", "From Location", "To Location",
+        "Дата", "Транзакція", "Тип", "Підтип", "Серійний номер", "Кількість",
+        "Кількість до", "Кількість після", "Нотатки", "Склад", "Зі складу", "На склад",
     ]
 
 
@@ -124,12 +124,13 @@ def test_transactions_sheet_data_row():
         loc_map={1: "Warehouse"},
         type_map={1: "Laptop \u2014 X1"},
     )
-    ws = wb["Transactions"]
+    ws = wb["Транзакції"]
     assert ws.cell(2, 2).value == "ADD"
     assert ws.cell(2, 3).value == "Laptop"
     assert ws.cell(2, 4).value == "X1"
-    assert ws.cell(2, 6).value == 0
-    assert ws.cell(2, 7).value == 5
+    assert ws.cell(2, 6).value == 5   # quantity_change = 5-0
+    assert ws.cell(2, 7).value == 0   # qty_before
+    assert ws.cell(2, 8).value == 5   # qty_after
 
 
 def test_transactions_location_names_resolved():
@@ -139,6 +140,6 @@ def test_transactions_location_names_resolved():
         transactions=[tx],
         loc_map={1: "Warehouse A", 2: "Warehouse B"},
     )
-    ws = wb["Transactions"]
-    assert ws.cell(2, 9).value == "Warehouse A"
-    assert ws.cell(2, 10).value == "Warehouse B"
+    ws = wb["Транзакції"]
+    assert ws.cell(2, 11).value == "Warehouse A"   # Зі складу
+    assert ws.cell(2, 12).value == "Warehouse B"   # На склад

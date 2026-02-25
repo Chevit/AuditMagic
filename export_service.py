@@ -16,10 +16,10 @@ class ExportService:
     """Builds Excel workbooks from inventory data. No UI dependencies."""
 
     # Sheet column headers
-    ITEM_HEADERS = ["Type", "Sub-type", "Quantity", "Serial Number", "Condition", "Location"]
+    ITEM_HEADERS = ["Тип", "Підтип", "Кількість", "Серійний номер", "Склад"]
     TRANSACTION_HEADERS = [
-        "Date", "Type", "Item Type", "Sub-type", "Serial Number",
-        "Qty Before", "Qty After", "Notes", "From Location", "To Location",
+        "Дата", "Транзакція", "Тип", "Підтип", "Серійний номер", "Кількість",
+        "Кількість до", "Кількість після", "Нотатки", "Склад", "Зі складу", "На склад",
     ]
 
     @staticmethod
@@ -36,7 +36,7 @@ class ExportService:
             items: List of InventoryItem or GroupedInventoryItem for the Items sheet.
                 Location context is embedded per-row via each item's location_name field.
             location_name: Accepted for API compatibility; not embedded in the workbook
-                (sheets are named "Items"/"Transactions" per spec, and each row carries
+                (sheets are named "Речі"/"Транзакції", and each row carries
                 its own location value).
             transactions: Optional list of transaction dicts (from _transaction_to_dict).
             loc_map: Optional {location_id: name} for resolving location IDs in transactions.
@@ -47,12 +47,12 @@ class ExportService:
         """
         wb = openpyxl.Workbook()
         ws_items = wb.active
-        ws_items.title = "Items"
+        ws_items.title = "Речі"
 
         ExportService._write_items_sheet(ws_items, items)
 
         if transactions is not None:
-            ws_tx = wb.create_sheet("Transactions")
+            ws_tx = wb.create_sheet("Транзакції")
             ExportService._write_transactions_sheet(
                 ws_tx, transactions, loc_map or {}, type_map or {}
             )
@@ -80,16 +80,14 @@ class ExportService:
                     ws.cell(row=row, column=2, value=item.item_sub_type or "")
                     ws.cell(row=row, column=3, value=1)
                     ws.cell(row=row, column=4, value=sn)
-                    ws.cell(row=row, column=5, value="")
-                    ws.cell(row=row, column=6, value=item.location_name)
+                    ws.cell(row=row, column=5, value=item.location_name)
                     row += 1
             elif isinstance(item, GroupedInventoryItem):
                 ws.cell(row=row, column=1, value=item.item_type_name)
                 ws.cell(row=row, column=2, value=item.item_sub_type or "")
                 ws.cell(row=row, column=3, value=item.total_quantity)
                 ws.cell(row=row, column=4, value="")
-                ws.cell(row=row, column=5, value="")
-                ws.cell(row=row, column=6, value=item.location_name)
+                ws.cell(row=row, column=5, value=item.location_name)
                 row += 1
             else:
                 # InventoryItem
@@ -97,8 +95,7 @@ class ExportService:
                 ws.cell(row=row, column=2, value=item.item_sub_type or "")
                 ws.cell(row=row, column=3, value=item.quantity)
                 ws.cell(row=row, column=4, value=item.serial_number or "")
-                ws.cell(row=row, column=5, value=item.condition or "")
-                ws.cell(row=row, column=6, value=item.location_name)
+                ws.cell(row=row, column=5, value=item.location_name)
                 row += 1
 
         ExportService._autofit(ws, len(ExportService.ITEM_HEADERS))
@@ -126,17 +123,20 @@ class ExportService:
             item_sub = name_parts[1] if len(name_parts) > 1 else ""
             from_id = trans.get("from_location_id")
             to_id = trans.get("to_location_id")
+            location_id = trans.get("location_id")
 
             ws.cell(row=row, column=1, value=date_str)
             ws.cell(row=row, column=2, value=type_name)
             ws.cell(row=row, column=3, value=item_name)
             ws.cell(row=row, column=4, value=item_sub)
             ws.cell(row=row, column=5, value=trans.get("serial_number") or "")
-            ws.cell(row=row, column=6, value=trans.get("quantity_before", ""))
-            ws.cell(row=row, column=7, value=trans.get("quantity_after", ""))
-            ws.cell(row=row, column=8, value=trans.get("notes") or "")
-            ws.cell(row=row, column=9, value=loc_map.get(from_id, "") if from_id else "")
-            ws.cell(row=row, column=10, value=loc_map.get(to_id, "") if to_id else "")
+            ws.cell(row=row, column=6, value=trans.get("quantity_change") or "")
+            ws.cell(row=row, column=7, value=trans.get("quantity_before", ""))
+            ws.cell(row=row, column=8, value=trans.get("quantity_after", ""))
+            ws.cell(row=row, column=9, value=trans.get("notes") or "")
+            ws.cell(row=row, column=10, value=loc_map.get(location_id, "") if location_id else "")
+            ws.cell(row=row, column=11, value=loc_map.get(from_id, "") if from_id else "")
+            ws.cell(row=row, column=12, value=loc_map.get(to_id, "") if to_id else "")
 
         ExportService._autofit(ws, len(ExportService.TRANSACTION_HEADERS))
 
