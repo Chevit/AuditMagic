@@ -1,10 +1,18 @@
 # AuditMagic.spec
 import os
+import sys
 import qt_material
 import openpyxl
 
 qt_material_path = os.path.dirname(qt_material.__file__)
 openpyxl_path = os.path.dirname(openpyxl.__file__)
+
+if sys.platform == "darwin":
+    icon_file = os.path.join(SPECPATH, "icon.icns")
+elif sys.platform == "win32":
+    icon_file = os.path.join(SPECPATH, "icon.ico")
+else:
+    icon_file = os.path.join(SPECPATH, "icon.png")
 
 a = Analysis(
     ['main.py'],
@@ -48,5 +56,13 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,           # windowed mode, no console
     disable_windowed_traceback=False,
-    icon=os.path.join(SPECPATH, 'icon.ico'),
+    icon=icon_file,
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="AuditMagic.app",
+        icon=icon_file,
+        bundle_identifier="com.chevit.auditmagic",
+    )
