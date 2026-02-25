@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
 from logger import logger
 from services import InventoryService, LocationService, TransactionService
 from styles import apply_button_style, apply_combo_box_style
-from ui_entities.translations import tr
+from ui_entities.translations import format_quantity_change, tr
 
 
 class AllTransactionsDialog(QDialog):
@@ -225,20 +225,7 @@ class AllTransactionsDialog(QDialog):
             # 3 Serial
             cell(trans.get("serial_number") or "", 3)
             # 4 Change
-            qty = trans["quantity_change"]
-            if trans_type == "edit":
-                change_text = "—"
-            elif trans_type == "transfer":
-                side = trans.get("transfer_side")
-                if side == "source":
-                    change_text = f"-{qty}"
-                else:
-                    change_text = f"+{qty}"
-            elif trans_type == "add":
-                change_text = f"+{qty}"
-            else:
-                change_text = f"-{qty}"
-            cell(change_text, 4, color)
+            cell(format_quantity_change(trans), 4, color)
             # 5 Before
             cell(str(trans["quantity_before"]), 5)
             # 6 After

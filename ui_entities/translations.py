@@ -41,6 +41,26 @@ def tr(key: str, **kwargs) -> str:
     return text
 
 
+def format_quantity_change(trans: dict) -> str:
+    """Return a display string for the quantity change of a transaction.
+
+    Rules:
+      - edit       → "—"
+      - add        → "+{qty}"
+      - transfer   → "-{qty}" if source side, "+{qty}" if destination
+      - remove/any → "-{qty}"
+    """
+    trans_type = trans.get("type", "").lower()
+    qty = trans.get("quantity_change", 0)
+    if trans_type == "edit":
+        return "—"
+    if trans_type == "add":
+        return f"+{qty}"
+    if trans_type == "transfer":
+        return f"-{qty}" if trans.get("transfer_side") == "source" else f"+{qty}"
+    return f"-{qty}"
+
+
 # Translation dictionaries
 _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
     Language.UKRAINIAN: {

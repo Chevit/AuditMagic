@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
 from logger import logger
 from services import LocationService
 from styles import apply_button_style
-from ui_entities.translations import tr
+from ui_entities.translations import format_quantity_change, tr
 
 
 class TransactionsDialog(QDialog):
@@ -244,20 +244,7 @@ class TransactionsDialog(QDialog):
                 column += 1
 
             # Change
-            change = trans["quantity_change"]
-            if trans_type == "edit":
-                change_text = "—"
-            elif trans_type == "add":
-                change_text = f"+{change}"
-            elif trans_type == "transfer":
-                side = trans.get("transfer_side")
-                if side == "source":
-                    change_text = f"-{change}"
-                else:
-                    change_text = f"+{change}"
-            else:
-                change_text = f"-{change}"
-            cell(change_text, column, type_color)
+            cell(format_quantity_change(trans), column, type_color)
             column += 1
 
             # Before / After

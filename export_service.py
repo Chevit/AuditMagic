@@ -10,6 +10,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
+from ui_entities.translations import format_quantity_change
 
 
 class ExportService:
@@ -130,7 +131,7 @@ class ExportService:
             ws.cell(row=row, column=3, value=item_name)
             ws.cell(row=row, column=4, value=item_sub)
             ws.cell(row=row, column=5, value=trans.get("serial_number") or "")
-            ws.cell(row=row, column=6, value=trans.get("quantity_change") or "")
+            ws.cell(row=row, column=6, value=format_quantity_change(trans))
             ws.cell(row=row, column=7, value=trans.get("quantity_before", ""))
             ws.cell(row=row, column=8, value=trans.get("quantity_after", ""))
             ws.cell(row=row, column=9, value=trans.get("notes") or "")
