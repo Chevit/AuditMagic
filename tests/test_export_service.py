@@ -128,7 +128,7 @@ def test_transactions_sheet_data_row():
     assert ws.cell(2, 2).value == "Додавання"
     assert ws.cell(2, 3).value == "Laptop"
     assert ws.cell(2, 4).value == "X1"
-    assert ws.cell(2, 6).value == 5   # quantity_change = 5-0
+    assert ws.cell(2, 6).value == "+5"   # quantity_change = 5-0 (formatted string)
     assert ws.cell(2, 7).value == 0   # qty_before
     assert ws.cell(2, 8).value == 5   # qty_after
 
