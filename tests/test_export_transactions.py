@@ -6,18 +6,8 @@ import pytest
 os.environ.setdefault("AUDITMAGIC_DB", ":memory:")
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from core.db import init_database
-init_database(":memory:")
-
 from core.repositories import ItemTypeRepository, ItemRepository, LocationRepository
 from core.services import TransactionService, InventoryService
-
-
-@pytest.fixture(autouse=True)
-def fresh_db(tmp_path):
-    """Each test gets a fresh in-memory database."""
-    from core.db import init_database
-    init_database(":memory:")
 
 
 def _make_location(name="Warehouse"):
