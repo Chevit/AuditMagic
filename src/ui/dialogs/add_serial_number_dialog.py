@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.services import LocationService
+from core.repositories import LocationRepository
 from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 from ui.validators import SerialNumberValidator
@@ -103,7 +103,7 @@ class AddSerialNumberDialog(QDialog):
         loc_label.setFont(label_font)
         self.location_combo = QComboBox()
         apply_combo_box_style(self.location_combo)
-        for loc in LocationService.get_all_locations():
+        for loc in LocationRepository.get_all():
             self.location_combo.addItem(loc.name, userData=loc.id)
         if self._current_location_id is not None:
             for i in range(self.location_combo.count()):

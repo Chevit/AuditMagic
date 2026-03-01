@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.services import LocationService
+from core.repositories import LocationRepository
 from ui.styles import apply_button_style, apply_input_style
 from ui.translations import tr
 
@@ -66,13 +66,13 @@ class FirstLocationDialog(QDialog):
             return
 
         # Check for duplicate
-        if LocationService.get_location_by_name(name):
+        if LocationRepository.get_by_name(name):
             self.error_label.setText(tr("location.error.name_exists"))
             self.error_label.show()
             return
 
         try:
-            loc = LocationService.create_location(name=name)
+            loc = LocationRepository.create(name)
             self._location_id = loc.id
             self.accept()
         except Exception as e:

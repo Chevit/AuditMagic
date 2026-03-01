@@ -21,7 +21,8 @@ from PyQt6.QtWidgets import (
 )
 
 from core.logger import logger
-from core.services import InventoryService, LocationService, TransactionService
+from core.repositories import LocationRepository
+from core.services import InventoryService, TransactionService
 from ui.styles import apply_button_style, apply_combo_box_style
 from ui.translations import format_quantity_change, tr
 
@@ -119,7 +120,7 @@ class AllTransactionsDialog(QDialog):
     def _populate_location_combo(self):
         self.loc_combo.clear()
         self.loc_combo.addItem(tr("location.all"), userData=None)
-        for loc in LocationService.get_all_locations():
+        for loc in LocationRepository.get_all():
             self.loc_combo.addItem(loc.name, userData=loc.id)
         # Pre-select to the current location
         if self._initial_location_id is not None:
@@ -183,7 +184,7 @@ class AllTransactionsDialog(QDialog):
 
             # Build lookup maps for names
             type_map = InventoryService.get_item_type_display_names()
-            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
 
             self._populate_table(transactions, type_map, loc_map)
         except Exception as e:

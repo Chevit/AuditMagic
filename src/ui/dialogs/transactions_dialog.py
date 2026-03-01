@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.logger import logger
-from core.services import LocationService
+from core.repositories import LocationRepository
 from ui.styles import apply_button_style
 from ui.translations import format_quantity_change, tr
 
@@ -190,7 +190,7 @@ class TransactionsDialog(QDialog):
             transactions = self._transactions_callback(
                 self._item_type_id, start_datetime, end_datetime
             )
-            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
             self._populate_table(transactions, loc_map)
         except Exception as e:
             logger.error(f"Failed to load transactions: {e}", exc_info=True)

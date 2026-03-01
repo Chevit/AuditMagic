@@ -34,7 +34,7 @@ src/
     db.py            # Database init, session management, migrations
     models.py        # SQLAlchemy models (ItemType, Item, Transaction, Location, SearchHistory)
     repositories.py  # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, LocationRepository, SearchHistoryRepository)
-    services.py      # Business logic (InventoryService, LocationService, SearchService, TransactionService)
+    services.py      # Business logic (InventoryService, SearchService, TransactionService)
     export_service.py # Excel export logic
   ui/
     main_window.py   # Main window controller with theme menu
@@ -176,7 +176,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - **Location**: `id`, `name` (unique, max 100 chars)
 - Required: at least one location must exist at all times (enforced by first-launch wizard)
 - Items FK to `location_id` (nullable for legacy data; auto-assign wizard on startup handles NULL rows)
-- `LocationService.get_location_count()`, `get_all_locations()`, `get_location_by_id()`, `get_unassigned_item_count()`, `assign_all_unassigned_items()`
+- `LocationRepository.get_count()`, `get_all()`, `get_by_id()`, `get_unassigned_item_count()`, `assign_all_unassigned()`
 
 ### Item (Inventory Instances)
 - **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location_id` (FK to Location), `condition`

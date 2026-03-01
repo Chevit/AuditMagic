@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import delete as sql_delete, func, or_
+from sqlalchemy.orm import make_transient
 
 from core.db import session_scope
 from core.logger import logger
@@ -22,28 +23,28 @@ class LocationRepository:
             session.add(loc)
             session.flush()
             session.refresh(loc)
-            return _detach_location(loc)
+            return _detach(loc)
 
     @staticmethod
     def get_by_id(location_id: int) -> Optional[Location]:
         """Get location by ID."""
         with session_scope() as session:
             loc = session.query(Location).filter(Location.id == location_id).first()
-            return _detach_location(loc) if loc else None
+            return _detach(loc) if loc else None
 
     @staticmethod
     def get_by_name(name: str) -> Optional[Location]:
         """Get location by exact name."""
         with session_scope() as session:
             loc = session.query(Location).filter(Location.name == name.strip()).first()
-            return _detach_location(loc) if loc else None
+            return _detach(loc) if loc else None
 
     @staticmethod
     def get_all() -> List[Location]:
         """Get all locations ordered by name."""
         with session_scope() as session:
             locs = session.query(Location).order_by(Location.name).all()
-            return [_detach_location(loc) for loc in locs]
+            return [_detach(loc) for loc in locs]
 
     @staticmethod
     def get_count() -> int:
@@ -72,7 +73,7 @@ class LocationRepository:
                 .order_by(Location.name)
                 .all()
             )
-            return [(_detach_location(loc), count) for loc, count in rows]
+            return [(_detach(loc), count) for loc, count in rows]
 
     @staticmethod
     def rename(location_id: int, new_name: str) -> Optional[Location]:
@@ -84,7 +85,7 @@ class LocationRepository:
             loc.name = new_name.strip()
             session.flush()
             session.refresh(loc)
-            return _detach_location(loc)
+            return _detach(loc)
 
     @staticmethod
     def delete(location_id: int) -> bool:
@@ -166,7 +167,7 @@ class ItemTypeRepository:
             session.flush()
             session.refresh(item_type)
             logger.debug(f"Repository: ItemType created with id={item_type.id}")
-            return _detach_item_type(item_type)
+            return _detach(item_type)
 
     @staticmethod
     def get_or_create(
@@ -211,7 +212,7 @@ class ItemTypeRepository:
                         f"{existing_state}. Cannot use it as {requested_state}. "
                         f"Choose a different name/sub-type or keep the same serialization mode."
                     )
-                return _detach_item_type(item_type)
+                return _detach(item_type)
 
             # Create new
             item_type = ItemType(
@@ -223,7 +224,7 @@ class ItemTypeRepository:
             session.add(item_type)
             session.flush()
             session.refresh(item_type)
-            return _detach_item_type(item_type)
+            return _detach(item_type)
 
     @staticmethod
     def get_by_id(type_id: int) -> Optional[ItemType]:
@@ -237,7 +238,7 @@ class ItemTypeRepository:
         """
         with session_scope() as session:
             item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
-            return _detach_item_type(item_type) if item_type else None
+            return _detach(item_type) if item_type else None
 
     @staticmethod
     def get_by_name_and_subtype(name: str, sub_type: str = "") -> Optional[ItemType]:
@@ -259,7 +260,7 @@ class ItemTypeRepository:
                 .filter(ItemType.name == name, ItemType.sub_type == (sub_type or ""))
                 .first()
             )
-            return _detach_item_type(item_type) if item_type else None
+            return _detach(item_type) if item_type else None
 
     @staticmethod
     def get_by_ids(type_ids: List[int]) -> Dict[int, "ItemType"]:
@@ -275,7 +276,7 @@ class ItemTypeRepository:
             return {}
         with session_scope() as session:
             types = session.query(ItemType).filter(ItemType.id.in_(type_ids)).all()
-            return {t.id: _detach_item_type(t) for t in types}
+            return {t.id: _detach(t) for t in types}
 
     @staticmethod
     def get_all() -> List[ItemType]:
@@ -288,7 +289,7 @@ class ItemTypeRepository:
             types = (
                 session.query(ItemType).order_by(ItemType.name, ItemType.sub_type).all()
             )
-            return [_detach_item_type(t) for t in types]
+            return [_detach(t) for t in types]
 
     @staticmethod
     def get_autocomplete_names(prefix: str = "", limit: int = 20) -> List[str]:
@@ -381,7 +382,7 @@ class ItemTypeRepository:
 
             session.flush()
             session.refresh(item_type)
-            return _detach_item_type(item_type)
+            return _detach(item_type)
 
     @staticmethod
     def delete(type_id: int) -> bool:
@@ -444,7 +445,7 @@ class ItemTypeRepository:
                 .limit(limit)
                 .all()
             )
-            return [_detach_item_type(t) for t in types]
+            return [_detach(t) for t in types]
 
     @staticmethod
     def _get_types_with_items(session, type_filter=None, location_id=None) -> list:
@@ -479,7 +480,7 @@ class ItemTypeRepository:
             seen[item_type.id][1].append(item)
 
         return [
-            (_detach_item_type(seen[tid][0]), [_detach_item(i) for i in seen[tid][1]])
+            (_detach(seen[tid][0]), [_detach(i) for i in seen[tid][1]])
             for tid in order
         ]
 
@@ -598,7 +599,7 @@ class ItemRepository:
             session.flush()
             session.refresh(item)
             logger.debug(f"Repository: Item created with id={item.id}")
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def create_serialized(
@@ -688,7 +689,7 @@ class ItemRepository:
                 f"Repository: Serialized item created: id={item.id}, sn={serial_number!r}, "
                 f"group qty {existing_count} -> {existing_count + 1}"
             )
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def get_by_id(item_id: int) -> Optional[Item]:
@@ -702,7 +703,7 @@ class ItemRepository:
         """
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
-            return _detach_item(item) if item else None
+            return _detach(item) if item else None
 
     @staticmethod
     def get_all(location_id: int = None) -> List[Item]:
@@ -718,7 +719,7 @@ class ItemRepository:
             query = session.query(Item).order_by(Item.item_type_id, Item.serial_number)
             if location_id is not None:
                 query = query.filter(Item.location_id == location_id)
-            return [_detach_item(item) for item in query.all()]
+            return [_detach(item) for item in query.all()]
 
     @staticmethod
     def update(
@@ -755,7 +756,7 @@ class ItemRepository:
 
             session.flush()
             session.refresh(item)
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def edit_item(
@@ -817,7 +818,7 @@ class ItemRepository:
             logger.debug(
                 f"Repository: Item edited: id={item_id}, reason='{edit_reason}'"
             )
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def delete(item_id: int) -> bool:
@@ -879,7 +880,7 @@ class ItemRepository:
             logger.debug(
                 f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}"
             )
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def remove_quantity(
@@ -935,7 +936,7 @@ class ItemRepository:
             logger.debug(
                 f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}"
             )
-            return _detach_item(item)
+            return _detach(item)
 
     @staticmethod
     def find_by_type_and_serial(
@@ -960,7 +961,7 @@ class ItemRepository:
                 query = query.filter(Item.serial_number.is_(None))
 
             item = query.first()
-            return _detach_item(item) if item else None
+            return _detach(item) if item else None
 
     @staticmethod
     def search(
@@ -1024,7 +1025,7 @@ class ItemRepository:
                     .all()
                 )
 
-            return [_detach_item(item) for item in items]
+            return [_detach(item) for item in items]
 
     @staticmethod
     def get_autocomplete_suggestions(
@@ -1113,7 +1114,7 @@ class ItemRepository:
                 .order_by(Item.location_id, Item.serial_number)
                 .all()
             )
-            return [_detach_item(item) for item in items]
+            return [_detach(item) for item in items]
 
     @staticmethod
     def get_by_type_and_location(type_id: int, location_id: int) -> List[Item]:
@@ -1128,7 +1129,7 @@ class ItemRepository:
                 .order_by(Item.serial_number)
                 .all()
             )
-            return [_detach_item(item) for item in items]
+            return [_detach(item) for item in items]
 
     @staticmethod
     def find_non_serialized_at_location(
@@ -1156,7 +1157,7 @@ class ItemRepository:
                 )
                 .first()
             )
-            return _detach_item(item) if item else None
+            return _detach(item) if item else None
 
     @staticmethod
     def transfer_item(
@@ -1370,7 +1371,7 @@ class ItemRepository:
             item = (
                 session.query(Item).filter(Item.serial_number == serial_number).first()
             )
-            return _detach_item(item) if item else None
+            return _detach(item) if item else None
 
     @staticmethod
     def get_serial_numbers_for_type(type_id: int) -> List[str]:
@@ -1460,7 +1461,7 @@ class ItemRepository:
                 .order_by(Item.item_type_id, Item.serial_number)
                 .all()
             )
-            return [_detach_item(item) for item in items]
+            return [_detach(item) for item in items]
 
 
 class TransactionRepository:
@@ -1502,7 +1503,7 @@ class TransactionRepository:
                     Transaction.location_id == location_id,
                 )
             transactions = q.order_by(Transaction.created_at.desc()).limit(limit).all()
-            return [_detach_transaction(t) for t in transactions]
+            return [_detach(t) for t in transactions]
 
     @staticmethod
     def get_recent(limit: int = 50) -> List[Transaction]:
@@ -1521,7 +1522,7 @@ class TransactionRepository:
                 .limit(limit)
                 .all()
             )
-            return [_detach_transaction(t) for t in transactions]
+            return [_detach(t) for t in transactions]
 
     @staticmethod
     def get_by_location_and_date_range(
@@ -1556,7 +1557,7 @@ class TransactionRepository:
                 .limit(limit)
                 .all()
             )
-            return [_detach_transaction(t) for t in transactions]
+            return [_detach(t) for t in transactions]
 
     @staticmethod
     def get_all_by_date_range(
@@ -1585,7 +1586,7 @@ class TransactionRepository:
                 .limit(limit)
                 .all()
             )
-            return [_detach_transaction(t) for t in transactions]
+            return [_detach(t) for t in transactions]
 
     @staticmethod
     def get_for_export(
@@ -1623,7 +1624,7 @@ class TransactionRepository:
             if item_type_ids is not None:
                 q = q.filter(Transaction.item_type_id.in_(item_type_ids))
             q = q.order_by(Transaction.created_at.desc())
-            return [_detach_transaction(t) for t in q.all()]
+            return [_detach(t) for t in q.all()]
 
 
 class SearchHistoryRepository:
@@ -1657,7 +1658,7 @@ class SearchHistoryRepository:
                 # Update timestamp to move it to the top
                 existing.created_at = datetime.now(timezone.utc)
                 session.flush()
-                return _detach_search_history(existing)
+                return _detach(existing)
 
             # Add new search
             history = SearchHistory(
@@ -1682,7 +1683,7 @@ class SearchHistoryRepository:
                 )
 
             session.flush()
-            return _detach_search_history(history)
+            return _detach(history)
 
     @staticmethod
     def get_recent(limit: int = 5) -> List[SearchHistory]:
@@ -1701,7 +1702,7 @@ class SearchHistoryRepository:
                 .limit(limit)
                 .all()
             )
-            return [_detach_search_history(h) for h in history]
+            return [_detach(h) for h in history]
 
     @staticmethod
     def clear() -> None:
@@ -1710,81 +1711,19 @@ class SearchHistoryRepository:
             session.query(SearchHistory).delete()
 
 
-# Helper functions to detach objects from session
-def _detach_location(loc: Location) -> Location:
-    """Create a detached copy of a Location."""
-    if loc is None:
-        return None
-    return Location(
-        id=loc.id,
-        name=loc.name,
-        created_at=loc.created_at,
-        updated_at=loc.updated_at,
-    )
+# ---------------------------------------------------------------------------
+# Session-detachment helper
+# ---------------------------------------------------------------------------
 
+def _detach(obj):
+    """Detach *obj* from its session so callers can use it after session.close().
 
-def _detach_item(item: Item) -> Item:
-    """Create a detached copy of an Item.
-
-    Note: location_id is copied as a plain int. The compat `location` property
-    on detached Item objects always returns "" — use location_id instead.
+    All already-loaded column values remain accessible.
+    Returns None unchanged.
+    The object is made transient — do not pass it to session.add() or
+    session.merge() to perform updates; that would attempt an INSERT.
     """
-    if item is None:
+    if obj is None:
         return None
-    return Item(
-        id=item.id,
-        item_type_id=item.item_type_id,
-        quantity=item.quantity,
-        serial_number=item.serial_number,
-        location_id=item.location_id,
-        condition=item.condition,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-    )
-
-
-def _detach_transaction(trans: Transaction) -> Transaction:
-    """Create a detached copy of a Transaction."""
-    if trans is None:
-        return None
-    return Transaction(
-        id=trans.id,
-        item_type_id=trans.item_type_id,
-        transaction_type=trans.transaction_type,
-        quantity_change=trans.quantity_change,
-        quantity_before=trans.quantity_before,
-        quantity_after=trans.quantity_after,
-        notes=trans.notes,
-        serial_number=trans.serial_number,
-        location_id=trans.location_id,
-        from_location_id=trans.from_location_id,
-        to_location_id=trans.to_location_id,
-        created_at=trans.created_at,
-    )
-
-
-def _detach_search_history(history: SearchHistory) -> SearchHistory:
-    """Create a detached copy of a SearchHistory."""
-    if history is None:
-        return None
-    return SearchHistory(
-        id=history.id,
-        search_query=history.search_query,
-        search_field=history.search_field,
-        created_at=history.created_at,
-    )
-
-
-def _detach_item_type(item_type: ItemType) -> ItemType:
-    """Create a detached copy of an ItemType."""
-    if item_type is None:
-        return None
-    return ItemType(
-        id=item_type.id,
-        name=item_type.name,
-        sub_type=item_type.sub_type,
-        is_serialized=item_type.is_serialized,
-        details=item_type.details,
-        created_at=item_type.created_at,
-        updated_at=item_type.updated_at,
-    )
+    make_transient(obj)
+    return obj

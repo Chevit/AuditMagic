@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
 from core.config import config
 from core.db import init_database
 from core.logger import logger
-from core.services import InventoryService, LocationService, SearchService, TransactionService
+from core.repositories import LocationRepository
+from core.services import InventoryService, SearchService, TransactionService
 from ui.styles import apply_button_style
 from ui.theme_manager import get_theme_manager
 from ui.dialogs.add_item_dialog import AddItemDialog
@@ -106,13 +107,14 @@ class MainWindow(QMainWindow):
         from PyQt6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
         from core.export_service import ExportService
-        from core.services import InventoryService, LocationService, TransactionService
+        from core.repositories import LocationRepository
+        from core.services import InventoryService, TransactionService
         from ui.dialogs.export_options_dialog import ExportOptionsDialog
 
         # Determine current location name
         current_loc_id = self._current_location_id  # None means "All Locations"
         if current_loc_id is not None:
-            loc = LocationService.get_location_by_id(current_loc_id)
+            loc = LocationRepository.get_by_id(current_loc_id)
             location_name = loc.name if loc else tr("location.all")
         else:
             location_name = tr("location.all")
@@ -165,8 +167,8 @@ class MainWindow(QMainWindow):
                 )
             else:
                 transactions = TransactionService.get_for_export(location_id=current_loc_id)
-            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
-            type_map = InventoryService.get_item_type_names_for_export()
+            loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
+            type_map = InventoryService.get_item_type_display_names()
 
         # Build and save workbook
         try:
@@ -273,9 +275,9 @@ class MainWindow(QMainWindow):
         If the user cancels without creating a location they are prompted to
         exit the application, since at least one location is required.
         """
-        if LocationService.get_location_count() > 0:
+        if LocationRepository.get_count() > 0:
             return
-        while LocationService.get_location_count() == 0:
+        while LocationRepository.get_count() == 0:
             dlg = FirstLocationDialog(self)
             dlg.exec()
             new_id = dlg.get_location_id()
@@ -305,24 +307,24 @@ class MainWindow(QMainWindow):
         saved = config.get("ui.last_location_id", _MISSING)
 
         if saved is _MISSING:
-            locs = LocationService.get_all_locations()
+            locs = LocationRepository.get_all()
             self._current_location_id = locs[0].id if locs else None
         elif saved is None:
             self._current_location_id = None
         else:
-            loc = LocationService.get_location_by_id(int(saved))
+            loc = LocationRepository.get_by_id(int(saved))
             if loc:
                 self._current_location_id = loc.id
             else:
-                locs = LocationService.get_all_locations()
+                locs = LocationRepository.get_all()
                 self._current_location_id = locs[0].id if locs else None
 
     def _check_unassigned_items(self):
         """If any items have no location, offer to assign them to a location."""
-        count = LocationService.get_unassigned_item_count()
+        count = LocationRepository.get_unassigned_item_count()
         if count == 0:
             return
-        locs = LocationService.get_all_locations()
+        locs = LocationRepository.get_all()
         if not locs:
             return
         target_id = self._current_location_id or locs[0].id
@@ -334,7 +336,7 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            LocationService.assign_all_unassigned_items(target_id)
+            LocationRepository.assign_all_unassigned(target_id)
 
     def _setup_location_selector(self):
         """Create the LocationSelectorWidget (inserted into the layout later)."""
@@ -358,15 +360,15 @@ class MainWindow(QMainWindow):
 
         # If the active location was deleted, fall back to first available
         if self._current_location_id is not None:
-            loc = LocationService.get_location_by_id(self._current_location_id)
+            loc = LocationRepository.get_by_id(self._current_location_id)
             if not loc:
-                locs = LocationService.get_all_locations()
+                locs = LocationRepository.get_all()
                 self._current_location_id = locs[0].id if locs else None
                 self.location_selector.set_current_location(self._current_location_id)
                 config.set("ui.last_location_id", self._current_location_id)
 
         # Safety net: if somehow all locations were deleted, re-run wizard
-        if LocationService.get_location_count() == 0:
+        if LocationRepository.get_count() == 0:
             self._ensure_location_exists()
             self.location_selector.refresh_locations()
 

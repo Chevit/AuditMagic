@@ -17,7 +17,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.services import InventoryService, LocationService
+from core.repositories import LocationRepository
+from core.services import InventoryService
 from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 
@@ -43,7 +44,7 @@ class TransferDialog(QDialog):
             self._source_id = None
             self._needs_source_combo = True
 
-        self._all_locs = LocationService.get_all_locations()
+        self._all_locs = LocationRepository.get_all()
         self._loc_map = {loc.id: loc.name for loc in self._all_locs}
         self._checkboxes: list[QCheckBox] = []
 
@@ -157,7 +158,7 @@ class TransferDialog(QDialog):
         self._populate_content()
 
     def _populate_source_combo(self):
-        locs = LocationService.get_locations_for_type(self._item_type_id)
+        locs = InventoryService.get_locations_for_type(self._item_type_id)
         for loc in locs:
             self.source_combo.addItem(loc.name, userData=loc.id)
 
