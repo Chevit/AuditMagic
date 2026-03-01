@@ -1,5 +1,5 @@
 """Application version. Single source of truth for versioning."""
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 __author__ = "Che"
 __email__ = "che.audit.magic@gmail.com"
