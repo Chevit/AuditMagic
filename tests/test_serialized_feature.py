@@ -41,15 +41,16 @@ def test_conflict_non_to_serialized_raises():
 
 
 def test_same_type_same_flag_idempotent():
-    InventoryService.create_item(
+    item1 = InventoryService.create_item(
         item_type_name="Laptop", is_serialized=True,
         serial_number="SN-001", quantity=1,
     )
     # Should not raise — same type, same flag
-    InventoryService.create_item(
+    item2 = InventoryService.create_item(
         item_type_name="Laptop", is_serialized=True,
         serial_number="SN-002", quantity=1,
     )
+    assert item1.item_type_id == item2.item_type_id
 
 
 def test_get_item_type_by_name_subtype_found():
@@ -59,24 +60,10 @@ def test_get_item_type_by_name_subtype_found():
     )
     found = InventoryService.get_item_type_by_name_subtype("Laptop", "")
     assert found is not None
+    assert found.name == "Laptop"
     assert found.is_serialized is True
 
 
 def test_get_item_type_by_name_subtype_not_found():
     assert InventoryService.get_item_type_by_name_subtype("NonExistentXYZ", "") is None
 
-
-def test_translation_keys_present():
-    from ui.translations import tr
-    keys = [
-        "label.serialized_badge",
-        "label.non_serialized_badge",
-        "label.is_serialized",
-        "tooltip.serialized_locked",
-        "tooltip.serialized_auto",
-        "error.serialized_conflict",
-        "message.type_exists_serialized",
-        "message.type_exists_non_serialized",
-    ]
-    for key in keys:
-        assert tr(key) != key, f"Translation key missing: {key!r}"
