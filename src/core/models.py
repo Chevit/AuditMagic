@@ -90,7 +90,7 @@ class ItemType(Base):
 
         Note: Requires the `items` relationship to be loaded (i.e., valid only
         within an active session). Returns 0 on detached objects created by
-        _detach_item_type(), which do not populate the relationship.
+        the repository layer, which do not populate the relationship.
         """
         return sum(item.quantity for item in self.items)
 
@@ -100,7 +100,7 @@ class ItemType(Base):
 
         Note: Requires the `items` relationship to be loaded (i.e., valid only
         within an active session). Returns [] on detached objects created by
-        _detach_item_type(), which do not populate the relationship.
+        the repository layer, which do not populate the relationship.
         """
         if not self.is_serialized:
             return []
@@ -144,7 +144,7 @@ class Item(Base):
     @property
     def location(self) -> str:
         """Backward-compat property. Always returns '' on detached objects
-        (location_ref is not populated by _detach_item). Use location_id instead."""
+        (location_ref is not populated by the repository layer). Use location_id instead."""
         return ""
 
     # Constraints: Either bulk (no SN, qty > 0) OR serialized (has SN, qty = 1)

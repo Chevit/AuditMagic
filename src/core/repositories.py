@@ -1720,6 +1720,8 @@ def _detach(obj):
 
     All already-loaded column values remain accessible.
     Returns None unchanged.
+    The object is made transient — do not pass it to session.add() or
+    session.merge() to perform updates; that would attempt an INSERT.
     """
     if obj is None:
         return None
