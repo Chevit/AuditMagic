@@ -305,3 +305,148 @@ def test_get_locations_for_type():
     loc_ids = {l.id for l in locs}
     assert loc_a.id in loc_ids
     assert loc_b.id in loc_ids
+
+
+# ─── SearchService ────────────────────────────────────────────────────────────
+
+def test_search_returns_matching_items():
+    loc = _loc()
+    _non_ser("UniqueChair42", loc_id=loc.id)
+    results = SearchService.search("UniqueChair42", save_to_history=False)
+    assert len(results) >= 1
+    assert all("UniqueChair42" in r.item_type_name for r in results)
+
+
+def test_search_no_match_returns_empty():
+    results = SearchService.search("XYZNOMATCH", save_to_history=False)
+    assert results == []
+
+
+def test_search_by_field_serial():
+    loc = _loc()
+    _ser("Laptop", "SRCH-SN-001", loc_id=loc.id)
+    results = SearchService.search("SRCH-SN-001", field="serial_number", save_to_history=False)
+    assert len(results) >= 1
+    assert results[0].serial_number == "SRCH-SN-001"
+
+
+def test_search_saves_to_history():
+    loc = _loc()
+    _non_ser("Widget", loc_id=loc.id)
+    SearchService.search("Widget", save_to_history=True)
+    history = SearchService.get_search_history()
+    assert any(q == "Widget" for q, _ in history)
+
+
+def test_search_autocomplete_empty_prefix_returns_empty():
+    assert SearchService.get_autocomplete_suggestions("") == []
+
+
+def test_search_autocomplete_prefix_returns_suggestions():
+    ItemTypeRepository.get_or_create("Keyboard", "", False)
+    results = SearchService.get_autocomplete_suggestions("Key")
+    assert len(results) >= 1
+
+
+def test_search_clear_history():
+    loc = _loc()
+    _non_ser("Blah", loc_id=loc.id)
+    SearchService.search("Blah", save_to_history=True)
+    SearchService.clear_search_history()
+    assert SearchService.get_search_history() == []
+
+
+# ─── TransactionService ───────────────────────────────────────────────────────
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def test_ts_get_transactions_by_type_and_date_range():
+    loc = _loc()
+    item = _non_ser(loc_id=loc.id)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionService.get_transactions_by_type_and_date_range(
+        item.item_type_id, start, end
+    )
+    assert len(txs) >= 1
+    assert all("type" in t for t in txs)
+
+
+def test_ts_get_recent_transactions():
+    loc = _loc()
+    _non_ser(loc_id=loc.id)
+    txs = TransactionService.get_recent_transactions(limit=5)
+    assert isinstance(txs, list)
+    assert len(txs) <= 5
+
+
+def test_ts_get_transactions_by_location_and_date_range():
+    loc = _loc()
+    _non_ser(loc_id=loc.id)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionService.get_transactions_by_location_and_date_range(loc.id, start, end)
+    assert len(txs) >= 1
+    assert all(t["location_id"] == loc.id for t in txs)
+
+
+def test_ts_get_all_transactions_by_date_range():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    _non_ser("A", loc_id=loc_a.id)
+    _non_ser("B", loc_id=loc_b.id)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionService.get_all_transactions_by_date_range(start, end)
+    loc_ids = {t["location_id"] for t in txs}
+    assert loc_a.id in loc_ids
+    assert loc_b.id in loc_ids
+
+
+# ─── _transaction_to_dict: transfer_side ─────────────────────────────────────
+
+def _make_tx(loc_id, from_id, to_id, tx_type=TransactionType.TRANSFER):
+    t = Transaction()
+    t.id = 1
+    t.item_type_id = 1
+    t.transaction_type = tx_type
+    t.quantity_change = 5
+    t.quantity_before = 10
+    t.quantity_after = 5
+    t.notes = ""
+    t.serial_number = None
+    t.location_id = loc_id
+    t.from_location_id = from_id
+    t.to_location_id = to_id
+    t.created_at = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    return t
+
+
+def test_transaction_to_dict_transfer_side_source():
+    tx = _make_tx(loc_id=10, from_id=10, to_id=20)
+    d = _transaction_to_dict(tx)
+    assert d["transfer_side"] == "source"
+
+
+def test_transaction_to_dict_transfer_side_destination():
+    tx = _make_tx(loc_id=20, from_id=10, to_id=20)
+    d = _transaction_to_dict(tx)
+    assert d["transfer_side"] == "destination"
+
+
+def test_transaction_to_dict_non_transfer_no_side():
+    tx = _make_tx(loc_id=10, from_id=None, to_id=None, tx_type=TransactionType.ADD)
+    d = _transaction_to_dict(tx)
+    assert "transfer_side" not in d
+
+
+def test_transaction_to_dict_fields():
+    tx = _make_tx(loc_id=10, from_id=10, to_id=20)
+    d = _transaction_to_dict(tx)
+    for key in ("id", "item_type_id", "type", "quantity_change",
+                "quantity_before", "quantity_after", "notes",
+                "serial_number", "location_id", "from_location_id",
+                "to_location_id", "created_at"):
+        assert key in d, f"missing key: {key}"
