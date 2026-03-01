@@ -23,11 +23,11 @@ else:
     _extra_datas = [(os.path.join(SPECPATH, "icon.png"), ".")]
 
 a = Analysis(
-    ['main.py'],
+    ['src/main.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('ui/MainWindow.ui', 'ui'),
+        ('src/ui/forms/MainWindow.ui', 'src/ui/forms'),
         ('alembic.ini', '.'),
         ('alembic', 'alembic'),
         (qt_material_path, 'qt_material'),

@@ -1106,7 +1106,7 @@ Add these keys to **both** Ukrainian and English dictionaries:
 "transaction.type.transfer": "Переміщення",
 "transaction.column.from_location": "З місця",
 "transaction.column.to_location": "До місця",
-"transaction.column.item_type": "Тип елемента",
+"transaction.column.item_type": "Тип\nелемента",
 
 # Transaction notes
 "transaction.notes.transfer": "Переміщено з «{from_loc}» до «{to_loc}»",
