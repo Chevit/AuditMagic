@@ -3,7 +3,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
-from core.services import LocationService
+from core.repositories import LocationRepository
 from ui.styles import apply_button_style, apply_combo_box_style
 from ui.translations import tr
 
@@ -55,7 +55,7 @@ class LocationSelectorWidget(QWidget):
             self.combo.clear()
             # First entry: "All Locations" (maps to None)
             self.combo.addItem(tr("location.all"), userData=None)
-            for loc in LocationService.get_all_locations():
+            for loc in LocationRepository.get_all():
                 self.combo.addItem(loc.name, userData=loc.id)
             # Try to restore previously selected item
             self.set_current_location(current_id)

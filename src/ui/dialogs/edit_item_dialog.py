@@ -22,7 +22,8 @@ from PyQt6.QtWidgets import (
 )
 
 from core.logger import logger
-from core.services import InventoryService, LocationService
+from core.repositories import LocationRepository
+from core.services import InventoryService
 from ui.styles import Colors, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.translations import tr
@@ -187,7 +188,7 @@ class EditItemDialog(QDialog):
         else:
             self.location_combo = QComboBox()
             apply_combo_box_style(self.location_combo)
-            for loc in LocationService.get_all_locations():
+            for loc in LocationRepository.get_all():
                 self.location_combo.addItem(loc.name, userData=loc.id)
             form_layout.addRow(loc_label, self.location_combo)
 
@@ -507,7 +508,7 @@ class EditItemDialog(QDialog):
 
         if self.location_combo is not None:
             location_id = self.location_combo.currentData()
-            loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
+            loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
             location_name = loc_map.get(location_id, "")
         else:
             location_id = self._original_item.location_id

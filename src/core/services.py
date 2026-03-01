@@ -16,141 +16,6 @@ from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.translations import tr
 
 
-class LocationService:
-    """Service for location management operations."""
-
-    @staticmethod
-    def create_location(name: str) -> Location:
-        """Create a new location."""
-        return LocationRepository.create(name)
-
-    @staticmethod
-    def get_location_by_id(location_id: int) -> Optional[Location]:
-        """Get location by ID."""
-        return LocationRepository.get_by_id(location_id)
-
-    @staticmethod
-    def get_location_by_name(name: str) -> Optional[Location]:
-        """Get location by exact name."""
-        return LocationRepository.get_by_name(name)
-
-    @staticmethod
-    def get_all_locations() -> List[Location]:
-        """Get all locations ordered by name."""
-        return LocationRepository.get_all()
-
-    @staticmethod
-    def get_location_count() -> int:
-        """Return total number of locations."""
-        return LocationRepository.get_count()
-
-    @staticmethod
-    def get_item_count(location_id: int) -> int:
-        """Return number of items at a location."""
-        return LocationRepository.get_item_count(location_id)
-
-    @staticmethod
-    def get_all_with_item_counts() -> list:
-        """Get all locations with their item counts in a single query."""
-        return LocationRepository.get_all_with_item_counts()
-
-    @staticmethod
-    def rename_location(location_id: int, new_name: str) -> Optional[Location]:
-        """Rename a location."""
-        return LocationRepository.rename(location_id, new_name)
-
-    @staticmethod
-    def delete_location(location_id: int) -> bool:
-        """Delete an empty location. Raises ValueError if it has items."""
-        return LocationRepository.delete(location_id)
-
-    @staticmethod
-    def get_unassigned_item_count() -> int:
-        """Return count of items with location_id IS NULL."""
-        return LocationRepository.get_unassigned_item_count()
-
-    @staticmethod
-    def assign_all_unassigned_items(location_id: int) -> int:
-        """Assign all items with location_id=NULL to the given location."""
-        return LocationRepository.assign_all_unassigned(location_id)
-
-    @staticmethod
-    def move_all_items_and_delete(from_location_id: int, to_location_id: int) -> bool:
-        """Move all items from one location to another, then delete the source location.
-
-        For each item at from_location_id:
-          - Non-serialized: calls ItemRepository.transfer_item (handles merge logic).
-          - Serialized: calls ItemRepository.transfer_serialized_items.
-        Both create TRANSFER transactions for the audit trail.
-        After all items are moved, deletes the source location.
-
-        Args:
-            from_location_id: Location to empty and delete.
-            to_location_id: Destination location.
-
-        Returns:
-            True on success.
-
-        Raises:
-            ValueError: If either location doesn't exist.
-        """
-        from_loc = LocationRepository.get_by_id(from_location_id)
-        if not from_loc:
-            raise ValueError(f"Source location id={from_location_id} not found")
-        to_loc = LocationRepository.get_by_id(to_location_id)
-        if not to_loc:
-            raise ValueError(f"Destination location id={to_location_id} not found")
-
-        notes = tr("transaction.notes.location_deleted_move").format(
-            from_loc=from_loc.name
-        )
-
-        items = ItemRepository.get_items_at_location(from_location_id)
-        for item in items:
-            if item.serial_number:
-                # Serialized — move in-place by serial number
-                ItemRepository.transfer_serialized_items(
-                    serial_numbers=[item.serial_number],
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                    notes=notes,
-                )
-            else:
-                # Non-serialized — transfer with merge logic
-                ItemRepository.transfer_item(
-                    item_id=item.id,
-                    quantity=item.quantity,
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                    notes=notes,
-                )
-
-        LocationRepository.delete(from_location_id)
-        logger.info(
-            f"Service: Moved all items from location '{from_loc.name}' to "
-            f"'{to_loc.name}' and deleted source location"
-        )
-        return True
-
-    @staticmethod
-    def get_locations_for_type(item_type_id: int) -> List[Location]:
-        """Return the distinct locations that have at least one item of this type.
-
-        Used by TransferDialog to populate the source-location combo when the
-        user is in "All Locations" view with a multi-location item.
-        """
-        items = ItemRepository.get_by_type(item_type_id)
-        seen_ids: set = set()
-        locs: List[Location] = []
-        all_locs = {loc.id: loc for loc in LocationRepository.get_all()}
-        for item in items:
-            if item.location_id and item.location_id not in seen_ids:
-                seen_ids.add(item.location_id)
-                if item.location_id in all_locs:
-                    locs.append(all_locs[item.location_id])
-        return locs
-
-
 class InventoryService:
     """Service for inventory management operations."""
 
@@ -731,6 +596,80 @@ class InventoryService:
             return None
         item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
         return InventoryItem.from_db_models(db_item, item_type)
+
+    @staticmethod
+    def move_all_items_and_delete(from_location_id: int, to_location_id: int) -> bool:
+        """Move all items from one location to another, then delete the source location.
+
+        For each item at from_location_id:
+          - Non-serialized: calls ItemRepository.transfer_item (handles merge logic).
+          - Serialized: calls ItemRepository.transfer_serialized_items.
+        Both create TRANSFER transactions for the audit trail.
+        After all items are moved, deletes the source location.
+
+        Args:
+            from_location_id: Location to empty and delete.
+            to_location_id: Destination location.
+
+        Returns:
+            True on success.
+
+        Raises:
+            ValueError: If either location doesn't exist.
+        """
+        from_loc = LocationRepository.get_by_id(from_location_id)
+        if not from_loc:
+            raise ValueError(f"Source location id={from_location_id} not found")
+        to_loc = LocationRepository.get_by_id(to_location_id)
+        if not to_loc:
+            raise ValueError(f"Destination location id={to_location_id} not found")
+
+        notes = tr("transaction.notes.location_deleted_move").format(
+            from_loc=from_loc.name
+        )
+
+        items = ItemRepository.get_items_at_location(from_location_id)
+        for item in items:
+            if item.serial_number:
+                ItemRepository.transfer_serialized_items(
+                    serial_numbers=[item.serial_number],
+                    from_location_id=from_location_id,
+                    to_location_id=to_location_id,
+                    notes=notes,
+                )
+            else:
+                ItemRepository.transfer_item(
+                    item_id=item.id,
+                    quantity=item.quantity,
+                    from_location_id=from_location_id,
+                    to_location_id=to_location_id,
+                    notes=notes,
+                )
+
+        LocationRepository.delete(from_location_id)
+        logger.info(
+            f"Service: Moved all items from location '{from_loc.name}' to "
+            f"'{to_loc.name}' and deleted source location"
+        )
+        return True
+
+    @staticmethod
+    def get_locations_for_type(item_type_id: int) -> List[Location]:
+        """Return the distinct locations that have at least one item of this type.
+
+        Used by TransferDialog to populate the source-location combo when the
+        user is in "All Locations" view with a multi-location item.
+        """
+        items = ItemRepository.get_by_type(item_type_id)
+        seen_ids: set = set()
+        locs: List[Location] = []
+        all_locs = {loc.id: loc for loc in LocationRepository.get_all()}
+        for item in items:
+            if item.location_id and item.location_id not in seen_ids:
+                seen_ids.add(item.location_id)
+                if item.location_id in all_locs:
+                    locs.append(all_locs[item.location_id])
+        return locs
 
 
 class SearchService:

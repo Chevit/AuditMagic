@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
 )
 
 from core.logger import logger
-from core.services import InventoryService, LocationService
+from core.repositories import LocationRepository
+from core.services import InventoryService
 from ui.styles import Colors, Styles, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui.models.inventory_item import InventoryItem
 from ui.translations import tr
@@ -145,7 +146,7 @@ class AddItemDialog(QDialog):
         loc_label.setFont(label_font)
         self.location_combo = QComboBox()
         apply_combo_box_style(self.location_combo)
-        for loc in LocationService.get_all_locations():
+        for loc in LocationRepository.get_all():
             self.location_combo.addItem(loc.name, userData=loc.id)
         if self._current_location_id is not None:
             for i in range(self.location_combo.count()):

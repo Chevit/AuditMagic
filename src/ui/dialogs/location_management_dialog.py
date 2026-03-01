@@ -17,7 +17,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.services import LocationService
+from core.repositories import LocationRepository
+from core.services import InventoryService
 from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 
@@ -111,7 +112,7 @@ class LocationManagementDialog(QDialog):
 
     def _load_locations(self):
         self.list_widget.clear()
-        for loc, count in LocationService.get_all_with_item_counts():
+        for loc, count in LocationRepository.get_all_with_item_counts():
             item = QListWidgetItem(
                 f"{loc.name}  —  {tr('location.item_count').format(count=count)}"
             )
@@ -132,11 +133,11 @@ class LocationManagementDialog(QDialog):
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         name = dlg.get_name()
-        if LocationService.get_location_by_name(name):
+        if LocationRepository.get_by_name(name):
             QMessageBox.warning(self, tr("error.generic.title"), tr("location.error.name_exists"))
             return
         try:
-            LocationService.create_location(name)
+            LocationRepository.create(name)
             self._load_locations()
         except Exception as e:
             QMessageBox.critical(self, tr("error.generic.title"), str(e))
@@ -154,12 +155,12 @@ class LocationManagementDialog(QDialog):
         new_name = dlg.get_name()
         if new_name == current_name:
             return
-        existing = LocationService.get_location_by_name(new_name)
+        existing = LocationRepository.get_by_name(new_name)
         if existing and existing.id != loc_id:
             QMessageBox.warning(self, tr("error.generic.title"), tr("location.error.name_exists"))
             return
         try:
-            LocationService.rename_location(loc_id, new_name)
+            LocationRepository.rename(loc_id, new_name)
             self._load_locations()
         except Exception as e:
             QMessageBox.critical(self, tr("error.generic.title"), str(e))
@@ -169,8 +170,8 @@ class LocationManagementDialog(QDialog):
         if not loc_id:
             return
 
-        all_locs = LocationService.get_all_locations()
-        item_count = LocationService.get_item_count(loc_id)
+        all_locs = LocationRepository.get_all()
+        item_count = LocationRepository.get_item_count(loc_id)
         loc_name = next((l.name for l in all_locs if l.id == loc_id), "")
 
         # Check: cannot delete the only location
@@ -189,7 +190,7 @@ class LocationManagementDialog(QDialog):
             if reply != QMessageBox.StandardButton.Yes:
                 return
             try:
-                LocationService.delete_location(loc_id)
+                LocationRepository.delete(loc_id)
                 self._load_locations()
             except Exception as e:
                 QMessageBox.critical(self, tr("error.generic.title"), str(e))
@@ -201,7 +202,7 @@ class LocationManagementDialog(QDialog):
                 return
             dest_id = dlg.get_destination_id()
             try:
-                LocationService.move_all_items_and_delete(loc_id, dest_id)
+                InventoryService.move_all_items_and_delete(loc_id, dest_id)
                 self._load_locations()
             except Exception as e:
                 QMessageBox.critical(self, tr("error.generic.title"), str(e))
