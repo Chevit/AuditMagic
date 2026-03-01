@@ -177,3 +177,131 @@ def test_get_autocomplete_subtypes():
     ItemTypeRepository.get_or_create("Laptop", "Pro", False)
     results = InventoryService.get_autocomplete_subtypes("Laptop", "P")
     assert "Pro" in results
+
+
+# ─── InventoryService: mutations ──────────────────────────────────────────────
+
+def test_add_quantity():
+    loc = _loc()
+    item = _non_ser(loc_id=loc.id, qty=5)
+    updated = InventoryService.add_quantity(item.id, 3)
+    assert updated.quantity == 8
+
+
+def test_remove_quantity():
+    loc = _loc()
+    item = _non_ser(loc_id=loc.id, qty=10)
+    updated = InventoryService.remove_quantity(item.id, 4)
+    assert updated.quantity == 6
+
+
+def test_edit_item():
+    loc = _loc()
+    item = _non_ser("OldType", loc_id=loc.id, qty=5)
+    updated = InventoryService.edit_item(
+        item_id=item.id,
+        item_type_name="NewType",
+        sub_type="",
+        quantity=8,
+        is_serialized=False,
+        location_id=loc.id,
+        edit_reason="test edit",
+    )
+    assert updated is not None
+    assert updated.item_type_name == "NewType"
+    assert updated.quantity == 8
+
+
+def test_delete_item_returns_true():
+    loc = _loc()
+    item = _non_ser(loc_id=loc.id)
+    assert InventoryService.delete_item(item.id) is True
+    assert InventoryService.get_item(item.id) is None
+
+
+def test_delete_item_missing_returns_false():
+    assert InventoryService.delete_item(9999) is False
+
+
+def test_delete_item_type_returns_true():
+    loc = _loc()
+    item = _non_ser(loc_id=loc.id)
+    type_id = item.item_type_id
+    assert InventoryService.delete_item_type(type_id) is True
+    assert ItemTypeRepository.get_by_id(type_id) is None
+
+
+def test_delete_item_type_missing_returns_false():
+    assert InventoryService.delete_item_type(9999) is False
+
+
+def test_delete_items_by_serial_numbers():
+    loc = _loc()
+    _ser("Laptop", "BULK-001", loc_id=loc.id)
+    _ser("Laptop", "BULK-002", loc_id=loc.id)
+    count = InventoryService.delete_items_by_serial_numbers(
+        ["BULK-001", "BULK-002"], notes="bulk delete"
+    )
+    assert count == 2
+
+
+# ─── InventoryService: transfer ───────────────────────────────────────────────
+
+def test_transfer_item():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    item = _non_ser(loc_id=loc_a.id, qty=10)
+    result = InventoryService.transfer_item(
+        item_id=item.id, quantity=5,
+        from_location_id=loc_a.id, to_location_id=loc_b.id,
+    )
+    assert result is True
+
+
+def test_transfer_serialized_items():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    _ser("Laptop", "TR-001", loc_id=loc_a.id)
+    count = InventoryService.transfer_serialized_items(
+        serial_numbers=["TR-001"],
+        from_location_id=loc_a.id,
+        to_location_id=loc_b.id,
+    )
+    assert count == 1
+
+
+def test_move_all_items_and_delete_non_serialized():
+    loc_a = _loc("Source")
+    loc_b = _loc("Dest")
+    _non_ser(loc_id=loc_a.id, qty=5)
+    result = InventoryService.move_all_items_and_delete(loc_a.id, loc_b.id)
+    assert result is True
+    assert LocationRepository.get_by_id(loc_a.id) is None
+
+
+def test_move_all_items_and_delete_serialized():
+    loc_a = _loc("Source")
+    loc_b = _loc("Dest")
+    _ser("Laptop", "MV-001", loc_id=loc_a.id)
+    InventoryService.move_all_items_and_delete(loc_a.id, loc_b.id)
+    assert LocationRepository.get_by_id(loc_a.id) is None
+    items = ItemRepository.get_all()
+    assert any(i.location_id == loc_b.id for i in items)
+
+
+def test_move_all_items_and_delete_bad_source_raises():
+    loc_b = _loc("Dest")
+    with pytest.raises(ValueError):
+        InventoryService.move_all_items_and_delete(9999, loc_b.id)
+
+
+def test_get_locations_for_type():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    ItemRepository.create_serialized(t.id, "GL-001", loc_a.id)
+    ItemRepository.create_serialized(t.id, "GL-002", loc_b.id)
+    locs = InventoryService.get_locations_for_type(t.id)
+    loc_ids = {l.id for l in locs}
+    assert loc_a.id in loc_ids
+    assert loc_b.id in loc_ids
