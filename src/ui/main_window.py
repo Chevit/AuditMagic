@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
             else:
                 transactions = TransactionService.get_for_export(location_id=current_loc_id)
             loc_map = {loc.id: loc.name for loc in LocationService.get_all_locations()}
-            type_map = InventoryService.get_item_type_names_for_export()
+            type_map = InventoryService.get_item_type_display_names()
 
         # Build and save workbook
         try:

@@ -500,19 +500,6 @@ class InventoryService:
         }
 
     @staticmethod
-    def get_item_type_names_for_export() -> dict:
-        """Return {item_type_id: "Name — SubType"} for use in Excel export.
-
-        Uses an em-dash separator (same as get_item_type_display_names) so that
-        ExportService can safely split on " — " without colliding with user-entered
-        type names that may contain hyphens.
-        """
-        types = ItemTypeRepository.get_all()
-        return {
-            t.id: f"{t.name} \u2014 {t.sub_type}" if t.sub_type else t.name for t in types
-        }
-
-    @staticmethod
     def get_item_type_by_name_subtype(name: str, sub_type: str = ""):
         """Return ItemType info for the given name/sub_type, or None.
 
