@@ -237,3 +237,201 @@ def test_itemtype_get_serialized_with_items():
     type_names = [r[0].name for r in results]
     assert "Serial" in type_names
     assert "Bulk" not in type_names
+
+
+# ─── ItemRepository ───────────────────────────────────────────────────────────
+
+def test_item_create_non_serialized():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id, qty=10)
+    assert item.id is not None
+    assert item.quantity == 10
+    assert item.serial_number is None
+
+
+def test_item_create_serialized():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    item = _serial(t.id, loc.id, "SN-001")
+    assert item.quantity == 1
+    assert item.serial_number == "SN-001"
+
+
+def test_item_create_serialized_first_item_qty_before_zero():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc.id, "SN-001")
+    txs = TransactionRepository.get_recent(10)
+    add_tx = next(tx for tx in txs if tx.transaction_type == TransactionType.ADD)
+    assert add_tx.quantity_before == 0
+    assert add_tx.quantity_after == 1
+
+
+def test_item_create_serialized_second_item_qty_before_one():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc.id, "SN-001")
+    _serial(t.id, loc.id, "SN-002")
+    txs = TransactionRepository.get_recent(10)
+    add_txs = sorted(
+        [tx for tx in txs if tx.transaction_type == TransactionType.ADD],
+        key=lambda x: x.quantity_before,
+    )
+    assert add_txs[0].quantity_before == 0
+    assert add_txs[1].quantity_before == 1
+
+
+def test_item_create_duplicate_serial_raises():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc.id, "SN-DUP")
+    with pytest.raises(Exception):
+        _serial(t.id, loc.id, "SN-DUP")
+
+
+def test_item_get_by_id():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id)
+    found = ItemRepository.get_by_id(item.id)
+    assert found is not None
+    assert found.id == item.id
+
+
+def test_item_get_by_id_missing():
+    assert ItemRepository.get_by_id(9999) is None
+
+
+def test_item_get_all():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id)
+    items = ItemRepository.get_all()
+    assert len(items) >= 1
+
+
+def test_item_add_quantity():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id, qty=5)
+    updated = ItemRepository.add_quantity(item.id, 3)
+    assert updated.quantity == 8
+
+
+def test_item_add_quantity_creates_transaction():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id, qty=5)
+    ItemRepository.add_quantity(item.id, 3)
+    txs = TransactionRepository.get_recent(10)
+    add_txs = [tx for tx in txs if tx.transaction_type == TransactionType.ADD]
+    # one initial ADD (from create) + one more ADD (from add_quantity)
+    assert len(add_txs) == 2
+
+
+def test_item_remove_quantity():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id, qty=10)
+    updated = ItemRepository.remove_quantity(item.id, 4)
+    assert updated.quantity == 6
+
+
+def test_item_remove_quantity_below_zero_raises():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id, qty=3)
+    with pytest.raises(ValueError):
+        ItemRepository.remove_quantity(item.id, 10)
+
+
+def test_item_delete():
+    loc = _loc()
+    t = _type()
+    item = _item(t.id, loc.id)
+    assert ItemRepository.delete(item.id) is True
+    assert ItemRepository.get_by_id(item.id) is None
+
+
+def test_item_delete_missing_returns_false():
+    assert ItemRepository.delete(9999) is False
+
+
+def test_item_delete_by_serial_numbers_creates_remove_transactions():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc.id, "DEL-001")
+    _serial(t.id, loc.id, "DEL-002")
+    count = ItemRepository.delete_by_serial_numbers(["DEL-001", "DEL-002"], notes="audit")
+    assert count == 2
+    # Items should be gone
+    assert ItemRepository.search("DEL-001", field="serial_number") == []
+    # REMOVE transactions should still exist (audit trail preserved)
+    txs = [
+        tx for tx in TransactionRepository.get_recent(20)
+        if tx.transaction_type == TransactionType.REMOVE
+    ]
+    assert len(txs) == 2
+    assert all(tx.notes == "audit" for tx in txs)
+
+
+def test_item_transfer_item_creates_transfer_transactions():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    t = _type()
+    item = _item(t.id, loc_a.id, qty=10)
+    result = ItemRepository.transfer_item(
+        item_id=item.id, quantity=4,
+        from_location_id=loc_a.id, to_location_id=loc_b.id,
+    )
+    assert result is True
+    txs = [
+        tx for tx in TransactionRepository.get_recent(20)
+        if tx.transaction_type == TransactionType.TRANSFER
+    ]
+    assert len(txs) == 2
+    loc_ids = {tx.location_id for tx in txs}
+    assert loc_a.id in loc_ids
+    assert loc_b.id in loc_ids
+
+
+def test_item_transfer_serialized_items():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc_a.id, "TR-001")
+    count = ItemRepository.transfer_serialized_items(
+        serial_numbers=["TR-001"],
+        from_location_id=loc_a.id,
+        to_location_id=loc_b.id,
+    )
+    assert count == 1
+    moved = ItemRepository.search("TR-001", field="serial_number")
+    assert moved[0].location_id == loc_b.id
+
+
+def test_item_find_non_serialized_at_location():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id, qty=5)
+    found = ItemRepository.find_non_serialized_at_location(t.id, loc.id)
+    assert found is not None
+    assert found.serial_number is None
+
+
+def test_item_search_by_type_name():
+    loc = _loc()
+    t = _type("UniqueMonitor")
+    _item(t.id, loc.id)
+    results = ItemRepository.search("UniqueMonitor", field="item_type")
+    assert len(results) == 1
+
+
+def test_item_search_by_serial():
+    loc = _loc()
+    t = ItemTypeRepository.get_or_create("Laptop", "", True)
+    _serial(t.id, loc.id, "FIND-ME-123")
+    results = ItemRepository.search("FIND-ME-123", field="serial_number")
+    assert len(results) == 1
+    assert results[0].serial_number == "FIND-ME-123"
