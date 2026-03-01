@@ -4,13 +4,13 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
-from config import config
+from core.config import config
 from runtime import resource_path
-from db import run_migrations
-from logger import logger
-from theme_config import Theme
-from theme_manager import init_theme_manager
-from ui_entities.main_window import MainWindow
+from core.db import run_migrations
+from core.logger import logger
+from ui.theme_config import Theme
+from ui.theme_manager import init_theme_manager
+from ui.main_window import MainWindow
 from update_checker import UpdateInfo, check_for_update
 from version import __version__
 
@@ -67,7 +67,7 @@ def main():
         logger.info("MainWindow displayed")
 
         def _show_update_dialog(update_info: UpdateInfo) -> None:
-            from ui_entities.update_dialog import UpdateDialog
+            from ui.dialogs.update_dialog import UpdateDialog
 
             dialog = UpdateDialog(update_info, window)
             dialog.exec()

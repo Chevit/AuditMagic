@@ -12,11 +12,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from logger import logger
-from repositories import ItemRepository
-from styles import apply_button_style
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
-from ui_entities.translations import tr
+from core.logger import logger
+from core.repositories import ItemRepository
+from ui.styles import apply_button_style
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.translations import tr
 
 
 class ItemDetailsDialog(QDialog):

@@ -20,10 +20,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from logger import logger
-from services import InventoryService, LocationService, TransactionService
-from styles import apply_button_style, apply_combo_box_style
-from ui_entities.translations import format_quantity_change, tr
+from core.logger import logger
+from core.services import InventoryService, LocationService, TransactionService
+from ui.styles import apply_button_style, apply_combo_box_style
+from ui.translations import format_quantity_change, tr
 
 
 class AllTransactionsDialog(QDialog):

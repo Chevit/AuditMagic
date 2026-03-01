@@ -17,9 +17,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from services import InventoryService, LocationService
-from styles import apply_button_style, apply_combo_box_style, apply_input_style
-from ui_entities.translations import tr
+from core.services import InventoryService, LocationService
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.translations import tr
 
 
 class TransferDialog(QDialog):

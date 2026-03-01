@@ -3,9 +3,9 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
-from services import LocationService
-from styles import apply_button_style, apply_combo_box_style
-from ui_entities.translations import tr
+from core.services import LocationService
+from ui.styles import apply_button_style, apply_combo_box_style
+from ui.translations import tr
 
 
 class LocationSelectorWidget(QWidget):

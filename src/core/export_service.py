@@ -9,8 +9,8 @@ from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
-from ui_entities.translations import format_quantity_change
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.translations import format_quantity_change
 
 
 class ExportService:

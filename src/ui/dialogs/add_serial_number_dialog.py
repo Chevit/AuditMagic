@@ -15,10 +15,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from services import LocationService
-from styles import apply_button_style, apply_combo_box_style, apply_input_style
-from ui_entities.translations import tr
-from validators import SerialNumberValidator
+from core.services import LocationService
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.translations import tr
+from ui.validators import SerialNumberValidator
 
 
 class AddSerialNumberDialog(QDialog):

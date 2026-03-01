@@ -5,10 +5,10 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import delete as sql_delete, func, or_
 
-from db import session_scope
-from logger import logger
-from models import Item, ItemType, Location, SearchHistory, Transaction, TransactionType
-from ui_entities.translations import tr
+from core.db import session_scope
+from core.logger import logger
+from core.models import Item, ItemType, Location, SearchHistory, Transaction, TransactionType
+from ui.translations import tr
 
 
 class LocationRepository:

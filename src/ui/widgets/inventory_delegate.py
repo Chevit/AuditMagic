@@ -2,9 +2,9 @@ from PyQt6.QtCore import QRect, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
-from styles import Colors
-from ui_entities.inventory_model import InventoryItemRole
-from ui_entities.translations import tr
+from ui.styles import Colors
+from ui.models.inventory_model import InventoryItemRole
+from ui.translations import tr
 
 
 class InventoryItemDelegate(QStyledItemDelegate):

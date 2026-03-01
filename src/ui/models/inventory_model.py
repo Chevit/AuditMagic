@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
 
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 
 # Type alias for items that can be displayed in the list
 DisplayItem = Union[InventoryItem, GroupedInventoryItem]

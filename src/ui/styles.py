@@ -5,7 +5,7 @@ for theme-aware colors and dimensions that adapt to the selected theme.
 All theme parameters are retrieved from the Theme enum.
 """
 
-from theme_config import get_theme_colors, get_theme_dimensions
+from ui.theme_config import get_theme_colors, get_theme_dimensions
 
 
 # Color Palette (theme-aware)

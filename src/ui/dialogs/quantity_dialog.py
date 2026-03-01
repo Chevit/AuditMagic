@@ -15,10 +15,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from logger import logger
-from styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
-from ui_entities.translations import tr
-from validators import validate_length
+from core.logger import logger
+from ui.styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
+from ui.translations import tr
+from ui.validators import validate_length
 
 
 class QuantityDialog(QDialog):

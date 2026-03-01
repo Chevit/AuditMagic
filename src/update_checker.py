@@ -6,7 +6,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Optional
 
-from logger import logger
+from core.logger import logger
 from version import __version__
 
 GITHUB_API_URL = "https://api.github.com/repos/Chevit/AuditMagic/releases/latest"

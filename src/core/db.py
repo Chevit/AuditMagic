@@ -7,8 +7,8 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from logger import APP_DATA_DIR, logger
-from models import Base
+from core.logger import APP_DATA_DIR, logger
+from core.models import Base
 
 # Database file path - stored in user's app data directory
 DATABASE_PATH = os.path.join(APP_DATA_DIR, "inventory.db")

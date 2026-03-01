@@ -4,8 +4,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime
 import pytest
-from ui_entities.inventory_item import InventoryItem, GroupedInventoryItem
-from export_service import ExportService
+from ui.models.inventory_item import InventoryItem, GroupedInventoryItem
+from core.export_service import ExportService
 
 
 def _make_item(name="Laptop", sub="X1", qty=3, sn=None, loc="Warehouse", cond="Good"):

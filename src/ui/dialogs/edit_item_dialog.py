@@ -21,12 +21,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from logger import logger
-from services import InventoryService, LocationService
-from styles import Colors, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
-from ui_entities.translations import tr
-from validators import (
+from core.logger import logger
+from core.services import InventoryService, LocationService
+from ui.styles import Colors, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.translations import tr
+from ui.validators import (
     ItemTypeValidator,
     SerialNumberValidator,
     validate_length,

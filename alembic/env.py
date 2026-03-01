@@ -9,8 +9,8 @@ from alembic import context
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from db import DATABASE_URL
-from models import Base
+from core.db import DATABASE_URL
+from core.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Dict
 
-from config import config
-from logger import logger
+from core.config import config
+from core.logger import logger
 
 
 class Language(Enum):
@@ -10,7 +10,7 @@ class Language(Enum):
     ENGLISH = "en"
 
 
-# Initialize language from config
+# Initialize language from core.config
 _current_language: Language = Language(config.get("language", "uk"))
 
 

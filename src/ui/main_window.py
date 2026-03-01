@@ -16,29 +16,29 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from config import config
-from db import init_database
-from logger import logger
-from services import InventoryService, LocationService, SearchService, TransactionService
-from styles import apply_button_style
-from theme_manager import get_theme_manager
-from ui_entities.add_item_dialog import AddItemDialog
-from ui_entities.add_serial_number_dialog import AddSerialNumberDialog
-from ui_entities.remove_serial_number_dialog import RemoveSerialNumberDialog
-from ui_entities.edit_item_dialog import EditItemDialog
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
-from ui_entities.inventory_list_view import InventoryListView
-from ui_entities.inventory_model import InventoryModel
-from ui_entities.item_details_dialog import ItemDetailsDialog
-from ui_entities.all_transactions_dialog import AllTransactionsDialog
-from ui_entities.first_location_dialog import FirstLocationDialog
-from ui_entities.location_management_dialog import LocationManagementDialog
-from ui_entities.location_selector import LocationSelectorWidget
-from ui_entities.transfer_dialog import TransferDialog
-from ui_entities.quantity_dialog import QuantityDialog
-from ui_entities.search_widget import SearchWidget
-from ui_entities.transactions_dialog import TransactionsDialog
-from ui_entities.translations import tr
+from core.config import config
+from core.db import init_database
+from core.logger import logger
+from core.services import InventoryService, LocationService, SearchService, TransactionService
+from ui.styles import apply_button_style
+from ui.theme_manager import get_theme_manager
+from ui.dialogs.add_item_dialog import AddItemDialog
+from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
+from ui.dialogs.remove_serial_number_dialog import RemoveSerialNumberDialog
+from ui.dialogs.edit_item_dialog import EditItemDialog
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.widgets.inventory_list_view import InventoryListView
+from ui.models.inventory_model import InventoryModel
+from ui.dialogs.item_details_dialog import ItemDetailsDialog
+from ui.dialogs.all_transactions_dialog import AllTransactionsDialog
+from ui.dialogs.first_location_dialog import FirstLocationDialog
+from ui.dialogs.location_management_dialog import LocationManagementDialog
+from ui.widgets.location_selector import LocationSelectorWidget
+from ui.dialogs.transfer_dialog import TransferDialog
+from ui.dialogs.quantity_dialog import QuantityDialog
+from ui.widgets.search_widget import SearchWidget
+from ui.dialogs.transactions_dialog import TransactionsDialog
+from ui.translations import tr
 
 
 class MainWindow(QMainWindow):
@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
         # 1. Ensure at least one location exists (shows first-launch wizard if needed)
         self._ensure_location_exists()
 
-        # 2. Restore last-selected location from config (three-case sentinel logic)
+        # 2. Restore last-selected location from core.config (three-case sentinel logic)
         self._init_current_location()
 
         # 3. Integrity check: auto-assign any NULL-location items
@@ -105,9 +105,9 @@ class MainWindow(QMainWindow):
 
         from PyQt6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
-        from export_service import ExportService
-        from services import InventoryService, LocationService, TransactionService
-        from ui_entities.export_options_dialog import ExportOptionsDialog
+        from core.export_service import ExportService
+        from core.services import InventoryService, LocationService, TransactionService
+        from ui.dialogs.export_options_dialog import ExportOptionsDialog
 
         # Determine current location name
         current_loc_id = self._current_location_id  # None means "All Locations"
@@ -198,7 +198,7 @@ class MainWindow(QMainWindow):
 
     def _setup_theme_menu(self):
         """Set up theme switching menu."""
-        from theme_config import Theme
+        from ui.theme_config import Theme
 
         # Create menu bar if it doesn't exist
         menu_bar = self.menuBar()
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
 
     def _on_theme_changed(self, theme_name: str):
         """Handle theme change."""
-        from theme_config import Theme
+        from ui.theme_config import Theme
 
         theme_manager = get_theme_manager()
         if theme_manager:
@@ -294,7 +294,7 @@ class MainWindow(QMainWindow):
                 sys.exit(0)
 
     def _init_current_location(self):
-        """Restore the last-selected location from config (sentinel pattern).
+        """Restore the last-selected location from core.config (sentinel pattern).
 
         Three cases:
           - Key absent  → first launch or legacy config → default to first location.
@@ -383,7 +383,7 @@ class MainWindow(QMainWindow):
 
     def _reapply_search_widget_styles(self):
         """Reapply styles to SearchWidget after adding to layout."""
-        from styles import apply_button_style, apply_combo_box_style, apply_input_style
+        from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 
         # Reapply styles to ensure they override qt-material
         apply_combo_box_style(self.search_widget.field_combo)
@@ -447,7 +447,7 @@ class MainWindow(QMainWindow):
 
     def _on_edit_item(self, row: int, item):
         """Handle edit request for an inventory item."""
-        from repositories import ItemRepository
+        from core.repositories import ItemRepository
 
         is_grouped = isinstance(item, GroupedInventoryItem)
 
@@ -750,18 +750,18 @@ class MainWindow(QMainWindow):
             self.inventory_model.add_item(item)
 
     def _restore_window_state(self):
-        """Restore window size and position from config."""
+        """Restore window size and position from core.config."""
         geometry = config.get("window.geometry")
         if geometry:
             try:
                 self.restoreGeometry(bytes.fromhex(geometry))
-                logger.debug("Window geometry restored from config")
+                logger.debug("Window geometry restored from core.config")
             except (ValueError, Exception):
                 logger.warning("Corrupted window geometry in config, ignoring")
 
         if config.get("window.maximized", False):
             self.showMaximized()
-            logger.debug("Window maximized from config")
+            logger.debug("Window maximized from core.config")
 
     def closeEvent(self, event):
         """Save window state before closing."""

@@ -17,8 +17,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from styles import apply_button_style, apply_input_style
-from ui_entities.translations import tr
+from ui.styles import apply_button_style, apply_input_style
+from ui.translations import tr
 
 
 class RemoveSerialNumberDialog(QDialog):

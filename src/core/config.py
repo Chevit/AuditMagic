@@ -5,7 +5,7 @@ import json
 import os
 from typing import Any, Dict
 
-from logger import APP_DATA_DIR, logger
+from core.logger import APP_DATA_DIR, logger
 
 CONFIG_FILE = os.path.join(APP_DATA_DIR, "config.json")
 

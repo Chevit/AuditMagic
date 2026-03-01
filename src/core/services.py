@@ -3,17 +3,17 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from logger import logger
-from models import Location
-from repositories import (
+from core.logger import logger
+from core.models import Location
+from core.repositories import (
     ItemRepository,
     ItemTypeRepository,
     LocationRepository,
     SearchHistoryRepository,
     TransactionRepository,
 )
-from ui_entities.inventory_item import GroupedInventoryItem, InventoryItem
-from ui_entities.translations import tr
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.translations import tr
 
 
 class LocationService:

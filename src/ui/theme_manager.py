@@ -9,8 +9,8 @@ from typing import Optional
 from PyQt6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
-from logger import logger
-from theme_config import Theme, get_current_theme, set_current_theme
+from core.logger import logger
+from ui.theme_config import Theme, get_current_theme, set_current_theme
 
 
 class ThemeManager:
