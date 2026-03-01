@@ -9,6 +9,9 @@ import os
 import sys
 import traceback
 
+# Add src/ to path so modules are importable whether run as script or via pytest
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
+
 # Use in-memory DB to avoid touching production data
 os.environ.setdefault("AUDITMAGIC_DB", ":memory:")
 
@@ -41,7 +44,7 @@ def section(title: str):
 section("Phase 1: DB / Service Layer (no UI)")
 
 try:
-    from db import init_database
+    from core.db import init_database
     init_database(":memory:")
     check("DB init (in-memory)", True)
 except Exception as exc:
@@ -50,7 +53,7 @@ except Exception as exc:
     sys.exit(1)
 
 try:
-    from services import InventoryService
+    from core.services import InventoryService
     check("Import InventoryService", True)
 except Exception as exc:
     check("Import InventoryService", False, str(exc))
@@ -203,7 +206,7 @@ required_keys = [
 ]
 
 try:
-    from ui_entities.translations import tr
+    from ui.translations import tr
 
     for key in required_keys:
         # tr() falls back to the raw key when missing — so a non-raw result means it's present
@@ -251,7 +254,7 @@ if app is not None:
 
     if ser_item is not None:
         try:
-            from ui_entities.edit_item_dialog import EditItemDialog
+            from ui.dialogs.edit_item_dialog import EditItemDialog
 
             dlg_ser = EditItemDialog(ser_item)
 
@@ -278,7 +281,7 @@ if app is not None:
 
     if nonser_item is not None:
         try:
-            from ui_entities.edit_item_dialog import EditItemDialog
+            from ui.dialogs.edit_item_dialog import EditItemDialog
 
             dlg_nonser = EditItemDialog(nonser_item)
             non_badge_text = tr("label.non_serialized_badge")
@@ -302,7 +305,7 @@ if app is not None:
 
     if ser_item is not None:
         try:
-            from ui_entities.item_details_dialog import ItemDetailsDialog
+            from ui.dialogs.item_details_dialog import ItemDetailsDialog
 
             details_ser = ItemDetailsDialog(ser_item)
             badge_text = tr("label.serialized_badge")
@@ -323,7 +326,7 @@ if app is not None:
 
     if nonser_item is not None:
         try:
-            from ui_entities.item_details_dialog import ItemDetailsDialog
+            from ui.dialogs.item_details_dialog import ItemDetailsDialog
 
             details_nonser = ItemDetailsDialog(nonser_item)
             non_badge_text = tr("label.non_serialized_badge")
@@ -346,7 +349,7 @@ if app is not None:
     section("9.1 -- AddItemDialog: checkbox state when existing type is typed")
 
     try:
-        from ui_entities.add_item_dialog import AddItemDialog
+        from ui.dialogs.add_item_dialog import AddItemDialog
 
         add_dlg = AddItemDialog()
 
