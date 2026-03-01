@@ -125,7 +125,7 @@ def test_transactions_sheet_data_row():
         type_map={1: "Laptop \u2014 X1"},
     )
     ws = wb["Транзакції"]
-    assert ws.cell(2, 2).value == "ADD"
+    assert ws.cell(2, 2).value == "Додавання"
     assert ws.cell(2, 3).value == "Laptop"
     assert ws.cell(2, 4).value == "X1"
     assert ws.cell(2, 6).value == 5   # quantity_change = 5-0
@@ -143,3 +143,23 @@ def test_transactions_location_names_resolved():
     ws = wb["Транзакції"]
     assert ws.cell(2, 11).value == "Warehouse A"   # Зі складу
     assert ws.cell(2, 12).value == "Warehouse B"   # На склад
+
+
+def test_transactions_type_translated_to_ukrainian():
+    """Transaction types must be translated to Ukrainian in the export."""
+    cases = [
+        ("add",      "Додавання"),
+        ("remove",   "Видалення"),
+        ("edit",     "Редагування"),
+        ("transfer", "Переміщення"),
+    ]
+    for tx_type, expected_label in cases:
+        wb = ExportService.build_workbook(
+            [_make_item()], "Warehouse",
+            transactions=[_make_transaction(tx_type=tx_type)],
+        )
+        ws = wb["Транзакції"]
+        assert ws.cell(2, 2).value == expected_label, (
+            f"Expected '{expected_label}' for type '{tx_type}', "
+            f"got '{ws.cell(2, 2).value}'"
+        )
