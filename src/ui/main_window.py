@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         self._current_location_id: Optional[int] = None
 
         super().__init__()
-        uic.loadUi(resource_path("ui/MainWindow.ui"), self)
+        uic.loadUi(resource_path("src/ui/forms/MainWindow.ui"), self)
 
         # Initialize database
         init_database()

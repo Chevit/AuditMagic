@@ -8,14 +8,15 @@ def get_base_path() -> str:
     """Get the base path for resource files.
 
     When running from a PyInstaller bundle, files are in sys._MEIPASS.
-    When running from source, files are in the script directory.
+    When running from source, returns the project root directory.
 
     Returns:
         Base path string.
     """
     if getattr(sys, "frozen", False):
         return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
+    # runtime.py lives at src/runtime.py; project root is two levels up
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def resource_path(relative_path: str) -> str:
