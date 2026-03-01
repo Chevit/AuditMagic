@@ -14,52 +14,64 @@ PyQt6 desktop inventory management application with Material Design theming.
 
 ## Project Structure
 ```
-main.py              # Entry point with theme initialization and update checker
-version.py           # Single source of truth for app version (__version__)
-runtime.py           # PyInstaller resource path helpers (resource_path)
-update_checker.py    # GitHub release update checker (check_for_update, UpdateInfo)
 AuditMagic.spec      # PyInstaller build specification
-config.py            # Configuration management (JSON, dot-notation)
-logger.py            # Centralized logging system
-theme_config.py      # Theme configuration with enum-based parameters
-theme_manager.py     # Theme management (light/dark modes)
-styles.py            # Centralized UI styles (complements qt-material)
-db.py                # Database init, session management, migrations
-models.py            # SQLAlchemy models (ItemType, Item, Transaction, Location, SearchHistory)
-repositories.py      # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, LocationRepository, SearchHistoryRepository)
-services.py          # Business logic (InventoryService, LocationService, SearchService, TransactionService)
-validators.py        # QValidator subclasses and validation helpers
-test_serialized_feature.py # Automated tests for is_serialized feature (34 checks)
+alembic.ini          # Alembic configuration
+mypy.ini             # MyPy configuration
 requirements.txt     # Core dependencies
 requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort, pyinstaller)
-mypy.ini             # MyPy configuration
-alembic.ini          # Alembic configuration
 .github/workflows/
   build.yml          # GitHub Actions: build & release on version tag push
 alembic/             # Database migration scripts
   versions/          # Migration files
-ui/                  # Qt Designer .ui files
-ui_entities/         # UI components and models
-  main_window.py     # Main window controller with theme menu
-  inventory_list_view.py # Custom QListView with context menu
-  inventory_model.py # QAbstractListModel for items
-  inventory_item.py  # Item dataclasses (InventoryItem, GroupedInventoryItem DTOs)
-  inventory_delegate.py # Custom rendering with serialized/non-serialized pill badge
-  translations.py    # i18n (Ukrainian/English)
-  add_item_dialog.py # Add item form with optional "Initial Notes" field (stored as transaction notes)
-  edit_item_dialog.py # Edit item form; read-only serialized badge; conflict detection on type rename
-  add_serial_number_dialog.py # Add serial number to existing type
-  remove_serial_number_dialog.py # Remove serial numbers from group
-  item_details_dialog.py # Item details view
-  quantity_dialog.py # Add/remove quantity dialog
-  transactions_dialog.py # Transaction history view filtered by ItemType and date range (includes TRANSFER + From/To location columns)
-  all_transactions_dialog.py # Cross-type transaction log with location filter and date range
-  transfer_dialog.py # Transfer items between locations (serialized + non-serialized)
-  location_selector.py # LocationSelectorWidget — dropdown + "Manage" button above list
-  location_management_dialog.py # CRUD for locations (add/rename/delete)
-  first_location_dialog.py # First-launch wizard for creating the initial location
-  search_widget.py   # Search with autocomplete and "Search all locations" checkbox
-  update_dialog.py   # Update notification dialog (shown on startup if newer version found)
+src/
+  main.py            # Entry point with theme initialization and update checker
+  version.py         # Single source of truth for app version (__version__)
+  runtime.py         # PyInstaller resource path helpers (resource_path)
+  update_checker.py  # GitHub release update checker (check_for_update, UpdateInfo)
+  core/
+    config.py        # Configuration management (JSON, dot-notation)
+    logger.py        # Centralized logging system
+    db.py            # Database init, session management, migrations
+    models.py        # SQLAlchemy models (ItemType, Item, Transaction, Location, SearchHistory)
+    repositories.py  # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, LocationRepository, SearchHistoryRepository)
+    services.py      # Business logic (InventoryService, LocationService, SearchService, TransactionService)
+    export_service.py # Excel export logic
+  ui/
+    main_window.py   # Main window controller with theme menu
+    theme_config.py  # Theme configuration with enum-based parameters
+    theme_manager.py # Theme management (light/dark modes)
+    styles.py        # Centralized UI styles (complements qt-material)
+    translations.py  # i18n (Ukrainian/English)
+    validators.py    # QValidator subclasses and validation helpers
+    forms/
+      MainWindow.ui  # Qt Designer main window layout
+    dialogs/
+      add_item_dialog.py           # Add item form with optional "Initial Notes" field
+      edit_item_dialog.py          # Edit item form; read-only serialized badge; conflict detection
+      add_serial_number_dialog.py  # Add serial number to existing type
+      remove_serial_number_dialog.py # Remove serial numbers from group
+      item_details_dialog.py       # Item details view
+      quantity_dialog.py           # Add/remove quantity dialog
+      transactions_dialog.py       # Transaction history filtered by ItemType and date range
+      all_transactions_dialog.py   # Cross-type transaction log with location filter and date range
+      transfer_dialog.py           # Transfer items between locations (serialized + non-serialized)
+      location_management_dialog.py # CRUD for locations (add/rename/delete)
+      first_location_dialog.py     # First-launch wizard for creating the initial location
+      export_options_dialog.py     # Export settings dialog
+      update_dialog.py             # Update notification dialog (shown on startup if newer version)
+    widgets/
+      inventory_list_view.py # Custom QListView with context menu
+      inventory_delegate.py  # Custom rendering with serialized/non-serialized pill badge
+      location_selector.py   # LocationSelectorWidget — dropdown + "Manage" button above list
+      search_widget.py       # Search with autocomplete and "Search all locations" checkbox
+    models/
+      inventory_item.py  # Item dataclasses (InventoryItem, GroupedInventoryItem DTOs)
+      inventory_model.py # QAbstractListModel for items
+tests/
+  conftest.py                  # Adds src/ to sys.path for pytest
+  test_serialized_feature.py   # Automated tests for is_serialized feature (34 checks)
+  test_export_service.py
+  test_export_transactions.py
 ```
 
 ## Setup
@@ -74,7 +86,7 @@ pip install -r requirements.txt
 
 ## Running
 ```bash
-python main.py
+python src/main.py
 ```
 
 ## Code Conventions
