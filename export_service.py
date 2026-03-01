@@ -37,7 +37,7 @@ class ExportService:
             items: List of InventoryItem or GroupedInventoryItem for the Items sheet.
                 Location context is embedded per-row via each item's location_name field.
             location_name: Accepted for API compatibility; not embedded in the workbook
-                (sheets are named "Речі"/"Транзакції", and each row carries
+                (sheets are named "Майно"/"Транзакції", and each row carries
                 its own location value).
             transactions: Optional list of transaction dicts (from _transaction_to_dict).
             loc_map: Optional {location_id: name} for resolving location IDs in transactions.
@@ -48,7 +48,7 @@ class ExportService:
         """
         wb = openpyxl.Workbook()
         ws_items = wb.active
-        ws_items.title = "Речі"
+        ws_items.title = "Майно"
 
         ExportService._write_items_sheet(ws_items, items)
 

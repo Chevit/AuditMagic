@@ -2,16 +2,14 @@
 
 from typing import Optional
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QScrollArea,
     QSpinBox,
@@ -22,11 +20,6 @@ from PyQt6.QtWidgets import (
 from services import InventoryService, LocationService
 from styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui_entities.translations import tr
-
-try:
-    from PyQt6.QtWidgets import QComboBox
-except ImportError:
-    pass
 
 
 class TransferDialog(QDialog):
@@ -52,6 +45,7 @@ class TransferDialog(QDialog):
 
         self._all_locs = LocationService.get_all_locations()
         self._loc_map = {loc.id: loc.name for loc in self._all_locs}
+        self._checkboxes: list[QCheckBox] = []
 
         self._setup_ui()
         self._populate()
@@ -99,9 +93,15 @@ class TransferDialog(QDialog):
         # Content: qty or serials
         if self._is_serialized:
             layout.addWidget(QLabel(tr("transfer.select_serials")))
-            self.serial_list = QListWidget()
-            self.serial_list.setMaximumHeight(200)
-            layout.addWidget(self.serial_list)
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setMaximumHeight(200)
+            scroll_widget = QWidget()
+            self._serial_scroll_layout = QVBoxLayout(scroll_widget)
+            self._serial_scroll_layout.setSpacing(5)
+            self._serial_scroll_layout.addStretch()
+            scroll_area.setWidget(scroll_widget)
+            layout.addWidget(scroll_area)
             self.selected_label = QLabel(
                 tr("transfer.selected_count").format(selected=0, total=0)
             )
@@ -176,13 +176,19 @@ class TransferDialog(QDialog):
         )
 
         if self._is_serialized:
-            self.serial_list.clear()
+            # Remove old checkboxes (keep the trailing stretch)
+            while self._serial_scroll_layout.count() > 1:
+                item = self._serial_scroll_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+            self._checkboxes.clear()
             for sn in serials:
-                list_item = QListWidgetItem(sn)
-                list_item.setFlags(list_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                list_item.setCheckState(Qt.CheckState.Unchecked)
-                self.serial_list.addItem(list_item)
-            self.serial_list.itemChanged.connect(self._update_selected_count)
+                cb = QCheckBox(sn)
+                cb.stateChanged.connect(self._update_selected_count)
+                self._checkboxes.append(cb)
+                self._serial_scroll_layout.insertWidget(
+                    self._serial_scroll_layout.count() - 1, cb
+                )
             self._update_selected_count()
         else:
             max_qty = max(total_qty, 1)
@@ -197,17 +203,11 @@ class TransferDialog(QDialog):
     def _on_source_changed(self):
         self._source_id = self.source_combo.currentData()
         self._populate_dest_combo()
-        if self._is_serialized:
-            self.serial_list.itemChanged.disconnect(self._update_selected_count)
         self._populate_content()
 
     def _update_selected_count(self):
-        total = self.serial_list.count()
-        selected = sum(
-            1
-            for i in range(total)
-            if self.serial_list.item(i).checkState() == Qt.CheckState.Checked
-        )
+        total = len(self._checkboxes)
+        selected = sum(1 for cb in self._checkboxes if cb.isChecked())
         self.selected_label.setText(
             tr("transfer.selected_count").format(selected=selected, total=total)
         )
@@ -235,9 +235,7 @@ class TransferDialog(QDialog):
         try:
             if self._is_serialized:
                 selected_serials = [
-                    self.serial_list.item(i).text()
-                    for i in range(self.serial_list.count())
-                    if self.serial_list.item(i).checkState() == Qt.CheckState.Checked
+                    cb.text() for cb in self._checkboxes if cb.isChecked()
                 ]
                 if not selected_serials:
                     self.error_label.setText(tr("transfer.error.no_serials"))

@@ -35,18 +35,18 @@ def test_build_workbook_returns_workbook():
 
 def test_items_sheet_exists():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    assert "Речі" in wb.sheetnames
+    assert "Майно" in wb.sheetnames
 
 
 def test_items_sheet_has_bold_header():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    ws = wb["Речі"]
+    ws = wb["Майно"]
     assert ws.cell(1, 1).font.bold is True
 
 
 def test_items_sheet_header_columns():
     wb = ExportService.build_workbook([_make_item()], location_name="Warehouse")
-    ws = wb["Речі"]
+    ws = wb["Майно"]
     headers = [ws.cell(1, c).value for c in range(1, 6)]
     assert headers == ["Тип", "Підтип", "Кількість", "Серійний номер", "Склад"]
 
@@ -54,7 +54,7 @@ def test_items_sheet_header_columns():
 def test_non_serialized_item_one_row():
     item = _make_grouped("Laptop", qty=5)
     wb = ExportService.build_workbook([item], location_name="Warehouse")
-    ws = wb["Речі"]
+    ws = wb["Майно"]
     # Row 1 = header, row 2 = data
     assert ws.max_row == 2
     assert ws.cell(2, 3).value == 5  # quantity
@@ -63,7 +63,7 @@ def test_non_serialized_item_one_row():
 def test_serialized_item_one_row_per_serial():
     item = _make_grouped("Laptop", serials=["SN1", "SN2", "SN3"])
     wb = ExportService.build_workbook([item], location_name="Warehouse")
-    ws = wb["Речі"]
+    ws = wb["Майно"]
     assert ws.max_row == 4  # 1 header + 3 serials
 
 

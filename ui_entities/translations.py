@@ -187,7 +187,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.quantity_required": "Кількість є обов'язковою",
         "message.quantity_invalid": "Кількість має бути числом",
         # Main window
-        "main.add_item": "Додати елемент",
+        "main.add_item": "Додати майно",
         # Search
         "search.all_fields": "Всі поля",
         "search.field.item_type": "Тип",
@@ -264,7 +264,7 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "transaction.type.transfer": "Переміщення",
         "transaction.column.from_location": "З місця",
         "transaction.column.to_location": "До місця",
-        "transaction.column.item_type": "Тип елемента",
+        "transaction.column.item_type": "Тип\nелемента",
         "transaction.notes.transfer": "Переміщено з «{from_loc}» до «{to_loc}»",
         "transaction.notes.transfer_out": "Переміщено до «{to_loc}»",
         "transaction.notes.transfer_in": "Переміщено з «{from_loc}»",
