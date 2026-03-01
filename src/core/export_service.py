@@ -22,6 +22,12 @@ class ExportService:
         "Дата", "Транзакція", "Тип", "Підтип", "Серійний номер", "Кількість",
         "Кількість до", "Кількість після", "Нотатки", "Склад", "Зі складу", "На склад",
     ]
+    TRANSACTION_TYPE_LABELS: Dict[str, str] = {
+        "ADD":      "Додавання",
+        "REMOVE":   "Видалення",
+        "EDIT":     "Редагування",
+        "TRANSFER": "Переміщення",
+    }
 
     @staticmethod
     def build_workbook(
@@ -117,7 +123,8 @@ class ExportService:
         for row, trans in enumerate(transactions, start=2):
             created = trans.get("created_at")
             date_str = created.strftime("%d.%m.%Y %H:%M") if created else ""
-            type_name = trans.get("type", "").upper()
+            raw_type = trans.get("type", "").upper()
+            type_name = ExportService.TRANSACTION_TYPE_LABELS.get(raw_type, raw_type)
             item_type_id = trans.get("item_type_id")
             name_parts = (type_map.get(item_type_id) or str(item_type_id)).split(" \u2014 ", 1)
             item_name = name_parts[0]

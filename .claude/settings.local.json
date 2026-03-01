@@ -14,7 +14,8 @@
       "Bash(.venv/Scripts/alembic revision --autogenerate -m \"add_locations_table_and_transfer\")",
       "Bash(.venv/Scripts/alembic upgrade:*)",
       "Bash(git -C \"C:\\\\Users\\\\chevi\\\\PycharmProjects\\\\AuditMagic\" diff repositories.py)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(xargs grep -l \"export\\\\|xlsx\\\\|openpyxl\")"
     ]
   }
 }
