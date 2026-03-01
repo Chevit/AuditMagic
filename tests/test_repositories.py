@@ -1,5 +1,6 @@
 """Tests for repository layer — runs against in-memory SQLite via fresh_db fixture."""
 import pytest
+from datetime import datetime, timedelta, timezone
 from core.repositories import (
     ItemRepository,
     ItemTypeRepository,
@@ -435,3 +436,98 @@ def test_item_search_by_serial():
     results = ItemRepository.search("FIND-ME-123", field="serial_number")
     assert len(results) == 1
     assert results[0].serial_number == "FIND-ME-123"
+
+
+# ─── TransactionRepository ────────────────────────────────────────────────────
+
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def test_transaction_get_by_type_and_date_range_in_range():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id, qty=5)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionRepository.get_by_type_and_date_range(t.id, start, end)
+    assert len(txs) >= 1
+
+
+def test_transaction_get_by_type_and_date_range_out_of_range():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id, qty=5)
+    past_start = _now() - timedelta(days=2)
+    past_end = _now() - timedelta(days=1)
+    txs = TransactionRepository.get_by_type_and_date_range(t.id, past_start, past_end)
+    assert len(txs) == 0
+
+
+def test_transaction_get_recent_limit():
+    loc = _loc()
+    t = _type()
+    for _ in range(5):
+        item = _item(t.id, loc.id, qty=1)
+        ItemRepository.add_quantity(item.id, 1)
+    txs = TransactionRepository.get_recent(limit=3)
+    assert len(txs) <= 3
+
+
+def test_transaction_get_by_location_and_date_range():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id, qty=5)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionRepository.get_by_location_and_date_range(loc.id, start, end)
+    assert len(txs) >= 1
+    assert all(tx.location_id == loc.id for tx in txs)
+
+
+def test_transaction_get_all_by_date_range():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    t = _type()
+    _item(t.id, loc_a.id)
+    _item(t.id, loc_b.id)
+    start = _now() - timedelta(minutes=1)
+    end = _now() + timedelta(minutes=1)
+    txs = TransactionRepository.get_all_by_date_range(start, end)
+    loc_ids = {tx.location_id for tx in txs}
+    assert loc_a.id in loc_ids
+    assert loc_b.id in loc_ids
+
+
+def test_transaction_get_for_export_no_filter():
+    loc = _loc()
+    t = _type()
+    _item(t.id, loc.id)
+    txs = TransactionRepository.get_for_export()
+    assert len(txs) >= 1
+
+
+def test_transaction_get_for_export_by_location():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    t = _type()
+    _item(t.id, loc_a.id)
+    _item(t.id, loc_b.id)
+    txs = TransactionRepository.get_for_export(location_id=loc_a.id)
+    assert all(
+        tx.location_id == loc_a.id
+        or tx.from_location_id == loc_a.id
+        or tx.to_location_id == loc_a.id
+        for tx in txs
+    )
+
+
+def test_transaction_get_for_export_by_type_ids():
+    loc = _loc()
+    t1 = _type("A")
+    t2 = _type("B")
+    _item(t1.id, loc.id)
+    _item(t2.id, loc.id)
+    txs = TransactionRepository.get_for_export(item_type_ids=[t1.id])
+    assert all(tx.item_type_id == t1.id for tx in txs)
