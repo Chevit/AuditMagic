@@ -10,7 +10,34 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Set up virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements-dev.txt
+
+      - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: .venv/bin/pytest tests/ -v
+
   build-windows:
+    needs: [test]
     runs-on: self-hosted
     defaults:
       run:
@@ -18,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up virtual environment
         run: python -m venv .venv
@@ -40,16 +67,18 @@ jobs:
           generate_release_notes: true
 
   build-macos:
+    needs: [test]
     runs-on: macos-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Set up virtual environment
         run: python -m venv .venv
@@ -73,19 +102,21 @@ jobs:
           files: AuditMagic-macOS.zip
 
   build-linux:
+    needs: [test]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: sudo apt-get update -y && sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Set up virtual environment
         run: python -m venv .venv
