@@ -24,7 +24,7 @@ else:
 
 a = Analysis(
     ['src/main.py'],
-    pathex=[],
+    pathex=[os.path.join(SPECPATH, 'src')],
     binaries=[],
     datas=[
         ('src/ui/forms/MainWindow.ui', 'src/ui/forms'),
