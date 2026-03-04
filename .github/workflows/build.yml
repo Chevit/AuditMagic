@@ -59,11 +59,19 @@ jobs:
       - name: Build executable
         run: .venv\Scripts\pyinstaller AuditMagic.spec
 
-      - name: Upload Release Asset
+      - name: Create update zip
+        run: powershell Compress-Archive -Path dist\AuditMagic\* -DestinationPath AuditMagic-update.zip
+
+      - name: Build installer
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\AuditMagic.iss'
+
+      - name: Upload Release Assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/AuditMagic.exe
+          files: |
+            AuditMagic-update.zip
+            dist/AuditMagic-Setup.exe
           generate_release_notes: true
 
   # build-macos:
