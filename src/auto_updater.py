@@ -1,4 +1,4 @@
-"""Auto-update utilities: download worker and PowerShell swap launcher."""
+"""Auto-update utilities: download worker and PowerShell folder-swap launcher."""
 
 import os
 import subprocess
@@ -14,9 +14,19 @@ from core.logger import logger
 CHUNK_SIZE = 16 * 1024  # 16 KB
 
 
-def _get_update_path(exe_path: str) -> str:
-    """Return the sibling path used to store the downloaded update."""
-    return str(Path(exe_path).parent / "AuditMagic_update.exe")
+def _get_install_dir(exe_path: str) -> Path:
+    """Return the directory containing the running exe."""
+    return Path(exe_path).parent
+
+
+def _get_update_zip_path(exe_path: str) -> str:
+    """Return the sibling path used to store the downloaded update zip."""
+    return str(_get_install_dir(exe_path).parent / "AuditMagic_update.zip")
+
+
+def _get_update_extract_dir(exe_path: str) -> str:
+    """Return the sibling path where the zip will be extracted."""
+    return str(_get_install_dir(exe_path).parent / "AuditMagic_new")
 
 
 def _download_file(
@@ -57,7 +67,7 @@ def _download_file(
 
 
 class DownloadWorker(QThread):
-    """Background thread that downloads a new exe and emits progress signals."""
+    """Background thread that downloads the update zip and emits progress signals."""
 
     progress = pyqtSignal(int)        # 0-100
     finished = pyqtSignal(bool)       # True = success
@@ -78,10 +88,15 @@ class DownloadWorker(QThread):
             self.finished.emit(False)
 
 
-def launch_updater(exe_path: str, update_path: str) -> None:
-    """Write and launch a hidden PowerShell script that swaps the exe.
+def launch_updater(exe_path: str, zip_path: str, extract_dir: str) -> None:
+    """Write and launch a hidden PowerShell script that swaps the install folder.
 
-    The script waits for the current process to exit, then replaces the exe.
+    The script:
+    1. Waits for the current process to exit
+    2. Expands the zip to extract_dir
+    3. Uses robocopy to replace install_dir contents with extract_dir contents
+    4. Cleans up the zip and temp extract dir
+
     The user is expected to restart the application manually.
 
     Must only be called when running as a frozen (PyInstaller) exe.
@@ -93,11 +108,17 @@ def launch_updater(exe_path: str, update_path: str) -> None:
         )
 
     pid = os.getpid()
+    install_dir = str(_get_install_dir(exe_path))
+
     script = (
-        f"$src = '{update_path}'\n"
-        f"$dst = '{exe_path}'\n"
+        f"$zip = '{zip_path}'\n"
+        f"$extract = '{extract_dir}'\n"
+        f"$install = '{install_dir}'\n"
         f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
-        "Move-Item -Force $src $dst\n"
+        "Expand-Archive -Force -Path $zip -DestinationPath $extract\n"
+        "robocopy $extract $install /E /PURGE /R:3 /W:1 /NJH /NJS /NFL /NDL | Out-Null\n"
+        "Remove-Item $extract -Recurse -Force\n"
+        "Remove-Item $zip -Force\n"
     )
 
     with tempfile.NamedTemporaryFile(
