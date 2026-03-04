@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -20,6 +19,7 @@ from PyQt6.QtWidgets import (
 from core.repositories import LocationRepository
 from core.services import InventoryService
 from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.validators import PositiveIntValidator
 from ui.translations import tr
 
 
@@ -108,11 +108,15 @@ class TransferDialog(QDialog):
             )
             layout.addWidget(self.selected_label)
         else:
+            qty_row_title = QHBoxLayout()
+            qty_row_title.addWidget(QLabel(tr("transfer.quantity")))
+            layout.addLayout(qty_row_title)
             qty_row = QHBoxLayout()
-            qty_row.addWidget(QLabel(tr("transfer.quantity")))
             self.qty_spin = QSpinBox()
             self.qty_spin.setMinimum(1)
-            qty_row.addWidget(self.qty_spin)
+            self.qty_spin.setMinimumWidth(150)
+            self.qty_spin.setStyleSheet(Styles.get_spin_box_style())
+            qty_row.addWidget(self.qty_spin, stretch=1)
             self.avail_label = QLabel("")
             qty_row.addWidget(self.avail_label)
             qty_row.addStretch()
