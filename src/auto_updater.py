@@ -94,7 +94,7 @@ def launch_updater(exe_path: str, update_path: str) -> None:
         f"$src = '{update_path}'\n"
         f"$dst = '{exe_path}'\n"
         f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
-        "Start-Sleep -Seconds 1\n"
+        "Remove-Item -Path \"$env:TEMP\\_MEI*\" -Recurse -Force -ErrorAction SilentlyContinue\n"
         "Move-Item -Force $src $dst\n"
         "Unblock-File -Path $dst\n"
         "Start-Process $dst\n"
