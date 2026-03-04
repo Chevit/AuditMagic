@@ -245,18 +245,11 @@ class MainWindow(QMainWindow):
                 # Save to config
                 config.set("theme", theme_name)
 
-                # Refresh search widget styles to match new theme
+                # Refresh all widget styles to match new theme
                 if hasattr(self, "search_widget"):
-                    self._reapply_search_widget_styles()
+                    self._reapply_all_styles()
 
                 logger.info(f"Theme changed to: {theme_name}")
-
-                # Show message
-                QMessageBox.information(
-                    self,
-                    tr("message.theme.changed"),
-                    tr("message.theme.changed.text"),
-                )
             except ValueError:
                 logger.error(f"Invalid theme: {theme_name}")
                 QMessageBox.warning(
@@ -383,15 +376,24 @@ class MainWindow(QMainWindow):
         self.search_widget.search_requested.connect(self._on_search)
         self.search_widget.search_cleared.connect(self._on_search_cleared)
 
-    def _reapply_search_widget_styles(self):
-        """Reapply styles to SearchWidget after adding to layout."""
+    def _reapply_all_styles(self):
+        """Re-apply theme-aware styles to all main-window widgets after a theme switch."""
         from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 
-        # Reapply styles to ensure they override qt-material
+        # Search widget
         apply_combo_box_style(self.search_widget.field_combo)
         apply_input_style(self.search_widget.search_input)
         apply_button_style(self.search_widget.search_button, "info")
         apply_button_style(self.search_widget.clear_button, "secondary")
+
+        # Location selector
+        self.location_selector.reapply_styles()
+
+        # Main action buttons
+        if hasattr(self, "addButton"):
+            apply_button_style(self.addButton, "primary")
+        if hasattr(self, "all_transactions_btn"):
+            apply_button_style(self.all_transactions_btn, "info")
 
     def _setup_inventory_list(self):
         """Replace the placeholder widget with the custom inventory list view."""
@@ -415,7 +417,7 @@ class MainWindow(QMainWindow):
                         layout.insertWidget(i + 1, self.search_widget)
                         layout.insertWidget(i + 2, self.inventory_list)
                         # Reapply styles after adding to layout (in case qt-material overrides)
-                        self._reapply_search_widget_styles()
+                        self._reapply_all_styles()
                         break
             else:
                 # No layout - use geometry from placeholder
