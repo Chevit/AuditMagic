@@ -60,6 +60,9 @@ def check_for_update() -> Optional[UpdateInfo]:
                         download_url = url
                     break
 
+            if not download_url:
+                logger.warning("No auditmagic-update.zip asset found in release")
+
             info = UpdateInfo(
                 version=latest_version,
                 download_url=download_url,

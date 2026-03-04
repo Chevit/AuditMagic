@@ -114,11 +114,13 @@ def launch_updater(exe_path: str, zip_path: str, extract_dir: str) -> None:
         f"$zip = '{zip_path}'\n"
         f"$extract = '{extract_dir}'\n"
         f"$install = '{install_dir}'\n"
+        "$self = $MyInvocation.MyCommand.Path\n"
         f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
         "Expand-Archive -Force -Path $zip -DestinationPath $extract\n"
         "robocopy $extract $install /E /PURGE /R:3 /W:1 /NJH /NJS /NFL /NDL | Out-Null\n"
         "Remove-Item $extract -Recurse -Force\n"
         "Remove-Item $zip -Force\n"
+        "Remove-Item $self -Force\n"
     )
 
     with tempfile.NamedTemporaryFile(
