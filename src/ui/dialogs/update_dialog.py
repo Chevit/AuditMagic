@@ -102,8 +102,8 @@ class UpdateDialog(QDialog):
         self._start_download()
 
     def _start_download(self) -> None:
-        """Begin downloading the update exe."""
-        from auto_updater import DownloadWorker, _get_update_path
+        """Begin downloading the update zip."""
+        from auto_updater import DownloadWorker, _get_update_zip_path
 
         self._skip_button.setEnabled(False)
         self._install_button.setEnabled(False)
@@ -113,7 +113,7 @@ class UpdateDialog(QDialog):
         self._progress_bar.setValue(0)
         self._progress_bar.show()
 
-        dest = _get_update_path(sys.executable)
+        dest = _get_update_zip_path(sys.executable)
         self._worker = DownloadWorker(self._update_info.download_url, dest, self)
         self._worker.progress.connect(self._progress_bar.setValue)
         self._worker.error_occurred.connect(self._on_error)
@@ -125,9 +125,13 @@ class UpdateDialog(QDialog):
         if not success:
             return  # _on_error already handled UI
 
-        from auto_updater import launch_updater, _get_update_path
+        from auto_updater import launch_updater, _get_update_zip_path, _get_update_extract_dir
 
-        launch_updater(sys.executable, _get_update_path(sys.executable))
+        launch_updater(
+            sys.executable,
+            _get_update_zip_path(sys.executable),
+            _get_update_extract_dir(sys.executable),
+        )
 
         self._progress_bar.hide()
         self._status_label.setText(tr("update.ready"))
