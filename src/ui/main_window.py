@@ -21,7 +21,7 @@ from core.db import init_database
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService, SearchService, TransactionService
-from ui.styles import apply_button_style
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.theme_manager import get_theme_manager
 from ui.dialogs.add_item_dialog import AddItemDialog
 from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
@@ -246,7 +246,7 @@ class MainWindow(QMainWindow):
                 config.set("theme", theme_name)
 
                 # Refresh all widget styles to match new theme
-                if hasattr(self, "search_widget"):
+                if hasattr(self, "search_widget") and hasattr(self, "location_selector"):
                     self._reapply_all_styles()
 
                 logger.info(f"Theme changed to: {theme_name}")
@@ -378,8 +378,6 @@ class MainWindow(QMainWindow):
 
     def _reapply_all_styles(self):
         """Re-apply theme-aware styles to all main-window widgets after a theme switch."""
-        from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
-
         # Search widget
         apply_combo_box_style(self.search_widget.field_combo)
         apply_input_style(self.search_widget.search_input)
