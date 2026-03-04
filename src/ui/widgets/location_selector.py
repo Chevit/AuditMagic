@@ -86,3 +86,8 @@ class LocationSelectorWidget(QWidget):
     def _on_index_changed(self):
         if not self._suppress_signal:
             self.location_changed.emit(self.combo.currentData())
+
+    def reapply_styles(self):
+        """Re-apply theme-aware styles after a theme switch."""
+        apply_combo_box_style(self.combo)
+        apply_button_style(self.manage_btn, "secondary")
