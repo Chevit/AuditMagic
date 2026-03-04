@@ -44,7 +44,7 @@ def check_for_update() -> Optional[UpdateInfo]:
             data = json.loads(response.read(MAX_RESPONSE_SIZE).decode("utf-8"))
 
         latest_tag = data.get("tag_name", "")
-        latest_version = latest_tag.lstrip("v")
+        latest_version = latest_tag.removeprefix("v").removeprefix(".")
 
         if not latest_version:
             logger.warning("No version tag found in latest release")
