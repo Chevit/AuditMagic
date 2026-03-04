@@ -79,10 +79,10 @@ class DownloadWorker(QThread):
 
 
 def launch_updater(exe_path: str, update_path: str) -> None:
-    """Write and launch a batch script that swaps and relaunches the exe.
+    """Write and launch a hidden PowerShell script that swaps the exe.
 
-    Uses cmd.exe + DETACHED_PROCESS to fully break the process tree so the
-    new exe does not inherit the old PyInstaller _MEI folder reference.
+    The script waits for the current process to exit, then replaces the exe.
+    The user is expected to restart the application manually.
 
     Must only be called when running as a frozen (PyInstaller) exe.
     Raises RuntimeError otherwise.
@@ -93,25 +93,26 @@ def launch_updater(exe_path: str, update_path: str) -> None:
         )
 
     pid = os.getpid()
-    bat = (
-        "@echo off\n"
-        ":wait\n"
-        f"tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\n"
-        "if not errorlevel 1 (timeout /t 1 /nobreak >NUL & goto wait)\n"
-        "timeout /t 1 /nobreak >NUL\n"
-        f"move /y \"{update_path}\" \"{exe_path}\"\n"
-        f"start \"\" \"{exe_path}\"\n"
-        "del \"%~f0\"\n"
+    script = (
+        f"$src = '{update_path}'\n"
+        f"$dst = '{exe_path}'\n"
+        f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
+        "Move-Item -Force $src $dst\n"
     )
 
     with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".bat", encoding="utf-8", delete=False
+        mode="w", suffix=".ps1", encoding="utf-8", delete=False
     ) as f:
-        f.write(bat)
-        bat_path = f.name
+        f.write(script)
+        script_path = f.name
 
-    logger.info(f"Launching updater script: {bat_path}")
+    logger.info(f"Launching updater script: {script_path}")
     subprocess.Popen(
-        ["cmd.exe", "/c", bat_path],
-        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+        [
+            "powershell",
+            "-WindowStyle", "Hidden",
+            "-ExecutionPolicy", "Bypass",
+            "-File", script_path,
+        ],
+        creationflags=subprocess.CREATE_NO_WINDOW,
     )

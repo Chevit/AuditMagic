@@ -296,6 +296,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "update.download": "Завантажити",
         "update.install": "Встановити оновлення",
         "update.downloading": "Завантаження...",
+        "update.ready": "Оновлення готове. Перезапустіть застосунок.",
+        "update.restart": "Перезапустити",
         "update.error": "Помилка завантаження. Спробуйте ще раз.",
     },
     Language.ENGLISH: {
@@ -531,6 +533,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "update.download": "Download",
         "update.install": "Install Update",
         "update.downloading": "Downloading...",
+        "update.ready": "Update ready. Please restart the application.",
+        "update.restart": "Restart",
         "update.error": "Download failed. Please try again.",
     },
 }

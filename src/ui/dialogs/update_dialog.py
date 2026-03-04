@@ -128,7 +128,16 @@ class UpdateDialog(QDialog):
         from auto_updater import launch_updater, _get_update_path
 
         launch_updater(sys.executable, _get_update_path(sys.executable))
-        QApplication.instance().quit()
+
+        self._progress_bar.hide()
+        self._status_label.setText(tr("update.ready"))
+        self._status_label.setStyleSheet("color: #2e7d32;")
+        self._status_label.show()
+        self._install_button.hide()
+        self._skip_button.setText(tr("update.restart"))
+        self._skip_button.setEnabled(True)
+        self._skip_button.clicked.disconnect()
+        self._skip_button.clicked.connect(QApplication.instance().quit)
 
     def _on_error(self, message: str) -> None:
         """Show error and re-enable buttons."""
