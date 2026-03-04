@@ -1,6 +1,17 @@
 """Tests for UI translation key completeness."""
 
 
+def test_auto_update_translation_keys_present():
+    from ui.translations import tr
+    keys = [
+        "update.install",
+        "update.downloading",
+        "update.error",
+    ]
+    for key in keys:
+        assert tr(key) != key, f"Translation key missing: {key!r}"
+
+
 def test_serialized_feature_translation_keys_present():
     from ui.translations import tr
     keys = [

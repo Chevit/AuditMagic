@@ -294,6 +294,9 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "update.release_notes": "Примітки до випуску:",
         "update.skip": "Пропустити",
         "update.download": "Завантажити",
+        "update.install": "Встановити оновлення",
+        "update.downloading": "Завантаження...",
+        "update.error": "Помилка завантаження. Спробуйте ще раз.",
     },
     Language.ENGLISH: {
         # Common
@@ -526,5 +529,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "update.release_notes": "Release Notes:",
         "update.skip": "Skip",
         "update.download": "Download",
+        "update.install": "Install Update",
+        "update.downloading": "Downloading...",
+        "update.error": "Download failed. Please try again.",
     },
 }
