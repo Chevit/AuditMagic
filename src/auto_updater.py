@@ -96,6 +96,7 @@ def launch_updater(exe_path: str, update_path: str) -> None:
         f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
         "Start-Sleep -Seconds 1\n"
         "Move-Item -Force $src $dst\n"
+        "Unblock-File -Path $dst\n"
         "Start-Process $dst\n"
     )
 
