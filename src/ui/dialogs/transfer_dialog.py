@@ -197,6 +197,7 @@ class TransferDialog(QDialog):
         else:
             self._qty_validator.setTop(total_qty)
             self.qty_input.setText("1")
+            self.qty_input.setEnabled(total_qty > 0)
             self.avail_label.setText(tr("transfer.available").format(count=total_qty))
 
     # ------------------------------------------------------------------ #
