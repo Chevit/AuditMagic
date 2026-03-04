@@ -420,6 +420,30 @@ class AddItemDialog(QDialog):
                     notes=initial_notes or "",
                 )
             else:
+                existing = InventoryService.find_non_serialized_at_location(
+                    type_name=item_type, sub_type=sub_type, location_id=location_id
+                )
+                if existing is not None:
+                    answer = QMessageBox.question(
+                        self,
+                        tr("dialog.add_item.merge.title"),
+                        tr("dialog.add_item.merge.prompt").format(quantity=quantity),
+                    )
+                    if answer == QMessageBox.StandardButton.Yes:
+                        self._result_item = InventoryService.add_quantity(
+                            item_id=existing.id,
+                            quantity=quantity,
+                            notes=initial_notes,
+                        )
+                        logger.info(f"Merged quantity into existing item: id={existing.id}")
+                        self.accept()
+                    else:
+                        QMessageBox.information(
+                            self,
+                            tr("dialog.add_item.duplicate.title"),
+                            tr("dialog.add_item.duplicate.message"),
+                        )
+                    return
                 self._result_item = InventoryService.create_item(
                     item_type_name=item_type,
                     item_sub_type=sub_type,
