@@ -114,7 +114,7 @@ class TransferDialog(QDialog):
             qty_row = QHBoxLayout()
             self.qty_input = QLineEdit("1")
             apply_input_style(self.qty_input)
-            self._qty_validator = PositiveIntValidator(minimum=1, maximum=1)
+            self._qty_validator = PositiveIntValidator(minimum=1)
             self.qty_input.setValidator(self._qty_validator)
             qty_row.addWidget(self.qty_input, stretch=1)
             self.avail_label = QLabel("")
@@ -195,8 +195,7 @@ class TransferDialog(QDialog):
                 )
             self._update_selected_count()
         else:
-            max_qty = max(total_qty, 1)
-            self._qty_validator.setTop(max_qty)
+            self._qty_validator.setTop(total_qty)
             self.qty_input.setText("1")
             self.avail_label.setText(tr("transfer.available").format(count=total_qty))
 
@@ -252,7 +251,12 @@ class TransferDialog(QDialog):
                     notes=notes,
                 )
             else:
-                quantity = int(self.qty_input.text()) if self.qty_input.text() else 0
+                text = self.qty_input.text().strip()
+                if not text or not text.isdigit():
+                    self.error_label.setText(tr("transfer.error.no_quantity"))
+                    self.error_label.show()
+                    return
+                quantity = int(text)
                 if quantity <= 0:
                     self.error_label.setText(tr("transfer.error.no_quantity"))
                     self.error_label.show()
