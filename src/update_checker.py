@@ -51,10 +51,10 @@ def check_for_update() -> Optional[UpdateInfo]:
             return None
 
         if _is_newer(latest_version, __version__):
-            # Find the .exe asset
+            # Find the update zip asset
             download_url = ""
             for asset in data.get("assets", []):
-                if asset["name"].lower().endswith(".exe"):
+                if asset["name"].lower() == "auditmagic-update.zip":
                     url = asset.get("browser_download_url", "")
                     if url.startswith("https://"):
                         download_url = url
