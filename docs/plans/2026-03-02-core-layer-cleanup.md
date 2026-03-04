@@ -6,7 +6,7 @@
 
 **Architecture:** Three independent changes in bottom-up order: (1) `repositories.py` detach helpers → single `_detach()` using `make_transient`; (2) `services.py` duplicate display-name method removed; (3) `LocationService` deleted, two logic methods moved to `InventoryService`, all UI callers updated to use `LocationRepository` directly. No method signatures change on any public class.
 
-**Tech Stack:** Python 3.11, SQLAlchemy (make_transient), pytest.
+**Tech Stack:** Python 3.14, SQLAlchemy (make_transient), pytest.
 
 ---
 

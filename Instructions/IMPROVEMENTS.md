@@ -271,7 +271,7 @@ repos:
     rev: 24.3.0
     hooks:
       - id: black
-        language_version: python3.11
+        language_version: python3.14
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
@@ -321,7 +321,7 @@ flake8==7.0.0
 File: `mypy.ini`
 ```ini
 [mypy]
-python_version = 3.11
+python_version = 3.14
 warn_return_any = True
 warn_unused_configs = True
 disallow_untyped_defs = False
@@ -710,7 +710,7 @@ markers =
 pytest>=7.4.0
 pytest-qt>=4.2.0
 pytest-cov>=4.1.0
-pytest-mock>=3.11.0
+pytest-mock>=3.14.0
 ```
 
 **Step 8: Run Tests**

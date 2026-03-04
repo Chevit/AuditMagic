@@ -16,7 +16,7 @@ Approach A: dedicated `test.yml` for CI + `test` job added to `build.yml`.
 ## New file: `.github/workflows/test.yml`
 
 - **Triggers:** `push` and `pull_request` on all branches
-- **Runner:** `ubuntu-latest`, Python 3.11
+- **Runner:** `ubuntu-latest`, Python 3.14
 - **Steps:** checkout → setup-python → `pip install -r requirements-dev.txt` → `pytest tests/ -v`
 - **Environment:** `QT_QPA_PLATFORM=offscreen` (prevents Qt from crashing on headless Linux)
 

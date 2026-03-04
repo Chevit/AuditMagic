@@ -6,7 +6,7 @@
 
 **Architecture:** `DownloadWorker(QThread)` streams the new exe to `<exe_dir>/AuditMagic_update.exe`. On success, `launch_updater()` writes a hidden PowerShell script that waits for the process to exit, moves the new file over the old one, and relaunches. The app then calls `QApplication.quit()`. Download logic is extracted into `_download_file()` (pure, testable without Qt).
 
-**Tech Stack:** Python 3.11, PyQt6, `urllib.request` (stdlib), `subprocess` (stdlib), PowerShell (always on Windows 10/11)
+**Tech Stack:** Python 3.14, PyQt6, `urllib.request` (stdlib), `subprocess` (stdlib), PowerShell (always on Windows 10/11)
 
 ---
 

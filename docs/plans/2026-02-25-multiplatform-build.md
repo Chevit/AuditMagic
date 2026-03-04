@@ -271,7 +271,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Set up virtual environment
         run: python -m venv .venv
@@ -307,7 +307,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Set up virtual environment
         run: python -m venv .venv

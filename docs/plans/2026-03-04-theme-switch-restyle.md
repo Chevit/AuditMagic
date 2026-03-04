@@ -6,7 +6,7 @@
 
 **Architecture:** Custom stylesheets are strings baked in at widget construction time. When qt-material's global theme changes, widgets with explicit stylesheets retain the old colors. The fix adds a `reapply_styles()` method to `LocationSelectorWidget` and consolidates all main-window re-apply calls into a renamed `_reapply_all_styles()` method in `MainWindow`.
 
-**Tech Stack:** Python 3.11+, PyQt6, `apply_combo_box_style` / `apply_button_style` / `apply_input_style` helpers from `src/ui/styles.py`.
+**Tech Stack:** Python 3.14+, PyQt6, `apply_combo_box_style` / `apply_button_style` / `apply_input_style` helpers from `src/ui/styles.py`.
 
 ---
 

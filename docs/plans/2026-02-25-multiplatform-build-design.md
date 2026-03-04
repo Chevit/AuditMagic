@@ -67,7 +67,7 @@ Three parallel jobs in `.github/workflows/build.yml`, all triggered on `v*` tag 
 ### build-macos (new)
 - Runner: `macos-latest`
 - Steps:
-  1. `actions/setup-python@v4` (Python 3.11)
+  1. `actions/setup-python@v4` (Python 3.14)
   2. Create venv, install `requirements.txt` + `pyinstaller`
   3. `pyinstaller AuditMagic.spec`
   4. `cd dist && zip -r ../AuditMagic-macOS.zip AuditMagic.app`
@@ -77,7 +77,7 @@ Three parallel jobs in `.github/workflows/build.yml`, all triggered on `v*` tag 
 - Runner: `ubuntu-latest`
 - Steps:
   1. `sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0`
-  2. `actions/setup-python@v4` (Python 3.11)
+  2. `actions/setup-python@v4` (Python 3.14)
   3. Create venv, install `requirements.txt` + `pyinstaller`
   4. `QT_QPA_PLATFORM=offscreen pyinstaller AuditMagic.spec`
   5. Rename `dist/AuditMagic` → `AuditMagic-linux`

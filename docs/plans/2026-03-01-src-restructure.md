@@ -6,7 +6,7 @@
 
 **Architecture:** Pure folder move — no packaging, no `__init__.py` logic beyond empty markers. Python finds modules because `python src/main.py` adds `src/` to `sys.path` automatically. All imports become absolute from `src/` (e.g. `from core.models import Item`). `runtime.py` moves to `src/` and its `get_base_path()` is adjusted to return the project root (two levels up), keeping all existing `resource_path()` call-sites unchanged except the one `.ui` file path.
 
-**Tech Stack:** Python 3.11, PyQt6, SQLAlchemy, Alembic, PyInstaller, pytest, git
+**Tech Stack:** Python 3.14, PyQt6, SQLAlchemy, Alembic, PyInstaller, pytest, git
 
 ---
 

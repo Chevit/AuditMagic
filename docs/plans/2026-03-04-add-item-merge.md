@@ -6,7 +6,7 @@
 
 **Architecture:** One new `InventoryService.find_non_serialized_at_location` method wraps the existing repository lookup. `AddItemDialog._on_add_clicked` calls it before saving; on a match it shows a `QMessageBox.question`, routes to `add_quantity` on Yes or shows an informational error on No. New translation keys cover the two popup texts.
 
-**Tech Stack:** Python 3.11+, PyQt6, SQLAlchemy, existing `ItemTypeRepository.get_by_name_and_subtype` + `ItemRepository.find_non_serialized_at_location` (both already exist).
+**Tech Stack:** Python 3.14+, PyQt6, SQLAlchemy, existing `ItemTypeRepository.get_by_name_and_subtype` + `ItemRepository.find_non_serialized_at_location` (both already exist).
 
 ---
 

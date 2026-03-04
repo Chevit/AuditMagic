@@ -1,7 +1,7 @@
 # Feature: Location Management — Multi-Location Inventory with Transfer Support
 
 > **Target project:** AuditMagic (`C:\Users\chevi\PycharmProjects\AuditMagic`)
-> **Stack:** Python 3.11 · PyQt6 · SQLAlchemy + SQLite · Alembic · `qt-material`
+> **Stack:** Python 3.14 · PyQt6 · SQLAlchemy + SQLite · Alembic · `qt-material`
 > **Architecture:** Repository → Service → UI (MVC), custom `QAbstractListModel`, dataclass DTOs
 > **Key constraint:** Alembic migrations must use `batch_alter_table` for SQLite compatibility
 

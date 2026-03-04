@@ -3,7 +3,7 @@
 PyQt6 desktop inventory management application with Material Design theming.
 
 ## Tech Stack
-- Python 3.11+
+- Python 3.14+
 - PyQt6 (GUI framework)
 - SQLAlchemy + SQLite (database)
 - Alembic (database migrations)

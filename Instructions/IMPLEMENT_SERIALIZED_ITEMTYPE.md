@@ -1,7 +1,7 @@
 # Feature: ItemType `is_serialized` — Lock, Enforce, and Surface in All CRUD Flows
 
 > **Target project:** AuditMagic (`C:\Users\chevi\PycharmProjects\AuditMagic`)
-> **Stack:** Python 3.11 · PyQt6 · SQLAlchemy + SQLite · Alembic · `qt-material`
+> **Stack:** Python 3.14 · PyQt6 · SQLAlchemy + SQLite · Alembic · `qt-material`
 > **Architecture:** Repository → Service → UI (MVC), custom `QAbstractListModel`, dataclass DTOs
 
 ---
