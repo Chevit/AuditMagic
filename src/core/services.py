@@ -673,11 +673,11 @@ class InventoryService:
 
     @staticmethod
     def find_non_serialized_at_location(
-        type_name: str, sub_type: str, location_id: int
+        type_name: str, sub_type: str = "", location_id: int = 0
     ) -> Optional["InventoryItem"]:
         """Find an existing non-serialized item of the given type at a location.
 
-        Used by AddItemDialog to detect a duplicate before prompting the user.
+        Returns None immediately for serialized types, avoiding an unnecessary database query.
 
         Args:
             type_name: ItemType name.
