@@ -420,6 +420,42 @@ class AddItemDialog(QDialog):
                     notes=initial_notes or "",
                 )
             else:
+                existing = InventoryService.find_non_serialized_at_location(
+                    type_name=item_type, sub_type=sub_type, location_id=location_id
+                )
+                if existing is not None:
+                    answer = QMessageBox.question(
+                        self,
+                        tr("dialog.add_item.merge.title"),
+                        tr("dialog.add_item.merge.prompt").format(quantity=quantity),
+                    )
+                    if answer == QMessageBox.StandardButton.Yes:
+                        result = InventoryService.add_quantity(
+                            item_id=existing.id,
+                            quantity=quantity,
+                            notes=initial_notes,
+                        )
+                        if result is None:
+                            QMessageBox.warning(
+                                self,
+                                tr("error.generic.title"),
+                                tr("error.generic.message"),
+                            )
+                            logger.warning(
+                                f"Merge failed: item id={existing.id} not found during add_quantity"
+                            )
+                            return
+                        self._result_item = result
+                        logger.info(f"Merged quantity into existing item: id={existing.id}")
+                        self.accept()
+                    else:
+                        QMessageBox.information(
+                            self,
+                            tr("dialog.add_item.duplicate.title"),
+                            tr("dialog.add_item.duplicate.message"),
+                        )
+                    # Return for both Yes and No — do not fall through to create_item
+                    return
                 self._result_item = InventoryService.create_item(
                     item_type_name=item_type,
                     item_sub_type=sub_type,

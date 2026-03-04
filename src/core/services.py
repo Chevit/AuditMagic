@@ -671,6 +671,33 @@ class InventoryService:
                     locs.append(all_locs[item.location_id])
         return locs
 
+    @staticmethod
+    def find_non_serialized_at_location(
+        type_name: str, sub_type: str = "", location_id: int = 0
+    ) -> Optional["InventoryItem"]:
+        """Find an existing non-serialized item of the given type at a location.
+
+        Returns None immediately for serialized types, avoiding an unnecessary database query.
+
+        Args:
+            type_name: ItemType name.
+            sub_type: ItemType sub_type (empty string if none).
+            location_id: Location to search in.
+
+        Returns:
+            InventoryItem if a matching non-serialized item exists, else None.
+        """
+        item_type = ItemTypeRepository.get_by_name_and_subtype(type_name, sub_type)
+        if item_type is None or item_type.is_serialized:
+            return None
+        db_item = ItemRepository.find_non_serialized_at_location(
+            item_type_id=item_type.id,
+            location_id=location_id,
+        )
+        if db_item is None:
+            return None
+        return InventoryItem.from_db_models(db_item, item_type)
+
 
 class SearchService:
     """Service for search operations with autocomplete and history."""

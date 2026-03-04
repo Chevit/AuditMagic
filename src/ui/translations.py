@@ -132,6 +132,10 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         # Dialog titles
         "dialog.add_item.title": "Додати новий елемент",
         "dialog.add_item.header": "Додати новий елемент інвентарю",
+        "dialog.add_item.merge.title": "Тип вже існує",
+        "dialog.add_item.merge.prompt": "Предмет цього типу вже є на цьому місці. Додати {quantity} од. до наявного запасу?",
+        "dialog.add_item.duplicate.title": "Дублікат неможливий",
+        "dialog.add_item.duplicate.message": "Неможливо створити дублікат предмета.",
         "dialog.details.title": "Деталі елемента",
         "dialog.details.serial_numbers": "Серійні номери",
         "dialog.details.serial_count": "Всього серійних номерів: {count}",
@@ -362,6 +366,10 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         # Dialog titles
         "dialog.add_item.title": "Add New Item",
         "dialog.add_item.header": "Add New Inventory Item",
+        "dialog.add_item.merge.title": "Type already exists",
+        "dialog.add_item.merge.prompt": "An item of this type already exists at this location. Add {quantity} unit(s) to existing stock?",
+        "dialog.add_item.duplicate.title": "Cannot create duplicate",
+        "dialog.add_item.duplicate.message": "Cannot create duplicate item.",
         "dialog.details.title": "Item Details",
         "dialog.details.serial_numbers": "Serial Numbers",
         "dialog.details.serial_count": "Total Serial Numbers: {count}",
