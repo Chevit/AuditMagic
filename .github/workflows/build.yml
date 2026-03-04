@@ -66,77 +66,77 @@ jobs:
           files: dist/AuditMagic.exe
           generate_release_notes: true
 
-  build-macos:
-    needs: [test]
-    runs-on: macos-latest
+  # build-macos:
+  #   needs: [test]
+  #   runs-on: macos-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: '3.11'
+  #         cache: 'pip'
 
-      - name: Set up virtual environment
-        run: python -m venv .venv
+  #     - name: Set up virtual environment
+  #       run: python -m venv .venv
 
-      - name: Install dependencies
-        run: |
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-          .venv/bin/pip install pyinstaller
+  #     - name: Install dependencies
+  #       run: |
+  #         .venv/bin/python -m pip install --upgrade pip
+  #         .venv/bin/pip install -r requirements.txt
+  #         .venv/bin/pip install pyinstaller
 
-      - name: Build app bundle
-        run: .venv/bin/pyinstaller AuditMagic.spec
+  #     - name: Build app bundle
+  #       run: .venv/bin/pyinstaller AuditMagic.spec
 
-      - name: Zip app bundle
-        run: cd dist && zip -r ../AuditMagic-macOS.zip AuditMagic.app
+  #     - name: Zip app bundle
+  #       run: cd dist && zip -r ../AuditMagic-macOS.zip AuditMagic.app
 
-      - name: Upload Release Asset
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: AuditMagic-macOS.zip
+  #     - name: Upload Release Asset
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: AuditMagic-macOS.zip
 
-  build-linux:
-    needs: [test]
-    runs-on: ubuntu-latest
+  # build-linux:
+  #   needs: [test]
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
 
-      - name: Install system dependencies
-        run: sudo apt-get update -y && sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0
+  #     - name: Install system dependencies
+  #       run: sudo apt-get update -y && sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: '3.11'
+  #         cache: 'pip'
 
-      - name: Set up virtual environment
-        run: python -m venv .venv
+  #     - name: Set up virtual environment
+  #       run: python -m venv .venv
 
-      - name: Install dependencies
-        run: |
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-          .venv/bin/pip install pyinstaller
+  #     - name: Install dependencies
+  #       run: |
+  #         .venv/bin/python -m pip install --upgrade pip
+  #         .venv/bin/pip install -r requirements.txt
+  #         .venv/bin/pip install pyinstaller
 
-      - name: Build executable
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: .venv/bin/pyinstaller AuditMagic.spec
+  #     - name: Build executable
+  #       env:
+  #         QT_QPA_PLATFORM: offscreen
+  #       run: .venv/bin/pyinstaller AuditMagic.spec
 
-      - name: Rename artifact
-        run: mv dist/AuditMagic AuditMagic-linux
+  #     - name: Rename artifact
+  #       run: mv dist/AuditMagic AuditMagic-linux
 
-      - name: Upload Release Asset
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: AuditMagic-linux
+  #     - name: Upload Release Asset
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: AuditMagic-linux
