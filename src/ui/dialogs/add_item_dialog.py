@@ -430,11 +430,22 @@ class AddItemDialog(QDialog):
                         tr("dialog.add_item.merge.prompt").format(quantity=quantity),
                     )
                     if answer == QMessageBox.StandardButton.Yes:
-                        self._result_item = InventoryService.add_quantity(
+                        result = InventoryService.add_quantity(
                             item_id=existing.id,
                             quantity=quantity,
                             notes=initial_notes,
                         )
+                        if result is None:
+                            QMessageBox.warning(
+                                self,
+                                tr("error.generic.title"),
+                                tr("error.generic.message"),
+                            )
+                            logger.warning(
+                                f"Merge failed: item id={existing.id} not found during add_quantity"
+                            )
+                            return
+                        self._result_item = result
                         logger.info(f"Merged quantity into existing item: id={existing.id}")
                         self.accept()
                     else:
@@ -443,6 +454,7 @@ class AddItemDialog(QDialog):
                             tr("dialog.add_item.duplicate.title"),
                             tr("dialog.add_item.duplicate.message"),
                         )
+                    # Return for both Yes and No — do not fall through to create_item
                     return
                 self._result_item = InventoryService.create_item(
                     item_type_name=item_type,
