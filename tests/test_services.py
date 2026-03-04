@@ -88,6 +88,46 @@ def test_create_or_merge_serialized_always_new():
     assert item1.serial_number != item2.serial_number
 
 
+# ─── InventoryService: find_non_serialized_at_location ───────────────────────
+
+def test_find_non_serialized_at_location_returns_item():
+    loc = _loc("Storage-A")
+    _non_ser("Table", loc_id=loc.id, qty=3)
+    result = InventoryService.find_non_serialized_at_location("Table", "", loc.id)
+    assert result is not None
+    assert result.quantity == 3
+
+
+def test_find_non_serialized_at_location_returns_none_when_no_type():
+    loc = _loc("Storage-B")
+    result = InventoryService.find_non_serialized_at_location("NonExistent", "", loc.id)
+    assert result is None
+
+
+def test_find_non_serialized_at_location_returns_none_wrong_location():
+    loc1 = _loc("Storage-C")
+    loc2 = _loc("Storage-D")
+    _non_ser("Chair", loc_id=loc1.id, qty=5)
+    result = InventoryService.find_non_serialized_at_location("Chair", "", loc2.id)
+    assert result is None
+
+
+def test_find_non_serialized_at_location_returns_none_for_serialized_type():
+    loc = _loc("Storage-E")
+    _ser("Laptop", sn="SN-X01", loc_id=loc.id)
+    result = InventoryService.find_non_serialized_at_location("Laptop", "", loc.id)
+    assert result is None
+
+
+def test_find_non_serialized_at_location_uses_subtype():
+    loc = _loc("Storage-F")
+    InventoryService.create_item("Monitor", item_sub_type="4K", quantity=2, location_id=loc.id)
+    found = InventoryService.find_non_serialized_at_location("Monitor", "4K", loc.id)
+    not_found = InventoryService.find_non_serialized_at_location("Monitor", "HD", loc.id)
+    assert found is not None
+    assert not_found is None
+
+
 # ─── InventoryService: query ──────────────────────────────────────────────────
 
 def test_get_item_found():
