@@ -89,10 +89,12 @@ def launch_updater(exe_path: str, update_path: str) -> None:
             "launch_updater() must only be called from a frozen exe"
         )
 
+    pid = os.getpid()
     script = (
         f"$src = '{update_path}'\n"
         f"$dst = '{exe_path}'\n"
-        "Start-Sleep -Seconds 2\n"
+        f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
+        "Start-Sleep -Seconds 1\n"
         "Move-Item -Force $src $dst\n"
         "Start-Process $dst\n"
     )
