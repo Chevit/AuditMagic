@@ -14,7 +14,9 @@ PyQt6 desktop inventory management application with Material Design theming.
 
 ## Project Structure
 ```
-AuditMagic.spec      # PyInstaller build specification
+AuditMagic.spec      # PyInstaller build specification (onedir mode)
+installer/
+  AuditMagic.iss     # Inno Setup 6 installer script (builds AuditMagic-Setup.exe)
 alembic.ini          # Alembic configuration
 mypy.ini             # MyPy configuration
 requirements.txt     # Core dependencies
@@ -27,6 +29,7 @@ src/
   main.py            # Entry point with theme initialization and update checker
   version.py         # Single source of truth for app version (__version__)
   runtime.py         # PyInstaller resource path helpers (resource_path)
+  auto_updater.py    # Download worker (DownloadWorker) + PS1 folder-swap launcher (launch_updater)
   update_checker.py  # GitHub release update checker (check_for_update, UpdateInfo)
   core/
     config.py        # Configuration management (JSON, dot-notation)
@@ -354,25 +357,56 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Displayed in main window title bar as `"<title> v<version>"`
 - Compared against GitHub Releases API on every startup
 
-### Packaging (PyInstaller)
-- Spec file: `AuditMagic.spec`
+### Packaging (PyInstaller — onedir)
+
+- Spec file: `AuditMagic.spec` — **onedir** mode (`EXE` with `exclude_binaries=True` + `COLLECT`)
 - Bundled data: `ui/MainWindow.ui`, `alembic/`, `alembic.ini`, `qt_material`
 - Resource paths resolved via `runtime.resource_path()` (handles both dev and bundled modes)
 - Build: `pyinstaller AuditMagic.spec`
-- Output: `dist/AuditMagic.exe`
+- Output: `dist/AuditMagic/` folder (contains `AuditMagic.exe` + `_internal/` DLLs)
+- No `_MEI` temp extraction on startup — faster launch, no DLL load errors
+
+### Installer (Inno Setup 6)
+
+- Script: `installer/AuditMagic.iss`
+- Installs to `%LOCALAPPDATA%\AuditMagic` — no UAC required (`PrivilegesRequired=lowest`)
+- Build: `"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\AuditMagic.iss`
+- Output: `dist/AuditMagic-Setup.exe`
+- **Note:** `AppVersion` in `AuditMagic.iss` must be kept in sync with `version.py` manually on each release
 
 ### Update Checker
+
 - Checks `https://api.github.com/repos/Chevit/AuditMagic/releases/latest`
 - Runs in `UpdateCheckWorker(QThread)` on startup — non-blocking
-- Shows `UpdateDialog` with download/skip buttons if newer version found
+- Looks for asset named exactly `auditmagic-update.zip` (case-insensitive) in the release
+- Shows `UpdateDialog` with install/skip buttons if newer version found
+- Falls back to browser if running in dev mode or no zip asset found
 - Uses `urllib` (stdlib only — no extra dependencies)
 
+### Auto-Update Flow
+
+1. `UpdateDialog` downloads `AuditMagic-update.zip` via `DownloadWorker` with progress bar
+2. On success, calls `launch_updater(exe_path, zip_path, extract_dir)` which writes a temp PS1 script
+3. PS1 script: `Wait-Process` (current PID) → `Expand-Archive` zip → `robocopy /E /PURGE` into install dir → cleanup zip + temp dir + self
+4. User clicks "Restart" → app quits → PS1 swaps folder → user relaunches manually
+
+- `_get_update_zip_path(exe_path)`: zip saved to `install_dir.parent / "AuditMagic_update.zip"`
+- `_get_update_extract_dir(exe_path)`: extracted to `install_dir.parent / "AuditMagic_new"`
+
 ### Release Process
+
 1. Update `__version__` in `version.py`
-2. Commit: `git commit -am "Bump version to X.Y.Z"`
-3. Tag: `git tag vX.Y.Z`
-4. Push: `git push && git push --tags`
-5. GitHub Actions builds `.exe` and creates a release automatically
+2. Update `AppVersion` in `installer/AuditMagic.iss` to match
+3. Commit: `git commit -am "Bump version to X.Y.Z"`
+4. Tag: `git tag vX.Y.Z`
+5. Push: `git push && git push --tags`
+6. GitHub Actions (self-hosted runner) builds:
+   - `dist/AuditMagic/` via PyInstaller
+   - `AuditMagic-update.zip` (folder contents zipped — for auto-update)
+   - `dist/AuditMagic-Setup.exe` via Inno Setup (for fresh installs)
+   - Both artifacts uploaded to the GitHub release
+
+- **Prerequisite:** Inno Setup 6 must be installed on the self-hosted runner
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
