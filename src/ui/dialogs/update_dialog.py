@@ -103,7 +103,7 @@ class UpdateDialog(QDialog):
 
     def _start_download(self) -> None:
         """Begin downloading the update exe."""
-        from auto_updater import DownloadWorker, _get_update_path
+        from auto_updater import DownloadWorker
 
         self._skip_button.setEnabled(False)
         self._install_button.setEnabled(False)
@@ -113,8 +113,7 @@ class UpdateDialog(QDialog):
         self._progress_bar.setValue(0)
         self._progress_bar.show()
 
-        dest = _get_update_path(sys.executable)
-        self._worker = DownloadWorker(self._update_info.download_url, dest, self)
+        self._worker = DownloadWorker(self._update_info.download_url, self)
         self._worker.progress.connect(self._progress_bar.setValue)
         self._worker.error_occurred.connect(self._on_error)
         self._worker.finished.connect(self._on_download_finished)
@@ -125,19 +124,15 @@ class UpdateDialog(QDialog):
         if not success:
             return  # _on_error already handled UI
 
-        from auto_updater import launch_updater, _get_update_path
+        from auto_updater import apply_update
 
-        launch_updater(sys.executable, _get_update_path(sys.executable))
+        try:
+            apply_update(sys.executable)
+        except Exception as e:
+            self._on_error(str(e))
+            return
 
-        self._progress_bar.hide()
-        self._status_label.setText(tr("update.ready"))
-        self._status_label.setStyleSheet("color: #2e7d32;")
-        self._status_label.show()
-        self._install_button.hide()
-        self._skip_button.setText(tr("update.restart"))
-        self._skip_button.setEnabled(True)
-        self._skip_button.clicked.disconnect()
-        self._skip_button.clicked.connect(QApplication.instance().quit)
+        QApplication.instance().quit()
 
     def _on_error(self, message: str) -> None:
         """Show error and re-enable buttons."""
