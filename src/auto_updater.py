@@ -1,56 +1,56 @@
-"""Auto-update utilities: download worker and PowerShell swap launcher."""
+"""Auto-update utilities: download worker and in-process exe swap."""
 
 import os
-import subprocess
+import shutil
 import sys
 import tempfile
-import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
+import requests
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from core.logger import logger
 
 CHUNK_SIZE = 16 * 1024  # 16 KB
 
-
-def _get_update_path(exe_path: str) -> str:
-    """Return the sibling path used to store the downloaded update."""
-    return str(Path(exe_path).parent / "AuditMagic_update.exe")
+_TEMP_DIR = Path(tempfile.gettempdir())
+_DOWNLOAD_PATH = _TEMP_DIR / "AuditMagic_update.exe"
+_OLD_PATH = _TEMP_DIR / "AuditMagic.old.exe"
 
 
 def _download_file(
     url: str,
-    dest_path: str,
-    progress_callback=None,
+    dest_path: Path,
+    progress_callback: Callable[[int], None] | None = None,
 ) -> None:
-    """Stream url to dest_path, calling progress_callback(0-100) as it downloads.
+    """Stream url to dest_path via requests, calling progress_callback(0-100).
 
-    Raises on error. Cleans up a partial dest_path file on failure.
+    Raises on error. Cleans up partial file on failure.
     """
     try:
-        req = urllib.request.Request(
+        with requests.get(
             url,
+            stream=True,
+            timeout=60,
             headers={"User-Agent": "AuditMagic-Updater"},
-        )
-        with urllib.request.urlopen(req, timeout=60) as response:
+        ) as response:
+            response.raise_for_status()
             total = int(response.headers.get("Content-Length", 0))
             downloaded = 0
             with open(dest_path, "wb") as f:
-                while True:
-                    chunk = response.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total > 0 and progress_callback:
-                        progress_callback(int(downloaded * 100 / total))
-        if progress_callback:
+                for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total > 0 and progress_callback:
+                            progress_callback(int(downloaded * 100 / total))
+        if progress_callback and (total == 0 or downloaded < total):
             progress_callback(100)
     except Exception:
-        if os.path.exists(dest_path):
+        if dest_path.exists():
             try:
-                os.remove(dest_path)
+                dest_path.unlink()
             except OSError:
                 pass
         raise
@@ -63,14 +63,13 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool)       # True = success
     error_occurred = pyqtSignal(str)  # error message
 
-    def __init__(self, url: str, dest_path: str, parent=None):
+    def __init__(self, url: str, parent: QObject | None = None):
         super().__init__(parent)
         self._url = url
-        self._dest_path = dest_path
 
     def run(self) -> None:
         try:
-            _download_file(self._url, self._dest_path, self.progress.emit)
+            _download_file(self._url, _DOWNLOAD_PATH, self.progress.emit)
             self.finished.emit(True)
         except Exception as e:
             logger.warning(f"Download failed: {e}")
@@ -78,41 +77,39 @@ class DownloadWorker(QThread):
             self.finished.emit(False)
 
 
-def launch_updater(exe_path: str, update_path: str) -> None:
-    """Write and launch a hidden PowerShell script that swaps the exe.
+def apply_update(exe_path: str) -> None:
+    """Rename running exe to %TEMP%\\AuditMagic.old.exe, move update to exe_path.
 
-    The script waits for the current process to exit, then replaces the exe.
-    The user is expected to restart the application manually.
-
-    Must only be called when running as a frozen (PyInstaller) exe.
-    Raises RuntimeError otherwise.
+    Windows allows renaming a running exe (only deletion is blocked).
+    Must only be called from a frozen (PyInstaller) exe. Raises RuntimeError otherwise.
+    Raises OSError on file operation failure.
     """
     if not getattr(sys, "frozen", False):
-        raise RuntimeError(
-            "launch_updater() must only be called from a frozen exe"
-        )
+        raise RuntimeError("apply_update() must only be called from a frozen exe")
 
-    pid = os.getpid()
-    script = (
-        f"$src = '{update_path}'\n"
-        f"$dst = '{exe_path}'\n"
-        f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n"
-        "Move-Item -Force $src $dst\n"
-    )
+    exe = Path(exe_path)
+    logger.info(f"Applying update: renaming {exe} -> {_OLD_PATH}")
+    os.rename(exe, _OLD_PATH)
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".ps1", encoding="utf-8", delete=False
-    ) as f:
-        f.write(script)
-        script_path = f.name
+    logger.info(f"Moving update: {_DOWNLOAD_PATH} -> {exe}")
+    try:
+        shutil.move(str(_DOWNLOAD_PATH), str(exe))
+    except OSError:
+        logger.error("Move failed; rolling back rename")
+        try:
+            os.rename(_OLD_PATH, exe)
+        except OSError as rb_err:
+            logger.error(f"Rollback also failed: {rb_err}")
+        raise
 
-    logger.info(f"Launching updater script: {script_path}")
-    subprocess.Popen(
-        [
-            "powershell",
-            "-WindowStyle", "Hidden",
-            "-ExecutionPolicy", "Bypass",
-            "-File", script_path,
-        ],
-        creationflags=subprocess.CREATE_NO_WINDOW,
-    )
+    logger.info("Update applied successfully")
+
+
+def cleanup_old_update() -> None:
+    """Delete %TEMP%\\AuditMagic.old.exe if it exists. Silent on failure."""
+    if _OLD_PATH.exists():
+        try:
+            _OLD_PATH.unlink()
+            logger.info(f"Cleaned up old update file: {_OLD_PATH}")
+        except OSError as e:
+            logger.warning(f"Could not delete old update file {_OLD_PATH}: {e}")

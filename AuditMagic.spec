@@ -49,9 +49,22 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# Splash is not supported on macOS (PyInstaller raises SystemExit on Darwin)
+if sys.platform != "darwin":
+    splash = Splash(
+        'splash.png',
+        binaries=a.binaries,
+        datas=a.datas,
+        text_pos=(10, 530),
+        text_size=11,
+        text_color='white',
+        minify_script=True,
+    )
+
 exe = EXE(
     pyz,
     a.scripts,
+    *([splash, splash.binaries] if sys.platform != "darwin" else []),
     a.binaries,
     a.datas,
     [],
