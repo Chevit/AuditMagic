@@ -47,6 +47,10 @@ def main():
     logger.info("AuditMagic Application Starting")
     logger.info("=" * 80)
 
+    if getattr(sys, "frozen", False):
+        from auto_updater import cleanup_old_update
+        cleanup_old_update()
+
     try:
         app = QApplication(sys.argv)
         _icon_file = (
