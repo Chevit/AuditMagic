@@ -102,6 +102,7 @@ def main():
         return exit_code
 
     except Exception as e:
+        _splash_close()
         logger.exception("Critical error during application startup")
         raise
 
