@@ -30,18 +30,18 @@ def test_tag_stripping_handles_v_dot_prefix():
 # auto_updater tests
 # ---------------------------------------------------------------------------
 
-def test_get_update_path_sibling_of_exe():
+def test_get_update_zip_path_sibling_of_install_dir():
     from pathlib import Path
-    from auto_updater import _get_update_path
-    result = Path(_get_update_path("C:/Users/user/Desktop/AuditMagic.exe"))
-    assert result == Path("C:/Users/user/Desktop/AuditMagic_update.exe")
+    from auto_updater import _get_update_zip_path
+    result = Path(_get_update_zip_path("C:/Users/user/AppData/Local/AuditMagic/AuditMagic.exe"))
+    assert result == Path("C:/Users/user/AppData/Local/AuditMagic_update.zip")
 
 
-def test_get_update_path_handles_spaces():
+def test_get_update_extract_dir_sibling_of_install_dir():
     from pathlib import Path
-    from auto_updater import _get_update_path
-    result = Path(_get_update_path("C:/My Folder/AuditMagic.exe"))
-    assert result == Path("C:/My Folder/AuditMagic_update.exe")
+    from auto_updater import _get_update_extract_dir
+    result = Path(_get_update_extract_dir("C:/My Folder/AuditMagic/AuditMagic.exe"))
+    assert result == Path("C:/My Folder/AuditMagic_new")
 
 
 def test_download_file_success(tmp_path):
@@ -83,4 +83,4 @@ def test_launch_updater_raises_outside_frozen():
     """launch_updater must raise RuntimeError when not running as bundled exe."""
     from auto_updater import launch_updater
     with pytest.raises(RuntimeError, match="frozen"):
-        launch_updater("AuditMagic.exe", "AuditMagic_update.exe")
+        launch_updater("AuditMagic.exe", "AuditMagic_update.zip", "AuditMagic_new")
