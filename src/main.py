@@ -14,6 +14,22 @@ from ui.main_window import MainWindow
 from update_checker import UpdateInfo, check_for_update
 from version import __version__
 
+try:
+    import pyi_splash as _pyi_splash  # only available in PyInstaller bundle
+
+    def _splash(text: str) -> None:
+        _pyi_splash.update_text(text)
+
+    def _splash_close() -> None:
+        _pyi_splash.close()
+
+except ImportError:
+    def _splash(text: str) -> None:  # type: ignore[misc]
+        pass
+
+    def _splash_close() -> None:  # type: ignore[misc]
+        pass
+
 
 class UpdateCheckWorker(QThread):
     """Background thread for checking for application updates."""
@@ -40,6 +56,7 @@ def main():
         )
         app.setWindowIcon(QIcon(resource_path(_icon_file)))
         logger.info("QApplication created successfully")
+        _splash(f"AuditMagic v{__version__}")
 
         # Initialize theme manager and apply saved theme
         theme_manager = init_theme_manager(app)
@@ -55,15 +72,18 @@ def main():
             f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}"
         )
 
+        _splash("Applying migrations...")
         run_migrations()
         logger.info("Database migrations applied")
 
+        _splash("Loading interface...")
         window = MainWindow()
         logger.info("MainWindow created successfully")
 
         window.setWindowTitle(f"{window.windowTitle()} v{__version__}")
 
         window.show()
+        _splash_close()
         logger.info("MainWindow displayed")
 
         def _show_update_dialog(update_info: UpdateInfo) -> None:
