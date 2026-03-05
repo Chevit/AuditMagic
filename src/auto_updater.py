@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import requests
@@ -21,7 +22,7 @@ _OLD_PATH = _TEMP_DIR / "AuditMagic.old.exe"
 def _download_file(
     url: str,
     dest_path: Path,
-    progress_callback=None,
+    progress_callback: "Callable[[int], None] | None" = None,
 ) -> None:
     """Stream url to dest_path via requests, calling progress_callback(0-100).
 
@@ -44,7 +45,7 @@ def _download_file(
                         downloaded += len(chunk)
                         if total > 0 and progress_callback:
                             progress_callback(int(downloaded * 100 / total))
-        if progress_callback:
+        if progress_callback and (total == 0 or downloaded < total):
             progress_callback(100)
     except Exception:
         if dest_path.exists():
@@ -62,7 +63,7 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool)       # True = success
     error_occurred = pyqtSignal(str)  # error message
 
-    def __init__(self, url: str, parent=None):
+    def __init__(self, url: str, parent: object | None = None):
         super().__init__(parent)
         self._url = url
 
@@ -91,7 +92,15 @@ def apply_update(exe_path: str) -> None:
     os.rename(exe, _OLD_PATH)
 
     logger.info(f"Moving update: {_DOWNLOAD_PATH} -> {exe}")
-    shutil.move(str(_DOWNLOAD_PATH), str(exe))
+    try:
+        shutil.move(str(_DOWNLOAD_PATH), str(exe))
+    except OSError:
+        logger.error("Move failed; rolling back rename")
+        try:
+            os.rename(_OLD_PATH, exe)
+        except OSError as rb_err:
+            logger.error(f"Rollback also failed: {rb_err}")
+        raise
 
     logger.info("Update applied successfully")
 
