@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import requests
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from core.logger import logger
 
@@ -22,7 +22,7 @@ _OLD_PATH = _TEMP_DIR / "AuditMagic.old.exe"
 def _download_file(
     url: str,
     dest_path: Path,
-    progress_callback: "Callable[[int], None] | None" = None,
+    progress_callback: Callable[[int], None] | None = None,
 ) -> None:
     """Stream url to dest_path via requests, calling progress_callback(0-100).
 
@@ -63,7 +63,7 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool)       # True = success
     error_occurred = pyqtSignal(str)  # error message
 
-    def __init__(self, url: str, parent: object | None = None):
+    def __init__(self, url: str, parent: QObject | None = None):
         super().__init__(parent)
         self._url = url
 
