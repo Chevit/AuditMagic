@@ -65,7 +65,7 @@ class ItemTypeValidator(QRegularExpressionValidator):
 class SerialNumberValidator(QRegularExpressionValidator):
     """Validator for serial numbers.
 
-    Allows letters, numbers, and hyphens only.
+    Allows any non-empty input.
     """
 
     def __init__(self, parent=None):
@@ -74,7 +74,7 @@ class SerialNumberValidator(QRegularExpressionValidator):
         Args:
             parent: Parent QObject
         """
-        pattern = QRegularExpression(r"^[A-Za-z0-9\-]*$")
+        pattern = QRegularExpression(r"^.+$")
         super().__init__(pattern, parent)
 
 
