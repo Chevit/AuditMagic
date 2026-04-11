@@ -3,7 +3,8 @@ from typing import Optional
 
 from PyQt6 import uic
 from runtime import resource_path
-from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QAction, QActionGroup, QShowEvent
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         # _current_location_id must be set before any method that may read it
         self._current_location_id: Optional[int] = None
+        self._shown_once: bool = False
 
         super().__init__()
         uic.loadUi(resource_path("src/ui/forms/MainWindow.ui"), self)
@@ -53,10 +55,9 @@ class MainWindow(QMainWindow):
         # Initialize database
         init_database()
 
-        # 1. Ensure at least one location exists (shows first-launch wizard if needed)
-        self._ensure_location_exists()
-
-        # 2. Restore last-selected location from core.config (three-case sentinel logic)
+        # 1. Restore last-selected location from core.config (three-case sentinel logic)
+        # NOTE: _ensure_location_exists() is deferred to _deferred_first_show() via
+        # showEvent so that the first-location wizard appears after the splash closes.
         self._init_current_location()
 
         # 3. Integrity check: auto-assign any NULL-location items
@@ -79,6 +80,29 @@ class MainWindow(QMainWindow):
         # 7. Connect all signals and restore window
         self._connect_signals()
         self._restore_window_state()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        """On first show, defer the first-location wizard to after the splash closes."""
+        super().showEvent(event)
+        if not self._shown_once:
+            self._shown_once = True
+            QTimer.singleShot(0, self._deferred_first_show)
+
+    def _deferred_first_show(self) -> None:
+        """Run first-location wizard if needed, then sync location state.
+
+        Scheduled by showEvent so this executes after window.show() and
+        _splash_close() have both returned — making the wizard visible.
+        Only re-syncs location state when the wizard actually ran (fresh install).
+        """
+        no_locations = LocationRepository.get_count() == 0
+        self._ensure_location_exists()
+        if no_locations:
+            # Wizard just completed — sync location state and reload UI
+            self._init_current_location()
+            self.location_selector.refresh_locations()
+            self.location_selector.set_current_location(self._current_location_id)
+            self._load_data_from_db()
 
     def _setup_ui(self):
         """Set up UI with localized strings and apply theme-aware styles."""
