@@ -2,22 +2,9 @@
 
 import enum
 from datetime import datetime, timezone
-from typing import Optional
-
-from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    Column,
-    DateTime,
-    UniqueConstraint,
-)
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import (
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -74,11 +61,13 @@ class ItemType(Base):
     )
 
     # Relationships
-    items = relationship("Item", back_populates="item_type", cascade="all, delete-orphan")
+    items = relationship(
+        "Item", back_populates="item_type", cascade="all, delete-orphan"
+    )
 
     # Constraints
     __table_args__ = (
-        UniqueConstraint('name', 'sub_type', name='uq_item_type_name_subtype'),
+        UniqueConstraint("name", "sub_type", name="uq_item_type_name_subtype"),
     )
 
     def __repr__(self):
@@ -125,10 +114,14 @@ class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_type_id = Column(Integer, ForeignKey("item_types.id"), nullable=False, index=True)
+    item_type_id = Column(
+        Integer, ForeignKey("item_types.id"), nullable=False, index=True
+    )
     quantity = Column(Integer, nullable=False, default=1)
     serial_number = Column(String(255), nullable=True, unique=True, index=True)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, index=True)  # nullable: legacy rows pre-locations; wizard assigns them on startup
+    location_id = Column(
+        Integer, ForeignKey("locations.id"), nullable=True, index=True
+    )  # nullable: legacy rows pre-locations; wizard assigns them on startup
     condition = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -139,19 +132,22 @@ class Item(Base):
 
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
-    location_ref = relationship("Location", foreign_keys=[location_id], back_populates="items")
+    location_ref = relationship(
+        "Location", foreign_keys=[location_id], back_populates="items"
+    )
 
     @property
     def location(self) -> str:
         """Backward-compat property. Always returns '' on detached objects
-        (location_ref is not populated by the repository layer). Use location_id instead."""
+        (location_ref is not populated by the repository layer). Use location_id instead.
+        """
         return ""
 
     # Constraints: Either bulk (no SN, qty > 0) OR serialized (has SN, qty = 1)
     __table_args__ = (
         CheckConstraint(
-            '(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)',
-            name='check_serial_or_quantity'
+            "(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)",
+            name="check_serial_or_quantity",
         ),
     )
 
@@ -161,7 +157,11 @@ class Item(Base):
     @property
     def display_name(self) -> str:
         """Get display name from item type."""
-        return self.item_type.display_name if self.item_type else f"Type #{self.item_type_id}"
+        return (
+            self.item_type.display_name
+            if self.item_type
+            else f"Type #{self.item_type_id}"
+        )
 
 
 class Transaction(Base):
@@ -170,7 +170,9 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_type_id = Column(Integer, ForeignKey("item_types.id"), nullable=False, index=True)
+    item_type_id = Column(
+        Integer, ForeignKey("item_types.id"), nullable=False, index=True
+    )
     transaction_type = Column(SQLEnum(TransactionType), nullable=False)
     quantity_change = Column(Integer, nullable=False)
     quantity_before = Column(Integer, nullable=False)

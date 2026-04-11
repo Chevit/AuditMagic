@@ -1,25 +1,14 @@
 """Location management dialog — create, rename, delete locations."""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QMessageBox,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QHBoxLayout,
+                             QLabel, QLineEdit, QListWidget, QListWidgetItem,
+                             QMessageBox, QPushButton, QVBoxLayout)
 
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.styles import (apply_button_style, apply_combo_box_style,
+                       apply_input_style)
 from ui.translations import tr
 
 
@@ -48,7 +37,9 @@ class _AddRenameDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary")
+        apply_button_style(
+            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
+        )
         btns.accepted.connect(self._validate)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
@@ -134,7 +125,9 @@ class LocationManagementDialog(QDialog):
             return
         name = dlg.get_name()
         if LocationRepository.get_by_name(name):
-            QMessageBox.warning(self, tr("error.generic.title"), tr("location.error.name_exists"))
+            QMessageBox.warning(
+                self, tr("error.generic.title"), tr("location.error.name_exists")
+            )
             return
         try:
             LocationRepository.create(name)
@@ -149,7 +142,9 @@ class LocationManagementDialog(QDialog):
         current_item = self.list_widget.currentItem()
         # Extract current name (before the " — " suffix)
         current_name = current_item.text().split("  —  ")[0].strip()
-        dlg = _AddRenameDialog(tr("location.rename.title"), initial_name=current_name, parent=self)
+        dlg = _AddRenameDialog(
+            tr("location.rename.title"), initial_name=current_name, parent=self
+        )
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         new_name = dlg.get_name()
@@ -157,7 +152,9 @@ class LocationManagementDialog(QDialog):
             return
         existing = LocationRepository.get_by_name(new_name)
         if existing and existing.id != loc_id:
-            QMessageBox.warning(self, tr("error.generic.title"), tr("location.error.name_exists"))
+            QMessageBox.warning(
+                self, tr("error.generic.title"), tr("location.error.name_exists")
+            )
             return
         try:
             LocationRepository.rename(loc_id, new_name)
@@ -172,11 +169,13 @@ class LocationManagementDialog(QDialog):
 
         all_locs = LocationRepository.get_all()
         item_count = LocationRepository.get_item_count(loc_id)
-        loc_name = next((l.name for l in all_locs if l.id == loc_id), "")
+        loc_name = next((loc.name for loc in all_locs if loc.id == loc_id), "")
 
         # Check: cannot delete the only location
         if len(all_locs) <= 1:
-            QMessageBox.warning(self, tr("error.generic.title"), tr("location.error.last_location"))
+            QMessageBox.warning(
+                self, tr("error.generic.title"), tr("location.error.last_location")
+            )
             return
 
         if item_count == 0:
@@ -196,7 +195,7 @@ class LocationManagementDialog(QDialog):
                 QMessageBox.critical(self, tr("error.generic.title"), str(e))
         else:
             # Location has items — offer to move to another location
-            other_locs = [l for l in all_locs if l.id != loc_id]
+            other_locs = [loc for loc in all_locs if loc.id != loc_id]
             dlg = _MoveAndDeleteDialog(loc_name, item_count, other_locs, parent=self)
             if dlg.exec() != QDialog.DialogCode.Accepted:
                 return
@@ -211,7 +210,9 @@ class LocationManagementDialog(QDialog):
 class _MoveAndDeleteDialog(QDialog):
     """Dialog to choose a destination before deleting a non-empty location."""
 
-    def __init__(self, loc_name: str, item_count: int, other_locations: list, parent=None):
+    def __init__(
+        self, loc_name: str, item_count: int, other_locations: list, parent=None
+    ):
         super().__init__(parent)
         self.setWindowTitle(tr("location.delete"))
         self.setMinimumWidth(360)
@@ -233,9 +234,13 @@ class _MoveAndDeleteDialog(QDialog):
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        btns.button(QDialogButtonBox.StandardButton.Ok).setText(tr("location.move_and_delete"))
+        btns.button(QDialogButtonBox.StandardButton.Ok).setText(
+            tr("location.move_and_delete")
+        )
         apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "danger")
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary")
+        apply_button_style(
+            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
+        )
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)

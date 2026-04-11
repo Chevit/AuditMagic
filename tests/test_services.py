@@ -1,12 +1,17 @@
 """Tests for service layer — uses fresh_db fixture from conftest."""
-import pytest
-from datetime import datetime, timedelta, timezone
-from core.services import InventoryService, SearchService, TransactionService, _transaction_to_dict
-from core.repositories import LocationRepository, ItemTypeRepository, ItemRepository
-from core.models import TransactionType, Transaction
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from core.models import Transaction, TransactionType
+from core.repositories import (ItemRepository, ItemTypeRepository,
+                               LocationRepository)
+from core.services import (InventoryService, SearchService, TransactionService,
+                           _transaction_to_dict)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _loc(name="Warehouse"):
     return LocationRepository.create(name)
@@ -14,21 +19,27 @@ def _loc(name="Warehouse"):
 
 def _non_ser(name="Desk", loc_id=None, qty=5):
     return InventoryService.create_item(
-        item_type_name=name, is_serialized=False,
-        quantity=qty, location_id=loc_id,
+        item_type_name=name,
+        is_serialized=False,
+        quantity=qty,
+        location_id=loc_id,
     )
 
 
 def _ser(name="Laptop", sn="SN-001", loc_id=None):
     return InventoryService.create_serialized_item(
-        item_type_name=name, serial_number=sn, location_id=loc_id,
+        item_type_name=name,
+        serial_number=sn,
+        location_id=loc_id,
     )
 
 
 # ─── InventoryService: create ─────────────────────────────────────────────────
 
+
 def test_create_item_returns_inventory_item():
     from ui.models.inventory_item import InventoryItem
+
     loc = _loc()
     item = _non_ser(loc_id=loc.id)
     assert isinstance(item, InventoryItem)
@@ -38,6 +49,7 @@ def test_create_item_returns_inventory_item():
 
 def test_create_serialized_item_returns_inventory_item():
     from ui.models.inventory_item import InventoryItem
+
     loc = _loc()
     item = _ser(loc_id=loc.id)
     assert isinstance(item, InventoryItem)
@@ -55,7 +67,9 @@ def test_create_serialized_duplicate_serial_raises():
 def test_create_or_merge_new_item_not_merged():
     loc = _loc()
     item, merged = InventoryService.create_or_merge_item(
-        item_type_name="Chair", quantity=3, location_id=loc.id,
+        item_type_name="Chair",
+        quantity=3,
+        location_id=loc.id,
     )
     assert merged is False
     assert item.quantity == 3
@@ -64,10 +78,14 @@ def test_create_or_merge_new_item_not_merged():
 def test_create_or_merge_existing_merges():
     loc = _loc()
     InventoryService.create_or_merge_item(
-        item_type_name="Chair", quantity=3, location_id=loc.id,
+        item_type_name="Chair",
+        quantity=3,
+        location_id=loc.id,
     )
     item2, merged = InventoryService.create_or_merge_item(
-        item_type_name="Chair", quantity=4, location_id=loc.id,
+        item_type_name="Chair",
+        quantity=4,
+        location_id=loc.id,
     )
     assert merged is True
     assert item2.quantity == 7
@@ -76,12 +94,18 @@ def test_create_or_merge_existing_merges():
 def test_create_or_merge_serialized_always_new():
     loc = _loc()
     item1, m1 = InventoryService.create_or_merge_item(
-        item_type_name="Laptop", quantity=1, is_serialized=True,
-        serial_number="SN-A", location_id=loc.id,
+        item_type_name="Laptop",
+        quantity=1,
+        is_serialized=True,
+        serial_number="SN-A",
+        location_id=loc.id,
     )
     item2, m2 = InventoryService.create_or_merge_item(
-        item_type_name="Laptop", quantity=1, is_serialized=True,
-        serial_number="SN-B", location_id=loc.id,
+        item_type_name="Laptop",
+        quantity=1,
+        is_serialized=True,
+        serial_number="SN-B",
+        location_id=loc.id,
     )
     assert m1 is False
     assert m2 is False
@@ -89,6 +113,7 @@ def test_create_or_merge_serialized_always_new():
 
 
 # ─── InventoryService: find_non_serialized_at_location ───────────────────────
+
 
 def test_find_non_serialized_at_location_returns_item():
     loc = _loc("Storage-A")
@@ -121,14 +146,19 @@ def test_find_non_serialized_at_location_returns_none_for_serialized_type():
 
 def test_find_non_serialized_at_location_uses_subtype():
     loc = _loc("Storage-F")
-    InventoryService.create_item("Monitor", item_sub_type="4K", quantity=2, location_id=loc.id)
+    InventoryService.create_item(
+        "Monitor", item_sub_type="4K", quantity=2, location_id=loc.id
+    )
     found = InventoryService.find_non_serialized_at_location("Monitor", "4K", loc.id)
-    not_found = InventoryService.find_non_serialized_at_location("Monitor", "HD", loc.id)
+    not_found = InventoryService.find_non_serialized_at_location(
+        "Monitor", "HD", loc.id
+    )
     assert found is not None
     assert not_found is None
 
 
 # ─── InventoryService: query ──────────────────────────────────────────────────
+
 
 def test_get_item_found():
     loc = _loc()
@@ -152,6 +182,7 @@ def test_get_all_items():
 
 def test_get_all_items_grouped():
     from ui.models.inventory_item import GroupedInventoryItem
+
     loc = _loc()
     _non_ser("Desk", loc_id=loc.id, qty=3)
     _non_ser("Chair", loc_id=loc.id, qty=7)
@@ -175,6 +206,7 @@ def test_get_all_items_grouped_location_filter():
 
 def test_get_serialized_items_grouped_only_serialized():
     from ui.models.inventory_item import GroupedInventoryItem
+
     loc = _loc()
     _ser("Laptop", sn="SN-001", loc_id=loc.id)
     _non_ser("Desk", loc_id=loc.id)
@@ -220,6 +252,7 @@ def test_get_autocomplete_subtypes():
 
 
 # ─── InventoryService: mutations ──────────────────────────────────────────────
+
 
 def test_add_quantity():
     loc = _loc()
@@ -287,13 +320,16 @@ def test_delete_items_by_serial_numbers():
 
 # ─── InventoryService: transfer ───────────────────────────────────────────────
 
+
 def test_transfer_item():
     loc_a = _loc("A")
     loc_b = _loc("B")
     item = _non_ser(loc_id=loc_a.id, qty=10)
     result = InventoryService.transfer_item(
-        item_id=item.id, quantity=5,
-        from_location_id=loc_a.id, to_location_id=loc_b.id,
+        item_id=item.id,
+        quantity=5,
+        from_location_id=loc_a.id,
+        to_location_id=loc_b.id,
     )
     assert result is True
 
@@ -349,6 +385,7 @@ def test_get_locations_for_type():
 
 # ─── SearchService ────────────────────────────────────────────────────────────
 
+
 def test_search_returns_matching_items():
     loc = _loc()
     _non_ser("UniqueChair42", loc_id=loc.id)
@@ -365,7 +402,9 @@ def test_search_no_match_returns_empty():
 def test_search_by_field_serial():
     loc = _loc()
     _ser("Laptop", "SRCH-SN-001", loc_id=loc.id)
-    results = SearchService.search("SRCH-SN-001", field="serial_number", save_to_history=False)
+    results = SearchService.search(
+        "SRCH-SN-001", field="serial_number", save_to_history=False
+    )
     assert len(results) >= 1
     assert results[0].serial_number == "SRCH-SN-001"
 
@@ -398,6 +437,7 @@ def test_search_clear_history():
 
 # ─── TransactionService ───────────────────────────────────────────────────────
 
+
 def _now():
     return datetime.now(timezone.utc)
 
@@ -427,7 +467,9 @@ def test_ts_get_transactions_by_location_and_date_range():
     _non_ser(loc_id=loc.id)
     start = _now() - timedelta(minutes=1)
     end = _now() + timedelta(minutes=1)
-    txs = TransactionService.get_transactions_by_location_and_date_range(loc.id, start, end)
+    txs = TransactionService.get_transactions_by_location_and_date_range(
+        loc.id, start, end
+    )
     assert len(txs) >= 1
     assert all(t["location_id"] == loc.id for t in txs)
 
@@ -446,6 +488,7 @@ def test_ts_get_all_transactions_by_date_range():
 
 
 # ─── _transaction_to_dict: transfer_side ─────────────────────────────────────
+
 
 def _make_tx(loc_id, from_id, to_id, tx_type=TransactionType.TRANSFER):
     t = Transaction()
@@ -485,8 +528,18 @@ def test_transaction_to_dict_non_transfer_no_side():
 def test_transaction_to_dict_fields():
     tx = _make_tx(loc_id=10, from_id=10, to_id=20)
     d = _transaction_to_dict(tx)
-    for key in ("id", "item_type_id", "type", "quantity_change",
-                "quantity_before", "quantity_after", "notes",
-                "serial_number", "location_id", "from_location_id",
-                "to_location_id", "created_at"):
+    for key in (
+        "id",
+        "item_type_id",
+        "type",
+        "quantity_change",
+        "quantity_before",
+        "quantity_after",
+        "notes",
+        "serial_number",
+        "location_id",
+        "from_location_id",
+        "to_location_id",
+        "created_at",
+    ):
         assert key in d, f"missing key: {key}"

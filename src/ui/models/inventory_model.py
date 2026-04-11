@@ -17,7 +17,9 @@ class InventoryItemRole:
     SerialNumber = Qt.ItemDataRole.UserRole + 4
     ItemData = Qt.ItemDataRole.UserRole + 5
     Details = Qt.ItemDataRole.UserRole + 6
-    SerialNumbers = Qt.ItemDataRole.UserRole + 7  # List of serial numbers for grouped items
+    SerialNumbers = (
+        Qt.ItemDataRole.UserRole + 7
+    )  # List of serial numbers for grouped items
     IsSerialized = Qt.ItemDataRole.UserRole + 8
     ItemTypeId = Qt.ItemDataRole.UserRole + 9
     LocationId = Qt.ItemDataRole.UserRole + 10

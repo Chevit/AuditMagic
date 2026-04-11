@@ -3,17 +3,20 @@
 No database required. Item and ItemType instances are constructed directly
 (not persisted) to test the classmethod and property logic in isolation.
 """
-from datetime import datetime, timezone
-from core.models import Item, ItemType
-from ui.models.inventory_item import InventoryItem, GroupedInventoryItem
 
+from datetime import datetime, timezone
+
+from core.models import Item, ItemType
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 _TS = datetime(2026, 3, 1, 10, 0, 0, tzinfo=timezone.utc)
 
 
-def _make_type(id=1, name="Laptop", sub_type="X1", is_serialized=False, details="A laptop"):
+def _make_type(
+    id=1, name="Laptop", sub_type="X1", is_serialized=False, details="A laptop"
+):
     t = ItemType()
     t.id = id
     t.name = name
@@ -37,6 +40,7 @@ def _make_item(id=1, type_id=1, qty=5, sn=None, loc_id=1):
 
 
 # ─── InventoryItem ────────────────────────────────────────────────────────────
+
 
 def test_inventory_item_from_db_models_fields():
     t = _make_type()
@@ -86,6 +90,7 @@ def test_inventory_item_details_none_becomes_empty_string():
 
 
 # ─── GroupedInventoryItem ─────────────────────────────────────────────────────
+
 
 def test_grouped_non_serialized_single_item():
     t = _make_type(is_serialized=False)

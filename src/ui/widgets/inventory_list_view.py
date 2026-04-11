@@ -2,8 +2,8 @@ from PyQt6.QtCore import QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QListView, QMenu
 
-from ui.widgets.inventory_delegate import InventoryItemDelegate
 from ui.translations import tr
+from ui.widgets.inventory_delegate import InventoryItemDelegate
 
 
 class InventoryListView(QListView):

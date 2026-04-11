@@ -59,8 +59,8 @@ def _download_file(
 class DownloadWorker(QThread):
     """Background thread that downloads a new exe and emits progress signals."""
 
-    progress = pyqtSignal(int)        # 0-100
-    finished = pyqtSignal(bool)       # True = success
+    progress = pyqtSignal(int)  # 0-100
+    finished = pyqtSignal(bool)  # True = success
     error_occurred = pyqtSignal(str)  # error message
 
     def __init__(self, url: str, parent: QObject | None = None):

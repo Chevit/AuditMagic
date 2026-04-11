@@ -2,21 +2,12 @@
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
+                             QLineEdit, QMessageBox, QPushButton, QTextEdit,
+                             QVBoxLayout)
 
 from core.logger import logger
-from ui.styles import Styles, apply_button_style, apply_input_style, apply_text_edit_style
+from ui.styles import apply_button_style, apply_input_style, apply_text_edit_style
 from ui.translations import tr
 from ui.validators import validate_length
 

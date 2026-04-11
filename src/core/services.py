@@ -5,13 +5,9 @@ from typing import Dict, List, Optional, Tuple
 
 from core.logger import logger
 from core.models import Location
-from core.repositories import (
-    ItemRepository,
-    ItemTypeRepository,
-    LocationRepository,
-    SearchHistoryRepository,
-    TransactionRepository,
-)
+from core.repositories import (ItemRepository, ItemTypeRepository,
+                               LocationRepository, SearchHistoryRepository,
+                               TransactionRepository)
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.translations import tr
 
@@ -794,10 +790,7 @@ class TransactionService:
         transactions = TransactionRepository.get_by_type_and_date_range(
             type_id, start_date, end_date, location_id=location_id
         )
-        return [
-            _transaction_to_dict(t)
-            for t in transactions
-        ]
+        return [_transaction_to_dict(t) for t in transactions]
 
     @staticmethod
     def get_recent_transactions(limit: int = 50) -> List[dict]:

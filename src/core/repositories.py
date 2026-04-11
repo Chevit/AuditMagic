@@ -3,12 +3,14 @@
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from sqlalchemy import delete as sql_delete, func, or_
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import func, or_
 from sqlalchemy.orm import make_transient
 
 from core.db import session_scope
 from core.logger import logger
-from core.models import Item, ItemType, Location, SearchHistory, Transaction, TransactionType
+from core.models import (Item, ItemType, Location, SearchHistory, Transaction,
+                         TransactionType)
 from ui.translations import tr
 
 
@@ -480,8 +482,7 @@ class ItemTypeRepository:
             seen[item_type.id][1].append(item)
 
         return [
-            (_detach(seen[tid][0]), [_detach(i) for i in seen[tid][1]])
-            for tid in order
+            (_detach(seen[tid][0]), [_detach(i) for i in seen[tid][1]]) for tid in order
         ]
 
     @staticmethod
@@ -1306,12 +1307,16 @@ class ItemRepository:
             for tid in type_ids:
                 src_counts[tid] = (
                     session.query(func.count(Item.id))
-                    .filter(Item.item_type_id == tid, Item.location_id == from_location_id)
+                    .filter(
+                        Item.item_type_id == tid, Item.location_id == from_location_id
+                    )
                     .scalar()
                 ) or 0
                 dest_counts[tid] = (
                     session.query(func.count(Item.id))
-                    .filter(Item.item_type_id == tid, Item.location_id == to_location_id)
+                    .filter(
+                        Item.item_type_id == tid, Item.location_id == to_location_id
+                    )
                     .scalar()
                 ) or 0
 
@@ -1714,6 +1719,7 @@ class SearchHistoryRepository:
 # ---------------------------------------------------------------------------
 # Session-detachment helper
 # ---------------------------------------------------------------------------
+
 
 def _detach(obj):
     """Detach *obj* from its session so callers can use it after session.close().
