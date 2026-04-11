@@ -1,5 +1,7 @@
 # AuditMagic — Інструкція користувача
 
+[⬇ Завантажити останню версію](https://github.com/Chevit/AuditMagic/releases/latest)
+
 > Версія документу: 1.0
 
 ## Зміст
