@@ -368,11 +368,11 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Uses `urllib` (stdlib only — no extra dependencies)
 
 ### Release Process
-1. Update `__version__` in `version.py`
-2. Commit: `git commit -am "Bump version to X.Y.Z"`
-3. Tag: `git tag vX.Y.Z`
-4. Push: `git push && git push --tags`
-5. GitHub Actions builds `.exe` and creates a release automatically
+1. Tag: `git tag vX.Y.Z`
+2. Push: `git push && git push --tags`
+3. GitHub Actions injects the version from the tag, builds `.exe`, and creates a release automatically
+
+> Note: `version.py` holds a `0.0.0-dev` placeholder in source. The real version is injected by CI at build time — do not manually edit `__version__` before tagging.
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
