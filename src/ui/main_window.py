@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         """
         no_locations = LocationRepository.get_count() == 0
         self._ensure_location_exists()
-        if no_locations:
+        if no_locations and LocationRepository.get_count() > 0:
             # Wizard just completed — sync location state and reload UI
             self._init_current_location()
             self.location_selector.refresh_locations()
