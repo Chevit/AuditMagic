@@ -1,16 +1,15 @@
 """Tests for repository layer — runs against in-memory SQLite via fresh_db fixture."""
-import pytest
-from datetime import datetime, timedelta, timezone
-from core.repositories import (
-    ItemRepository,
-    ItemTypeRepository,
-    LocationRepository,
-    TransactionRepository,
-)
-from core.models import TransactionType
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from core.models import TransactionType
+from core.repositories import (ItemRepository, ItemTypeRepository,
+                               LocationRepository, TransactionRepository)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _loc(name="Warehouse"):
     return LocationRepository.create(name)
@@ -31,6 +30,7 @@ def _serial(type_id, loc_id, sn="SN-001"):
 
 
 # ─── LocationRepository ───────────────────────────────────────────────────────
+
 
 def test_location_create():
     loc = _loc("Room A")
@@ -115,6 +115,7 @@ def test_location_assign_all_unassigned():
 
 
 # ─── ItemTypeRepository ───────────────────────────────────────────────────────
+
 
 def test_itemtype_get_or_create_new():
     t = ItemTypeRepository.get_or_create("Widget", "Small", False)
@@ -242,6 +243,7 @@ def test_itemtype_get_serialized_with_items():
 
 # ─── ItemRepository ───────────────────────────────────────────────────────────
 
+
 def test_item_create_non_serialized():
     loc = _loc()
     t = _type()
@@ -364,13 +366,16 @@ def test_item_delete_by_serial_numbers_creates_remove_transactions():
     t = ItemTypeRepository.get_or_create("Laptop", "", True)
     _serial(t.id, loc.id, "DEL-001")
     _serial(t.id, loc.id, "DEL-002")
-    count = ItemRepository.delete_by_serial_numbers(["DEL-001", "DEL-002"], notes="audit")
+    count = ItemRepository.delete_by_serial_numbers(
+        ["DEL-001", "DEL-002"], notes="audit"
+    )
     assert count == 2
     # Items should be gone
     assert ItemRepository.search("DEL-001", field="serial_number") == []
     # REMOVE transactions should still exist (audit trail preserved)
     txs = [
-        tx for tx in TransactionRepository.get_recent(20)
+        tx
+        for tx in TransactionRepository.get_recent(20)
         if tx.transaction_type == TransactionType.REMOVE
     ]
     assert len(txs) == 2
@@ -383,12 +388,15 @@ def test_item_transfer_item_creates_transfer_transactions():
     t = _type()
     item = _item(t.id, loc_a.id, qty=10)
     result = ItemRepository.transfer_item(
-        item_id=item.id, quantity=4,
-        from_location_id=loc_a.id, to_location_id=loc_b.id,
+        item_id=item.id,
+        quantity=4,
+        from_location_id=loc_a.id,
+        to_location_id=loc_b.id,
     )
     assert result is True
     txs = [
-        tx for tx in TransactionRepository.get_recent(20)
+        tx
+        for tx in TransactionRepository.get_recent(20)
         if tx.transaction_type == TransactionType.TRANSFER
     ]
     assert len(txs) == 2

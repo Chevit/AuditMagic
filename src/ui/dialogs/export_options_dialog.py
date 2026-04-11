@@ -1,15 +1,8 @@
 """Export options dialog — choose transaction scope before exporting to Excel."""
 
-from PyQt6.QtWidgets import (
-    QButtonGroup,
-    QCheckBox,
-    QDialog,
-    QDialogButtonBox,
-    QLabel,
-    QRadioButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import (QButtonGroup, QCheckBox, QDialog,
+                             QDialogButtonBox, QLabel, QRadioButton,
+                             QVBoxLayout, QWidget)
 
 from ui.styles import apply_button_style
 from ui.translations import tr
@@ -27,7 +20,9 @@ class ExportOptionsDialog(QDialog):
         When False the "Filtered items only" radio button is disabled.
     """
 
-    def __init__(self, location_name: str, has_active_filter: bool = False, parent=None):
+    def __init__(
+        self, location_name: str, has_active_filter: bool = False, parent=None
+    ):
         super().__init__(parent)
         self._has_active_filter = has_active_filter
 
@@ -38,7 +33,9 @@ class ExportOptionsDialog(QDialog):
         layout.setSpacing(8)
 
         # Location label
-        exporting_label = QLabel(tr("export.dialog.exporting").format(name=location_name))
+        exporting_label = QLabel(
+            tr("export.dialog.exporting").format(name=location_name)
+        )
         layout.addWidget(exporting_label)
 
         # Include transactions checkbox
@@ -78,7 +75,9 @@ class ExportOptionsDialog(QDialog):
         ok_text = tr("export.action").rstrip(".")
         btns.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text)
         apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary")
+        apply_button_style(
+            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
+        )
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)

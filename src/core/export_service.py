@@ -19,13 +19,23 @@ class ExportService:
     # Sheet column headers
     ITEM_HEADERS = ["Тип", "Підтип", "Кількість", "Серійний номер", "Склад"]
     TRANSACTION_HEADERS = [
-        "Дата", "Транзакція", "Тип", "Підтип", "Серійний номер", "Кількість",
-        "Кількість до", "Кількість після", "Нотатки", "Склад", "Зі складу", "На склад",
+        "Дата",
+        "Транзакція",
+        "Тип",
+        "Підтип",
+        "Серійний номер",
+        "Кількість",
+        "Кількість до",
+        "Кількість після",
+        "Нотатки",
+        "Склад",
+        "Зі складу",
+        "На склад",
     ]
     TRANSACTION_TYPE_LABELS: Dict[str, str] = {
-        "ADD":      "Додавання",
-        "REMOVE":   "Видалення",
-        "EDIT":     "Редагування",
+        "ADD": "Додавання",
+        "REMOVE": "Видалення",
+        "EDIT": "Редагування",
         "TRANSFER": "Переміщення",
     }
 
@@ -126,7 +136,9 @@ class ExportService:
             raw_type = trans.get("type", "").upper()
             type_name = ExportService.TRANSACTION_TYPE_LABELS.get(raw_type, raw_type)
             item_type_id = trans.get("item_type_id")
-            name_parts = (type_map.get(item_type_id) or str(item_type_id)).split(" \u2014 ", 1)
+            name_parts = (type_map.get(item_type_id) or str(item_type_id)).split(
+                " \u2014 ", 1
+            )
             item_name = name_parts[0]
             item_sub = name_parts[1] if len(name_parts) > 1 else ""
             from_id = trans.get("from_location_id")
@@ -142,8 +154,14 @@ class ExportService:
             ws.cell(row=row, column=7, value=trans.get("quantity_before", ""))
             ws.cell(row=row, column=8, value=trans.get("quantity_after", ""))
             ws.cell(row=row, column=9, value=trans.get("notes") or "")
-            ws.cell(row=row, column=10, value=loc_map.get(location_id, "") if location_id else "")
-            ws.cell(row=row, column=11, value=loc_map.get(from_id, "") if from_id else "")
+            ws.cell(
+                row=row,
+                column=10,
+                value=loc_map.get(location_id, "") if location_id else "",
+            )
+            ws.cell(
+                row=row, column=11, value=loc_map.get(from_id, "") if from_id else ""
+            )
             ws.cell(row=row, column=12, value=loc_map.get(to_id, "") if to_id else "")
 
         ExportService._autofit(ws, len(ExportService.TRANSACTION_HEADERS))
@@ -155,7 +173,9 @@ class ExportService:
             max_len = 0
             for cell in ws[get_column_letter(col)]:
                 try:
-                    max_len = max(max_len, len(str(cell.value if cell.value is not None else "")))
+                    max_len = max(
+                        max_len, len(str(cell.value if cell.value is not None else ""))
+                    )
                 except Exception:
                     pass
             ws.column_dimensions[get_column_letter(col)].width = max(

@@ -4,16 +4,8 @@ import sys
 import webbrowser
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QApplication,
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QProgressBar,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
+                             QProgressBar, QPushButton, QTextEdit, QVBoxLayout)
 
 from ui.styles import apply_button_style
 from ui.translations import tr

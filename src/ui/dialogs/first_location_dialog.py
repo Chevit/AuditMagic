@@ -5,14 +5,8 @@ Cannot be dismissed without creating a location.
 """
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QDialog,
-    QDialogButtonBox,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QLineEdit,
+                             QMessageBox, QVBoxLayout)
 
 from core.repositories import LocationRepository
 from ui.styles import apply_button_style, apply_input_style
@@ -29,9 +23,7 @@ class FirstLocationDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle(tr("location.first_launch.title"))
-        self.setWindowFlags(
-            self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint
-        )
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)
         self.setMinimumWidth(380)
 
         layout = QVBoxLayout(self)
@@ -54,7 +46,9 @@ class FirstLocationDialog(QDialog):
         layout.addWidget(self.error_label)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        apply_button_style(buttons.button(QDialogButtonBox.StandardButton.Ok), "primary")
+        apply_button_style(
+            buttons.button(QDialogButtonBox.StandardButton.Ok), "primary"
+        )
         buttons.accepted.connect(self._on_accept)
         layout.addWidget(buttons)
 

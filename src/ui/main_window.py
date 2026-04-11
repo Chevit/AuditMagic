@@ -2,45 +2,36 @@ import sys
 from typing import Optional
 
 from PyQt6 import uic
-from runtime import resource_path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction, QActionGroup, QShowEvent
-from PyQt6.QtWidgets import (
-    QHBoxLayout,
-    QMainWindow,
-    QMenu,
-    QMessageBox,
-    QPushButton,
-    QSpacerItem,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QMainWindow, QMessageBox, QPushButton
 
 from core.config import config
 from core.db import init_database
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService, SearchService, TransactionService
-from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
-from ui.theme_manager import get_theme_manager
+from runtime import resource_path
 from ui.dialogs.add_item_dialog import AddItemDialog
 from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
-from ui.dialogs.remove_serial_number_dialog import RemoveSerialNumberDialog
-from ui.dialogs.edit_item_dialog import EditItemDialog
-from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
-from ui.widgets.inventory_list_view import InventoryListView
-from ui.models.inventory_model import InventoryModel
-from ui.dialogs.item_details_dialog import ItemDetailsDialog
 from ui.dialogs.all_transactions_dialog import AllTransactionsDialog
+from ui.dialogs.edit_item_dialog import EditItemDialog
 from ui.dialogs.first_location_dialog import FirstLocationDialog
+from ui.dialogs.item_details_dialog import ItemDetailsDialog
 from ui.dialogs.location_management_dialog import LocationManagementDialog
-from ui.widgets.location_selector import LocationSelectorWidget
-from ui.dialogs.transfer_dialog import TransferDialog
 from ui.dialogs.quantity_dialog import QuantityDialog
-from ui.widgets.search_widget import SearchWidget
+from ui.dialogs.remove_serial_number_dialog import RemoveSerialNumberDialog
 from ui.dialogs.transactions_dialog import TransactionsDialog
+from ui.dialogs.transfer_dialog import TransferDialog
+from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.models.inventory_model import InventoryModel
+from ui.styles import (apply_button_style, apply_combo_box_style,
+                       apply_input_style)
+from ui.theme_manager import get_theme_manager
 from ui.translations import tr
+from ui.widgets.inventory_list_view import InventoryListView
+from ui.widgets.location_selector import LocationSelectorWidget
+from ui.widgets.search_widget import SearchWidget
 
 
 class MainWindow(QMainWindow):
@@ -190,7 +181,9 @@ class MainWindow(QMainWindow):
                     location_id=current_loc_id, item_type_ids=type_ids
                 )
             else:
-                transactions = TransactionService.get_for_export(location_id=current_loc_id)
+                transactions = TransactionService.get_for_export(
+                    location_id=current_loc_id
+                )
             loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
             type_map = InventoryService.get_item_type_display_names()
 
@@ -270,7 +263,9 @@ class MainWindow(QMainWindow):
                 config.set("theme", theme_name)
 
                 # Refresh all widget styles to match new theme
-                if hasattr(self, "search_widget") and hasattr(self, "location_selector"):
+                if hasattr(self, "search_widget") and hasattr(
+                    self, "location_selector"
+                ):
                     self._reapply_all_styles()
 
                 logger.info(f"Theme changed to: {theme_name}")
@@ -345,7 +340,7 @@ class MainWindow(QMainWindow):
         if not locs:
             return
         target_id = self._current_location_id or locs[0].id
-        target_name = next((l.name for l in locs if l.id == target_id), locs[0].name)
+        target_name = next((loc.name for loc in locs if loc.id == target_id), locs[0].name)
         reply = QMessageBox.question(
             self,
             tr("location.unassigned.title"),
@@ -449,7 +444,9 @@ class MainWindow(QMainWindow):
 
     def _load_data_from_db(self):
         """Load inventory items from database (grouped by type, filtered by location)."""
-        items = InventoryService.get_all_items_grouped(location_id=self._current_location_id)
+        items = InventoryService.get_all_items_grouped(
+            location_id=self._current_location_id
+        )
         for item in items:
             self.inventory_model.add_item(item)
 
@@ -505,7 +502,11 @@ class MainWindow(QMainWindow):
             # Edit the item first (validates at DB level before we delete anything)
             edit_succeeded = False
             if edited_item and item_id is not None:
-                serial_to_use = existing_serial if existing_serial else (edited_item.serial_number or "")
+                serial_to_use = (
+                    existing_serial
+                    if existing_serial
+                    else (edited_item.serial_number or "")
+                )
 
                 try:
                     updated_item = InventoryService.edit_item(
@@ -534,7 +535,9 @@ class MainWindow(QMainWindow):
             # Only delete serial numbers after edit succeeds
             if deleted_serials:
                 try:
-                    deleted_count = InventoryService.delete_items_by_serial_numbers(deleted_serials, edit_notes)
+                    deleted_count = InventoryService.delete_items_by_serial_numbers(
+                        deleted_serials, edit_notes
+                    )
                     logger.info(f"Deleted {deleted_count} items with serial numbers")
                 except Exception as e:
                     logger.error(f"Failed to delete serial numbers: {e}")
@@ -593,7 +596,9 @@ class MainWindow(QMainWindow):
 
     def _on_add_clicked(self):
         """Handle add button click - open add item dialog."""
-        dialog = AddItemDialog(current_location_id=self._current_location_id, parent=self)
+        dialog = AddItemDialog(
+            current_location_id=self._current_location_id, parent=self
+        )
         if dialog.exec():
             new_item = dialog.get_item()
             if new_item:
@@ -617,8 +622,10 @@ class MainWindow(QMainWindow):
 
         # For serialized items, open Add Serial Number dialog
         if item.is_serialized:
-            existing_serials = item.serial_numbers if is_grouped else (
-                [item.serial_number] if item.serial_number else []
+            existing_serials = (
+                item.serial_numbers
+                if is_grouped
+                else ([item.serial_number] if item.serial_number else [])
             )
             dialog = AddSerialNumberDialog(
                 item_type_name=item.item_type,
@@ -653,7 +660,9 @@ class MainWindow(QMainWindow):
             quantity = dialog.get_quantity()
             notes = dialog.get_notes()
             if target_item_id is not None:
-                updated_item = InventoryService.add_quantity(target_item_id, quantity, notes)
+                updated_item = InventoryService.add_quantity(
+                    target_item_id, quantity, notes
+                )
                 if updated_item:
                     self._refresh_item_list()
 
@@ -663,8 +672,10 @@ class MainWindow(QMainWindow):
 
         # For serialized items, open Remove Serial Number dialog
         if item.is_serialized:
-            serial_numbers = item.serial_numbers if is_grouped else (
-                [item.serial_number] if item.serial_number else []
+            serial_numbers = (
+                item.serial_numbers
+                if is_grouped
+                else ([item.serial_number] if item.serial_number else [])
             )
             dialog = RemoveSerialNumberDialog(
                 item_type_name=item.item_type,
@@ -726,7 +737,9 @@ class MainWindow(QMainWindow):
 
     def _on_transfer_item(self, row: int, item):
         """Open the transfer dialog for an inventory item."""
-        dialog = TransferDialog(item, current_location_id=self._current_location_id, parent=self)
+        dialog = TransferDialog(
+            item, current_location_id=self._current_location_id, parent=self
+        )
         if dialog.exec():
             self._refresh_item_list()
 
@@ -771,7 +784,9 @@ class MainWindow(QMainWindow):
     def _refresh_item_list(self):
         """Refresh the item list from database (grouped by type, filtered by location)."""
         self.inventory_model.clear()
-        items = InventoryService.get_all_items_grouped(location_id=self._current_location_id)
+        items = InventoryService.get_all_items_grouped(
+            location_id=self._current_location_id
+        )
         for item in items:
             self.inventory_model.add_item(item)
 

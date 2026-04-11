@@ -2,25 +2,16 @@
 
 from typing import Optional
 
-from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QScrollArea,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
+                             QHBoxLayout, QLabel, QLineEdit,
+                             QScrollArea, QVBoxLayout, QWidget)
 
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
-from ui.validators import PositiveIntValidator
+from ui.styles import (apply_button_style, apply_combo_box_style,
+                       apply_input_style)
 from ui.translations import tr
+from ui.validators import PositiveIntValidator
 
 
 class TransferDialog(QDialog):
@@ -36,7 +27,9 @@ class TransferDialog(QDialog):
         if current_location_id is not None:
             self._source_id = current_location_id
             self._needs_source_combo = False
-        elif not getattr(item, "is_multi_location", False) and getattr(item, "location_id", None):
+        elif not getattr(item, "is_multi_location", False) and getattr(
+            item, "location_id", None
+        ):
             self._source_id = item.location_id
             self._needs_source_combo = False
         else:
@@ -141,7 +134,9 @@ class TransferDialog(QDialog):
         )
         btns.button(QDialogButtonBox.StandardButton.Ok).setText(tr("transfer.button"))
         apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary")
+        apply_button_style(
+            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
+        )
         btns.accepted.connect(self._on_accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)

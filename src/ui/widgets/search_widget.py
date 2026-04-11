@@ -1,20 +1,13 @@
 """Search widget with autocomplete dropdown."""
 
-from typing import List, Optional
+from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QCompleter,
-    QHBoxLayout,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QHBoxLayout,
+                             QLineEdit, QPushButton, QVBoxLayout, QWidget)
 
-from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.styles import (apply_button_style, apply_combo_box_style,
+                       apply_input_style)
 from ui.translations import tr
 
 

@@ -2,8 +2,8 @@ from PyQt6.QtCore import QRect, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
-from ui.styles import Colors
 from ui.models.inventory_model import InventoryItemRole
+from ui.styles import Colors
 from ui.translations import tr
 
 
@@ -108,7 +108,11 @@ class InventoryItemDelegate(QStyledItemDelegate):
             )
 
         # ── Serialized badge ─────────────────────────────────────────────────────
-        badge_text = tr("label.serialized_badge") if is_serialized else tr("label.non_serialized_badge")
+        badge_text = (
+            tr("label.serialized_badge")
+            if is_serialized
+            else tr("label.non_serialized_badge")
+        )
         badge_color = QColor("#2e7d32") if is_serialized else QColor("#757575")
 
         badge_font = QFont(painter.font())

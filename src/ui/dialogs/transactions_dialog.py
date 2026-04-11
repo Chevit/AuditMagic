@@ -1,24 +1,14 @@
 """Dialog for viewing transaction history."""
 
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
+from typing import List
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import (
-    QDateEdit,
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QDateEdit, QDialog, QFrame,
+                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+                             QPushButton, QTableWidget, QTableWidgetItem,
+                             QVBoxLayout)
 
 from core.logger import logger
 from core.repositories import LocationRepository
@@ -196,6 +186,7 @@ class TransactionsDialog(QDialog):
             logger.error(f"Failed to load transactions: {e}", exc_info=True)
             self.table.setRowCount(0)
             from PyQt6.QtWidgets import QMessageBox
+
             QMessageBox.warning(
                 self,
                 tr("error.generic.title"),
@@ -219,17 +210,21 @@ class TransactionsDialog(QDialog):
 
             trans_type = trans["type"]
             if trans_type == "add":
-                type_color = QColor(0, 128, 0)    # Green
+                type_color = QColor(0, 128, 0)  # Green
             elif trans_type == "edit":
-                type_color = QColor(0, 0, 192)    # Blue
+                type_color = QColor(0, 0, 192)  # Blue
             elif trans_type == "transfer":
-                type_color = QColor(80, 0, 160)   # Purple
+                type_color = QColor(80, 0, 160)  # Purple
             else:
-                type_color = QColor(192, 0, 0)    # Red
+                type_color = QColor(192, 0, 0)  # Red
 
             # Date
             cell(
-                trans["created_at"].strftime("%Y-%m-%d %H:%M") if trans["created_at"] else "",
+                (
+                    trans["created_at"].strftime("%Y-%m-%d %H:%M")
+                    if trans["created_at"]
+                    else ""
+                ),
                 column,
             )
             column += 1

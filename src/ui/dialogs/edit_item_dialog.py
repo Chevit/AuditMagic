@@ -4,36 +4,21 @@ from typing import List, Optional
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QMessageBox,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QFrame,
+                             QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                             QListWidget, QListWidgetItem, QMessageBox,
+                             QPushButton, QTextEdit, QVBoxLayout)
 
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import Colors, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.styles import (Colors, apply_button_style, apply_combo_box_style,
+                       apply_input_style, apply_text_edit_style)
 from ui.translations import tr
-from ui.validators import (
-    ItemTypeValidator,
-    SerialNumberValidator,
-    validate_length,
-    validate_positive_integer,
-    validate_required_field,
-)
+from ui.validators import (ItemTypeValidator, SerialNumberValidator,
+                           validate_length, validate_positive_integer,
+                           validate_required_field)
 
 
 class EditItemDialog(QDialog):
@@ -127,7 +112,11 @@ class EditItemDialog(QDialog):
         # Serialized indicator (read-only badge)
         is_serial_label = QLabel(tr("label.is_serialized"))
         is_serial_label.setFont(label_font)
-        badge_text = tr("label.serialized_badge") if self._is_serialized else tr("label.non_serialized_badge")
+        badge_text = (
+            tr("label.serialized_badge")
+            if self._is_serialized
+            else tr("label.non_serialized_badge")
+        )
         badge_color = "#2e7d32" if self._is_serialized else "#757575"
         self._serialized_value_label = QLabel(badge_text)
         self._serialized_value_label.setStyleSheet(
@@ -150,7 +139,9 @@ class EditItemDialog(QDialog):
             # For serialized items, quantity is read-only (count of serial numbers)
             self.quantity_input = QLineEdit()
             self.quantity_input.setReadOnly(True)
-            self.quantity_input.setStyleSheet(f"background-color: {Colors.get_bg_disabled()};")
+            self.quantity_input.setStyleSheet(
+                f"background-color: {Colors.get_bg_disabled()};"
+            )
             apply_input_style(self.quantity_input)
         else:
             self.quantity_input = QLineEdit()
@@ -279,12 +270,12 @@ class EditItemDialog(QDialog):
 
     def _update_delete_button_state(self):
         """Disable delete button when only 1 serial number remains."""
-        if hasattr(self, 'delete_serial_btn'):
+        if hasattr(self, "delete_serial_btn"):
             self.delete_serial_btn.setEnabled(len(self._serial_numbers) > 1)
 
     def _refresh_serial_list(self):
         """Refresh the serial numbers list widget."""
-        if not hasattr(self, 'serial_list'):
+        if not hasattr(self, "serial_list"):
             return
 
         self.serial_list.clear()
@@ -293,9 +284,11 @@ class EditItemDialog(QDialog):
             self.serial_list.addItem(item)
 
         # Update count label
-        if hasattr(self, 'serial_count_label'):
+        if hasattr(self, "serial_count_label"):
             self.serial_count_label.setText(
-                tr("dialog.details.serial_count").format(count=len(self._serial_numbers))
+                tr("dialog.details.serial_count").format(
+                    count=len(self._serial_numbers)
+                )
             )
 
         # Update quantity display
@@ -357,7 +350,9 @@ class EditItemDialog(QDialog):
             return
 
         try:
-            existing = InventoryService.get_item_type_by_name_subtype(type_name, sub_type)
+            existing = InventoryService.get_item_type_by_name_subtype(
+                type_name, sub_type
+            )
         except Exception as e:
             logger.warning(f"Type lookup in edit dialog failed: {e}")
             return
@@ -369,7 +364,9 @@ class EditItemDialog(QDialog):
                 else tr("label.non_serialized_badge")
             )
             self.edit_type_status_label.setText(
-                tr("error.serialized_conflict").format(name=type_name, state=conflict_state)
+                tr("error.serialized_conflict").format(
+                    name=type_name, state=conflict_state
+                )
             )
             self._type_conflict = True
         else:
@@ -391,7 +388,10 @@ class EditItemDialog(QDialog):
 
         self.item_details_edit.setPlainText(self._original_item.details or "")
 
-        if self.location_combo is not None and self._original_item.location_id is not None:
+        if (
+            self.location_combo is not None
+            and self._original_item.location_id is not None
+        ):
             for i in range(self.location_combo.count()):
                 if self.location_combo.itemData(i) == self._original_item.location_id:
                     self.location_combo.setCurrentIndex(i)
@@ -488,7 +488,9 @@ class EditItemDialog(QDialog):
 
             if not item_type:
                 self.type_edit.setFocus()
-            elif not self._is_serialized and (not quantity_text or not quantity_text.isdigit()):
+            elif not self._is_serialized and (
+                not quantity_text or not quantity_text.isdigit()
+            ):
                 self.quantity_input.setFocus()
                 self.quantity_input.selectAll()
 

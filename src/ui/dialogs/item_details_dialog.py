@@ -1,21 +1,13 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QPushButton,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QDialog, QFormLayout, QFrame, QGroupBox,
+                             QHBoxLayout, QLabel, QListWidget, QPushButton,
+                             QVBoxLayout)
 
 from core.logger import logger
 from core.repositories import ItemRepository
-from ui.styles import apply_button_style
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
+from ui.styles import apply_button_style
 from ui.translations import tr
 
 
@@ -92,7 +84,9 @@ class ItemDetailsDialog(QDialog):
         serialized_label = QLabel(tr("label.is_serialized"))
         serialized_label.setFont(label_font)
         is_ser = self._item.is_serialized
-        badge_text = tr("label.serialized_badge") if is_ser else tr("label.non_serialized_badge")
+        badge_text = (
+            tr("label.serialized_badge") if is_ser else tr("label.non_serialized_badge")
+        )
         badge_color = "#2e7d32" if is_ser else "#757575"
         serialized_value = QLabel(badge_text)
         serialized_value.setFont(value_font)
@@ -113,7 +107,9 @@ class ItemDetailsDialog(QDialog):
         serial_label = QLabel(tr("label.serial_number"))
         serial_label.setFont(label_font)
         if self._is_grouped:
-            serial_count = len(self._item.serial_numbers) if self._item.serial_numbers else 0
+            serial_count = (
+                len(self._item.serial_numbers) if self._item.serial_numbers else 0
+            )
             serial_text = f"{serial_count} шт." if serial_count > 0 else "-"
         else:
             serial_text = self._item.serial_number if self._item.serial_number else "-"
@@ -133,7 +129,9 @@ class ItemDetailsDialog(QDialog):
 
         # Serial numbers section for serialized types (grouped items have the list directly)
         if self._is_grouped and self._item.serial_numbers:
-            self._add_serial_numbers_section_from_list(layout, self._item.serial_numbers)
+            self._add_serial_numbers_section_from_list(
+                layout, self._item.serial_numbers
+            )
         elif self._item.is_serialized and not self._is_grouped:
             self._add_serial_numbers_section(layout)
 
@@ -159,13 +157,17 @@ class ItemDetailsDialog(QDialog):
         """
         try:
             # Get all serial numbers for this type
-            serial_numbers = ItemRepository.get_serial_numbers_for_type(self._item.item_type_id)
+            serial_numbers = ItemRepository.get_serial_numbers_for_type(
+                self._item.item_type_id
+            )
             if serial_numbers:
                 self._add_serial_numbers_section_from_list(layout, serial_numbers)
         except Exception as e:
             logger.error(f"Failed to load serial numbers: {e}", exc_info=True)
 
-    def _add_serial_numbers_section_from_list(self, layout: QVBoxLayout, serial_numbers: list):
+    def _add_serial_numbers_section_from_list(
+        self, layout: QVBoxLayout, serial_numbers: list
+    ):
         """Add section showing serial numbers from a provided list.
 
         Args:
@@ -180,7 +182,9 @@ class ItemDetailsDialog(QDialog):
         serial_layout = QVBoxLayout()
 
         # Count label
-        count_label = QLabel(tr("dialog.details.serial_count").format(count=len(serial_numbers)))
+        count_label = QLabel(
+            tr("dialog.details.serial_count").format(count=len(serial_numbers))
+        )
         count_font = QFont()
         count_font.setBold(True)
         count_label.setFont(count_font)

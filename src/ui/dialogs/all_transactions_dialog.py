@@ -5,20 +5,9 @@ from typing import Optional
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDateEdit,
-    QDialog,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QComboBox, QDateEdit, QDialog, QFrame, QGroupBox,
+                             QHBoxLayout, QHeaderView, QLabel, QPushButton,
+                             QTableWidget, QTableWidgetItem, QVBoxLayout)
 
 from core.logger import logger
 from core.repositories import LocationRepository
@@ -174,8 +163,10 @@ class AllTransactionsDialog(QDialog):
 
         try:
             if location_id is not None:
-                transactions = TransactionService.get_transactions_by_location_and_date_range(
-                    location_id, start_dt, end_dt
+                transactions = (
+                    TransactionService.get_transactions_by_location_and_date_range(
+                        location_id, start_dt, end_dt
+                    )
                 )
             else:
                 transactions = TransactionService.get_all_transactions_by_date_range(
@@ -215,7 +206,11 @@ class AllTransactionsDialog(QDialog):
 
             # 0 Date
             cell(
-                trans["created_at"].strftime("%Y-%m-%d %H:%M") if trans["created_at"] else "",
+                (
+                    trans["created_at"].strftime("%Y-%m-%d %H:%M")
+                    if trans["created_at"]
+                    else ""
+                ),
                 0,
             )
             # 1 Type

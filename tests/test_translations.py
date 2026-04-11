@@ -3,6 +3,7 @@
 
 def test_auto_update_translation_keys_present():
     from ui.translations import tr
+
     keys = [
         "update.install",
         "update.downloading",
@@ -14,6 +15,7 @@ def test_auto_update_translation_keys_present():
 
 def test_serialized_feature_translation_keys_present():
     from ui.translations import tr
+
     keys = [
         "label.serialized_badge",
         "label.non_serialized_badge",

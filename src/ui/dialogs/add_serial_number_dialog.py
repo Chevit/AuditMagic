@@ -2,21 +2,13 @@
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QFrame,
+                             QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                             QPushButton, QVBoxLayout)
 
 from core.repositories import LocationRepository
-from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
+from ui.styles import (apply_button_style, apply_combo_box_style,
+                       apply_input_style)
 from ui.translations import tr
 from ui.validators import SerialNumberValidator
 

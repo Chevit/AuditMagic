@@ -14,8 +14,8 @@ class InventoryItem:
     is_serialized: bool  # From ItemType.is_serialized
     quantity: int
     serial_number: Optional[str]
-    location_id: Optional[int]   # FK to Location
-    location_name: str           # Resolved location name (empty string if unresolved)
+    location_id: Optional[int]  # FK to Location
+    location_name: str  # Resolved location name (empty string if unresolved)
     condition: Optional[str]
     details: Optional[str]  # From ItemType.details
     created_at: datetime
@@ -122,9 +122,11 @@ class GroupedInventoryItem:
     created_at: Optional[datetime] = None  # Earliest created_at
     updated_at: Optional[datetime] = None  # Latest updated_at
     # Location fields
-    location_id: Optional[int] = None      # Set when all items are at one location; None if multi
-    location_name: str = ""                # Name of single location; "" if multi or unresolved
-    is_multi_location: bool = False        # True when items span 2+ locations
+    location_id: Optional[int] = (
+        None  # Set when all items are at one location; None if multi
+    )
+    location_name: str = ""  # Name of single location; "" if multi or unresolved
+    is_multi_location: bool = False  # True when items span 2+ locations
 
     @classmethod
     def from_item_type_and_items(
@@ -144,10 +146,7 @@ class GroupedInventoryItem:
         Returns:
             GroupedInventoryItem instance.
         """
-        serial_numbers = [
-            item.serial_number for item in items
-            if item.serial_number
-        ]
+        serial_numbers = [item.serial_number for item in items if item.serial_number]
         item_ids = [item.id for item in items]
         total_quantity = sum(item.quantity for item in items)
 
@@ -156,7 +155,9 @@ class GroupedInventoryItem:
         updated_dates = [item.updated_at for item in items if item.updated_at]
 
         # Determine location info
-        unique_location_ids = {item.location_id for item in items if item.location_id is not None}
+        unique_location_ids = {
+            item.location_id for item in items if item.location_id is not None
+        }
         is_multi = len(unique_location_ids) > 1
         if is_multi:
             loc_id = None

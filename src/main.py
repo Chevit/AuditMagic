@@ -5,12 +5,12 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
 from core.config import config
-from runtime import resource_path
 from core.db import run_migrations
 from core.logger import logger
+from runtime import resource_path
+from ui.main_window import MainWindow
 from ui.theme_config import Theme
 from ui.theme_manager import init_theme_manager
-from ui.main_window import MainWindow
 from update_checker import UpdateInfo, check_for_update
 from version import __version__
 
@@ -24,6 +24,7 @@ try:
         _pyi_splash.close()
 
 except ImportError:
+
     def _splash(text: str) -> None:  # type: ignore[misc]
         pass
 
@@ -49,14 +50,15 @@ def main():
 
     if getattr(sys, "frozen", False):
         from auto_updater import cleanup_old_update
+
         cleanup_old_update()
 
     try:
         app = QApplication(sys.argv)
         _icon_file = (
-            "icon.icns" if sys.platform == "darwin"
-            else "icon.png" if sys.platform != "win32"
-            else "icon.ico"
+            "icon.icns"
+            if sys.platform == "darwin"
+            else "icon.png" if sys.platform != "win32" else "icon.ico"
         )
         app.setWindowIcon(QIcon(resource_path(_icon_file)))
         logger.info("QApplication created successfully")
@@ -105,7 +107,7 @@ def main():
         logger.info(f"Application exited with code: {exit_code}")
         return exit_code
 
-    except Exception as e:
+    except Exception:
         _splash_close()
         logger.exception("Critical error during application startup")
         raise

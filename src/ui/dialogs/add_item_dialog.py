@@ -1,36 +1,23 @@
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QStringListModel, QTimer
+from PyQt6.QtCore import QStringListModel, Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QCompleter,
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QDialog,
+                             QFormLayout, QFrame, QHBoxLayout, QLabel,
+                             QLineEdit, QMessageBox, QPushButton, QTextEdit,
+                             QVBoxLayout)
 
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import Colors, Styles, apply_button_style, apply_combo_box_style, apply_input_style, apply_text_edit_style
 from ui.models.inventory_item import InventoryItem
+from ui.styles import (Colors, apply_button_style,
+                       apply_combo_box_style, apply_input_style,
+                       apply_text_edit_style)
 from ui.translations import tr
-from ui.validators import (
-    ItemTypeValidator,
-    SerialNumberValidator,
-    validate_length,
-    validate_positive_integer,
-    validate_required_field,
-)
+from ui.validators import (ItemTypeValidator, SerialNumberValidator,
+                           validate_length, validate_positive_integer,
+                           validate_required_field)
 
 
 class AddItemDialog(QDialog):
@@ -236,7 +223,9 @@ class AddItemDialog(QDialog):
 
     def _setup_serialization_logic(self):
         """Connect serialization checkbox to enable/disable logic."""
-        self.serialized_checkbox.checkStateChanged.connect(self._on_serialization_changed)
+        self.serialized_checkbox.checkStateChanged.connect(
+            self._on_serialization_changed
+        )
         # Initialize state (unchecked by default)
         self._on_serialization_changed(self.serialized_checkbox.checkState())
         # Run initial type lookup (fields may be pre-filled)
@@ -253,7 +242,7 @@ class AddItemDialog(QDialog):
             - Serial number field disabled and cleared
             - Quantity field enabled
         """
-        is_serialized = (state == Qt.CheckState.Checked)
+        is_serialized = state == Qt.CheckState.Checked
 
         if is_serialized:
             # Enable serial number
@@ -264,12 +253,16 @@ class AddItemDialog(QDialog):
             # Disable and fix quantity to 1
             self.quantity_input.setEnabled(False)
             self.quantity_input.setText("1")
-            self.quantity_input.setStyleSheet(f"background-color: {Colors.get_bg_disabled()};")
+            self.quantity_input.setStyleSheet(
+                f"background-color: {Colors.get_bg_disabled()};"
+            )
         else:
             # Disable and clear serial number
             self.serial_edit.setEnabled(False)
             self.serial_edit.clear()
-            self.serial_edit.setStyleSheet(f"background-color: {Colors.get_bg_disabled()};")
+            self.serial_edit.setStyleSheet(
+                f"background-color: {Colors.get_bg_disabled()};"
+            )
 
             # Enable quantity
             self.quantity_input.setEnabled(True)
@@ -296,7 +289,9 @@ class AddItemDialog(QDialog):
             return
 
         try:
-            existing = InventoryService.get_item_type_by_name_subtype(type_name, sub_type)
+            existing = InventoryService.get_item_type_by_name_subtype(
+                type_name, sub_type
+            )
         except Exception as e:
             logger.warning(f"Type lookup failed: {e}")
             return
@@ -406,7 +401,9 @@ class AddItemDialog(QDialog):
 
         # All validation passed - create item via service
         quantity = int(quantity_text)
-        logger.info(f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}")
+        logger.info(
+            f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}"
+        )
 
         location_id = self.location_combo.currentData()
 
@@ -446,7 +443,9 @@ class AddItemDialog(QDialog):
                             )
                             return
                         self._result_item = result
-                        logger.info(f"Merged quantity into existing item: id={existing.id}")
+                        logger.info(
+                            f"Merged quantity into existing item: id={existing.id}"
+                        )
                         self.accept()
                     else:
                         QMessageBox.information(
@@ -468,18 +467,14 @@ class AddItemDialog(QDialog):
             self.accept()
         except ValueError as e:
             # Validation error from service/repository
-            QMessageBox.warning(
-                self,
-                tr("message.validation_error"),
-                str(e)
-            )
+            QMessageBox.warning(self, tr("message.validation_error"), str(e))
             logger.error(f"Item creation failed with validation error: {e}")
         except Exception as e:
             # Unexpected error
             QMessageBox.critical(
                 self,
                 tr("error.generic.title"),
-                f"{tr('error.generic.message')}\n\n{str(e)}"
+                f"{tr('error.generic.message')}\n\n{str(e)}",
             )
             logger.error(f"Item creation failed: {e}", exc_info=True)
 
