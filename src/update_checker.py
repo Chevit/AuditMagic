@@ -30,6 +30,10 @@ def check_for_update() -> Optional[UpdateInfo]:
     Returns:
         UpdateInfo if a newer version is available, None otherwise.
     """
+    if __version__ == "0.0.0-dev":
+        logger.info("Development build — skipping update check")
+        return None
+
     try:
         logger.info(f"Checking for updates (current: {__version__})...")
 

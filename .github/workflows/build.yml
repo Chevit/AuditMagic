@@ -62,6 +62,8 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}" -replace '^v', ''
           (Get-Content src\version.py) -replace '__version__ = ".*"', "__version__ = `"$version`"" | Set-Content src\version.py
+          $actual = (Get-Content src\version.py | Select-String '__version__').ToString()
+          if ($actual -notmatch [regex]::Escape($version)) { Write-Error "Version injection failed: $actual"; exit 1 }
 
       - name: Build executable
         run: .venv\Scripts\pyinstaller AuditMagic.spec
