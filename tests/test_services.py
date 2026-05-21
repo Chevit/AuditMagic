@@ -435,6 +435,21 @@ def test_search_clear_history():
     assert SearchService.get_search_history() == []
 
 
+def test_search_result_has_location_name():
+    loc = _loc("SearchLocTest")
+    _non_ser("LocNameItem", loc_id=loc.id)
+    results = SearchService.search("LocNameItem", save_to_history=False)
+    assert len(results) >= 1
+    assert results[0].location_name == "SearchLocTest"
+
+
+def test_search_result_location_name_empty_when_no_location():
+    _non_ser("NoLocItem", loc_id=None)
+    results = SearchService.search("NoLocItem", save_to_history=False)
+    assert len(results) >= 1
+    assert results[0].location_name == ""
+
+
 # ─── TransactionService ───────────────────────────────────────────────────────
 
 

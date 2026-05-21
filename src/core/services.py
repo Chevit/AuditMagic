@@ -724,8 +724,14 @@ class SearchService:
             return []
         type_ids = list({item.item_type_id for item in db_items})
         type_map = ItemTypeRepository.get_by_ids(type_ids)
+        all_locations = LocationRepository.get_all()
+        loc_map = {loc.id: loc.name for loc in all_locations}
         return [
-            InventoryItem.from_db_models(item, type_map[item.item_type_id])
+            InventoryItem.from_db_models(
+                item,
+                type_map[item.item_type_id],
+                location_name=loc_map.get(item.location_id, ""),
+            )
             for item in db_items
             if item.item_type_id in type_map
         ]
