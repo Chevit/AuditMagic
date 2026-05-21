@@ -123,3 +123,35 @@ def test_get_for_export_filtered_by_type_ids():
     )
     result = TransactionService.get_for_export(location_id=None, item_type_ids=[t1.id])
     assert all(t["item_type_id"] == t1.id for t in result)
+
+
+def test_get_for_export_transfer_not_duplicated():
+    """TRANSFER creates two rows; only the row whose location_id matches should be returned."""
+    loc_a = _make_location("TransferA")
+    loc_b = _make_location("TransferB")
+    # Create a non-serialized item at loc_a
+    item = InventoryService.create_item(
+        item_type_name="Keyboard",
+        item_sub_type="",
+        quantity=4,
+        location_id=loc_a.id,
+        transaction_notes="",
+    )
+    # Transfer 2 units from loc_a to loc_b (creates two TRANSFER transaction rows)
+    InventoryService.transfer_item(
+        item_id=item.id,
+        quantity=2,
+        from_location_id=loc_a.id,
+        to_location_id=loc_b.id,
+        notes="test transfer",
+    )
+    result_a = TransactionService.get_for_export(location_id=loc_a.id)
+    result_b = TransactionService.get_for_export(location_id=loc_b.id)
+    # Every row returned for loc_a must have location_id == loc_a.id
+    assert all(t["location_id"] == loc_a.id for t in result_a), (
+        "get_for_export returned a row whose location_id != loc_a.id"
+    )
+    # Every row returned for loc_b must have location_id == loc_b.id
+    assert all(t["location_id"] == loc_b.id for t in result_b), (
+        "get_for_export returned a row whose location_id != loc_b.id"
+    )

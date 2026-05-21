@@ -1601,8 +1601,7 @@ class TransactionRepository:
         """Fetch transactions for export with no date-range constraint.
 
         Args:
-            location_id: If given, returns transactions where location_id,
-                         from_location_id, or to_location_id matches.
+            location_id: If given, returns transactions where location_id matches.
                          If None, returns all transactions.
             item_type_ids: If given, restricts to these item type IDs.
 
@@ -1610,22 +1609,14 @@ class TransactionRepository:
             Transactions ordered by created_at descending.
 
         Note:
-            TRANSFER operations create two rows (source and destination).  Both rows
-            carry the same from_location_id / to_location_id, so when filtering by a
-            specific location the OR filter will match both sides.  This is intentional
-            and consistent with AllTransactionsDialog — each row represents one side of
-            the transfer (outgoing vs incoming) with its own qty_before/after context.
+            TRANSFER operations create two rows (source and destination), each with its
+            own location_id.  Filtering by location_id alone is sufficient and matches
+            the logic used by AllTransactionsDialog.
         """
         with session_scope() as session:
             q = session.query(Transaction)
             if location_id is not None:
-                q = q.filter(
-                    or_(
-                        Transaction.location_id == location_id,
-                        Transaction.from_location_id == location_id,
-                        Transaction.to_location_id == location_id,
-                    )
-                )
+                q = q.filter(Transaction.location_id == location_id)
             if item_type_ids is not None:
                 q = q.filter(Transaction.item_type_id.in_(item_type_ids))
             q = q.order_by(Transaction.created_at.desc())
