@@ -1,7 +1,7 @@
 from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer
-from PyQt6.QtGui import QFont, QIntValidator
+from PyQt6.QtGui import QFont, QIntValidator, QPainter
 from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QDialog,
                              QFormLayout, QFrame, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QPushButton, QTextEdit,
@@ -18,6 +18,20 @@ from ui.translations import tr
 from ui.validators import (ItemTypeValidator, SerialNumberValidator,
                            validate_length, validate_positive_integer,
                            validate_required_field)
+
+
+class _WrappingTextEdit(QTextEdit):
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if self.toPlainText() or not self.placeholderText():
+            return
+        viewport = self.viewport()
+        if viewport is None:
+            return
+        painter = QPainter(viewport)
+        painter.setPen(self.palette().placeholderText().color())
+        rect = viewport.rect().adjusted(4, 4, -4, -4)
+        painter.drawText(rect, Qt.TextFlag.TextWordWrap, self.placeholderText())
 
 
 class AddItemDialog(QDialog):
@@ -102,7 +116,7 @@ class AddItemDialog(QDialog):
         quantity_label.setFont(label_font)
 
         self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Enter quantity (e.g., 5)...")
+        self.quantity_input.setPlaceholderText(tr("placeholder.quantity"))
 
         # Set validator to only allow positive integers
         quantity_validator = QIntValidator(1, 999999, self)
@@ -122,7 +136,7 @@ class AddItemDialog(QDialog):
 
         # Initial notes (optional) — stored as transaction notes on first ADD
         initial_notes_label = QLabel(tr("label.initial_notes"))
-        self.initial_notes_edit = QTextEdit()
+        self.initial_notes_edit = _WrappingTextEdit()
         self.initial_notes_edit.setPlaceholderText(tr("placeholder.initial_notes"))
         self.initial_notes_edit.setMaximumHeight(60)
         apply_text_edit_style(self.initial_notes_edit)

@@ -8,38 +8,30 @@ from ui.translations import tr
 
 
 class InventoryItemDelegate(QStyledItemDelegate):
-    """Custom delegate for rendering inventory items with labels."""
+    """Custom delegate for inventory items — type name prominent, qty on right."""
 
-    ROW_HEIGHT = 96
-    PADDING = 10
-    LABEL_HEIGHT = 20
-    LABEL_SPACING = 5
+    ROW_HEIGHT = 82
+    PAD_H = 16
+    PAD_V = 11
+    QTY_COL_W = 52
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._label_font = QFont()
-        self._label_font.setBold(True)
-        self._label_font.setPointSize(9)
-
-        self._value_font = QFont()
-        self._value_font.setPointSize(10)
 
     def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
         return QSize(option.rect.width(), self.ROW_HEIGHT)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index):
         painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Get theme-aware colors dynamically
-        label_color = QColor(Colors.get_text_secondary())
-        value_color = QColor(Colors.get_main_color())
+        main_color = QColor(Colors.get_main_color())
+        secondary_color = QColor(Colors.get_text_secondary())
         border_color = QColor(Colors.get_border_default())
         bg_default = QColor(Colors.get_bg_default())
         bg_hover = QColor(Colors.get_bg_hover())
-        selected_color = QColor(Colors.get_primary())
-        selected_color.setAlpha(50)  # Semi-transparent
+        primary_color = QColor(Colors.get_primary())
 
-        # Get item data
         item_type = index.data(InventoryItemRole.ItemType) or ""
         sub_type = index.data(InventoryItemRole.SubType) or ""
         quantity = index.data(InventoryItemRole.Quantity)
@@ -48,111 +40,109 @@ class InventoryItemDelegate(QStyledItemDelegate):
         location_name = index.data(InventoryItemRole.LocationName) or ""
         is_multi_location = index.data(InventoryItemRole.IsMultiLocation) or False
 
-        quantity_str = str(quantity) if quantity is not None else ""
-
-        # For serialized items, show count of serial numbers
-        if is_serialized and serial_numbers:
-            serial_display = f"{len(serial_numbers)} шт."
-        elif serial_numbers and len(serial_numbers) == 1:
-            serial_display = serial_numbers[0]
-        else:
-            serial_display = "-"
-
-        # Draw background
         rect = option.rect
-        if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(rect, selected_color)
-        elif option.state & QStyle.StateFlag.State_MouseOver:
+        is_selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        is_hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
+        # Background
+        if is_selected:
+            sel_bg = QColor(Colors.get_primary())
+            sel_bg.setAlpha(12)
+            painter.fillRect(rect, sel_bg)
+            # Left accent stripe
+            accent_rect = QRect(rect.left(), rect.top(), 3, rect.height())
+            painter.fillRect(accent_rect, primary_color)
+        elif is_hovered:
             painter.fillRect(rect, bg_hover)
         else:
             painter.fillRect(rect, bg_default)
 
-        # Draw border at bottom
+        # Bottom separator
         painter.setPen(QPen(border_color, 1))
         painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
 
-        # Calculate label positions (2x2 grid)
-        col_width = (rect.width() - 3 * self.PADDING) // 2
-        row_height = self.LABEL_HEIGHT + self.LABEL_SPACING
+        left = rect.left() + self.PAD_H
+        right = rect.right() - self.PAD_H
+        top = rect.top()
 
-        # Labels and values with translations
-        labels_data = [
-            (tr("label.type"), item_type, 0, 0),
-            (tr("label.subtype"), sub_type if sub_type else "-", 1, 0),
-            (tr("label.quantity"), quantity_str, 0, 1),
-            (tr("label.serial_number"), serial_display, 1, 1),
-        ]
+        # ── Quantity (right column) ──────────────────────────────────────
+        qty_x = right - self.QTY_COL_W
+        qty_val = str(len(serial_numbers)) if is_serialized and serial_numbers else (
+            str(quantity) if quantity is not None else "0"
+        )
 
-        for label, value, col, row in labels_data:
-            x = rect.left() + self.PADDING + col * (col_width + self.PADDING)
-            y = rect.top() + self.PADDING + row * (row_height + 8)
+        qty_font = QFont()
+        qty_font.setPointSize(13)
+        qty_font.setBold(True)
+        painter.setFont(qty_font)
+        painter.setPen(main_color)
+        qty_rect = QRect(qty_x, top + self.PAD_V, self.QTY_COL_W, 22)
+        painter.drawText(qty_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, qty_val)
 
-            # Draw label
-            painter.setFont(self._label_font)
-            painter.setPen(label_color)
-            label_rect = QRect(x, y, col_width, self.LABEL_HEIGHT)
-            painter.drawText(
-                label_rect,
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
-                label,
-            )
+        unit_font = QFont()
+        unit_font.setPointSize(8)
+        painter.setFont(unit_font)
+        painter.setPen(secondary_color)
+        unit_rect = QRect(qty_x, top + self.PAD_V + 24, self.QTY_COL_W, 14)
+        painter.drawText(unit_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, "шт.")
 
-            # Draw value below label
-            painter.setFont(self._value_font)
-            painter.setPen(value_color)
-            value_rect = QRect(x, y + 14, col_width, self.LABEL_HEIGHT)
-            painter.drawText(
-                value_rect,
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
-                value,
-            )
+        # ── Type name (left, prominent) ──────────────────────────────────
+        text_width = qty_x - 8 - left
 
-        # ── Serialized badge ─────────────────────────────────────────────────────
+        type_font = QFont()
+        type_font.setPointSize(11)
+        type_font.setBold(True)
+        painter.setFont(type_font)
+        painter.setPen(main_color)
+        fm_type = QFontMetrics(type_font)
+        elided_type = fm_type.elidedText(item_type, Qt.TextElideMode.ElideRight, text_width)
+        type_rect = QRect(left, top + self.PAD_V, text_width, 22)
+        painter.drawText(type_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided_type)
+
+        # ── Sub type ─────────────────────────────────────────────────────
+        sub_font = QFont()
+        sub_font.setPointSize(9)
+        painter.setFont(sub_font)
+        painter.setPen(secondary_color)
+        fm_sub = QFontMetrics(sub_font)
+        sub_display = sub_type if sub_type else "—"
+        elided_sub = fm_sub.elidedText(sub_display, Qt.TextElideMode.ElideRight, text_width)
+        sub_rect = QRect(left, top + self.PAD_V + 26, text_width, 16)
+        painter.drawText(sub_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided_sub)
+
+        # ── Serialized badge (bottom-right) ──────────────────────────────
         badge_text = (
-            tr("label.serialized_badge")
-            if is_serialized
-            else tr("label.non_serialized_badge")
+            tr("label.serialized_badge") if is_serialized else tr("label.non_serialized_badge")
         )
         badge_color = QColor("#2e7d32") if is_serialized else QColor("#757575")
-
-        badge_font = QFont(painter.font())
-        badge_font.setPointSize(max(badge_font.pointSize() - 2, 7))
+        badge_font = QFont()
+        badge_font.setPointSize(7)
         badge_font.setBold(True)
-        fm = QFontMetrics(badge_font)
-        badge_rect = fm.boundingRect(badge_text).adjusted(-4, -2, 4, 2)
-
-        # Position: top-right corner of the row
-        badge_rect.moveRight(option.rect.right() - 8)
-        badge_rect.moveTop(option.rect.top() + 6)
+        fm_badge = QFontMetrics(badge_font)
+        badge_w = fm_badge.horizontalAdvance(badge_text) + 10
+        badge_h = fm_badge.height() + 4
+        badge_rect = QRect(right - badge_w, rect.bottom() - badge_h - 6, badge_w, badge_h)
 
         painter.save()
         painter.setFont(badge_font)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(badge_color)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.drawRoundedRect(badge_rect, 3, 3)
         painter.setPen(QColor("#ffffff"))
         painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
         painter.restore()
 
-        # ── Location footer ───────────────────────────────────────────────────────
+        # ── Location footer (bottom-left) ─────────────────────────────────
         if is_multi_location or location_name:
-            if is_multi_location:
-                loc_text = f"{tr('location.title')}: {tr('location.multiple')}"
-            else:
-                loc_text = f"{tr('location.title')}: {location_name}"
-            footer_font = QFont(self._label_font)
-            footer_font.setBold(False)
-            footer_y = option.rect.bottom() - 18
-            footer_rect = QRect(
-                option.rect.left() + self.PADDING,
-                footer_y,
-                option.rect.width() - 2 * self.PADDING,
-                16,
-            )
+            loc_text = tr("location.multiple") if is_multi_location else location_name
+            footer_font = QFont()
+            footer_font.setPointSize(8)
             painter.save()
             painter.setFont(footer_font)
-            painter.setPen(QColor(Colors.get_text_secondary()))
+            painter.setPen(secondary_color)
+            footer_y = rect.bottom() - badge_h - 6
+            footer_w = badge_rect.left() - left - 8
+            footer_rect = QRect(left, footer_y, footer_w, badge_h)
             painter.drawText(
                 footer_rect,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,

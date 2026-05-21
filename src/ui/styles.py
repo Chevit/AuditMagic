@@ -175,23 +175,26 @@ class Styles:
         """Get QLineEdit stylesheet with theme-aware colors and dimensions."""
         return f"""
             QLineEdit {{
-                padding: {Dimensions.INPUT_PADDING}px;
+                padding: 0px {Dimensions.INPUT_PADDING}px;
                 font-size: {Dimensions.get_font_size()}px;
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
                 border-radius: {Dimensions.get_border_radius()}px;
                 background-color: {Colors.get_bg_default()};
                 color: {Colors.get_main_color()};
-                height: {Dimensions.get_input_height()}px;
+                min-height: {Dimensions.get_input_height()}px;
+                selection-background-color: {Colors.get_info()};
             }}
             QLineEdit:focus {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
+                background-color: {Colors.get_bg_default()};
             }}
-            QLineEdit:hover {{
+            QLineEdit:hover:!focus {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
             }}
             QLineEdit:disabled {{
                 background-color: {Colors.get_bg_disabled()};
                 color: {Colors.get_text_disabled()};
+                border-color: {Colors.get_border_default()};
             }}
         """
 
@@ -200,22 +203,26 @@ class Styles:
         """Get large QLineEdit stylesheet with theme-aware colors and dimensions."""
         return f"""
             QLineEdit {{
-                padding: {Dimensions.INPUT_PADDING}px;
+                padding: 0px {Dimensions.INPUT_PADDING}px;
                 font-size: {Dimensions.get_font_size_large()}px;
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
                 border-radius: {Dimensions.get_border_radius()}px;
                 background-color: {Colors.get_bg_default()};
                 color: {Colors.get_main_color()};
+                min-height: {Dimensions.get_input_height()}px;
+                selection-background-color: {Colors.get_info()};
             }}
             QLineEdit:focus {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
+                background-color: {Colors.get_bg_default()};
             }}
-            QLineEdit:hover {{
+            QLineEdit:hover:!focus {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
             }}
             QLineEdit:disabled {{
                 background-color: {Colors.get_bg_disabled()};
                 color: {Colors.get_text_disabled()};
+                border-color: {Colors.get_border_default()};
             }}
         """
 
@@ -224,19 +231,24 @@ class Styles:
         """Get QTextEdit stylesheet with theme-aware colors and dimensions."""
         return f"""
             QTextEdit {{
-                padding: 5px;
+                padding: 8px;
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
                 border-radius: {Dimensions.get_border_radius()}px;
                 background-color: {Colors.get_bg_default()};
                 color: {Colors.get_main_color()};
                 font-size: {Dimensions.get_font_size()}px;
+                selection-background-color: {Colors.get_info()};
             }}
             QTextEdit:focus {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_focus()};
             }}
+            QTextEdit:hover:!focus {{
+                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+            }}
             QTextEdit:disabled {{
                 background-color: {Colors.get_bg_disabled()};
                 color: {Colors.get_text_disabled()};
+                border-color: {Colors.get_border_default()};
             }}
         """
 
@@ -245,13 +257,13 @@ class Styles:
         """Get QComboBox stylesheet with theme-aware colors and dimensions."""
         return f"""
             QComboBox {{
-                padding: {Dimensions.INPUT_PADDING}px;
+                padding: 0px {Dimensions.INPUT_PADDING}px;
                 font-size: {Dimensions.get_font_size()}px;
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
                 border-radius: {Dimensions.get_border_radius()}px;
                 background-color: {Colors.get_bg_default()};
                 color: {Colors.get_main_color()};
-                height: {Dimensions.get_input_height()}px;
+                min-height: {Dimensions.get_input_height()}px;
             }}
             QComboBox:hover {{
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
@@ -262,17 +274,18 @@ class Styles:
             QComboBox:disabled {{
                 background-color: {Colors.get_bg_disabled()};
                 color: {Colors.get_text_disabled()};
+                border-color: {Colors.get_border_default()};
             }}
             QComboBox::drop-down {{
                 border: none;
-                width: 20px;
+                width: 24px;
             }}
             QComboBox::down-arrow {{
                 image: none;
                 border-left: 4px solid transparent;
                 border-right: 4px solid transparent;
-                border-top: 6px solid {Colors.get_main_color()};
-                margin-right: 5px;
+                border-top: 5px solid {Colors.get_text_secondary()};
+                margin-right: 6px;
             }}
             QComboBox QAbstractItemView {{
                 background-color: {Colors.get_bg_default()};
@@ -280,6 +293,12 @@ class Styles:
                 selection-background-color: {Colors.get_primary()};
                 selection-color: white;
                 border: 1px solid {Colors.get_border_default()};
+                padding: 2px;
+                outline: none;
+            }}
+            QComboBox QAbstractItemView::item {{
+                padding: 4px 8px;
+                min-height: 28px;
             }}
         """
 
@@ -290,11 +309,12 @@ class Styles:
             QPushButton {{
                 background-color: {Colors.get_primary()};
                 color: white;
-                padding: 2px {Dimensions.get_button_padding()}px;
+                padding: 0px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
-                font-weight: bold;
+                font-weight: 600;
+                font-size: {Dimensions.get_font_size()}px;
                 border: none;
-                height: {Dimensions.get_button_height()}px;
+                min-height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
                 background-color: {Colors.get_primary_hover()};
@@ -315,11 +335,12 @@ class Styles:
             QPushButton {{
                 background-color: {Colors.get_danger()};
                 color: white;
-                padding: 2px {Dimensions.get_button_padding()}px;
+                padding: 0px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
-                font-weight: bold;
+                font-weight: 600;
+                font-size: {Dimensions.get_font_size()}px;
                 border: none;
-                height: {Dimensions.get_button_height()}px;
+                min-height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
                 background-color: {Colors.get_danger_hover()};
@@ -340,11 +361,12 @@ class Styles:
             QPushButton {{
                 background-color: {Colors.get_info()};
                 color: white;
-                padding: 2px {Dimensions.get_button_padding()}px;
+                padding: 0px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
-                font-weight: bold;
+                font-weight: 600;
+                font-size: {Dimensions.get_font_size()}px;
                 border: none;
-                height: {Dimensions.get_button_height()}px;
+                min-height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
                 background-color: {Colors.get_info_hover()};
@@ -365,14 +387,15 @@ class Styles:
             QPushButton {{
                 background-color: {Colors.get_secondary_color()};
                 color: {Colors.get_main_color()};
-                padding: 2px {Dimensions.get_button_padding()}px;
+                padding: 0px {Dimensions.get_button_padding()}px;
                 border-radius: {Dimensions.get_border_radius()}px;
+                font-size: {Dimensions.get_font_size()}px;
                 border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_default()};
-                height: {Dimensions.get_button_height()}px;
+                min-height: {Dimensions.get_button_height()}px;
             }}
             QPushButton:hover {{
                 background-color: {Colors.get_bg_hover()};
-                border: {Dimensions.BORDER_WIDTH}px solid {Colors.get_border_hover()};
+                border-color: {Colors.get_border_hover()};
             }}
             QPushButton:pressed {{
                 background-color: {Colors.get_bg_default()};
@@ -380,6 +403,7 @@ class Styles:
             QPushButton:disabled {{
                 background-color: {Colors.get_bg_disabled()};
                 color: {Colors.get_text_disabled()};
+                border-color: {Colors.get_border_default()};
             }}
         """
 
