@@ -1,0 +1,150 @@
+name: Build All Platforms (GitHub-hosted) [TEMP]
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - windows
+          - macos
+          - linux
+      version:
+        description: 'Version to inject (e.g. 1.2.3). Leave empty to keep dev placeholder.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Set up virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv\Scripts\python -m pip install --upgrade pip
+          .venv\Scripts\pip install -r requirements.txt
+          .venv\Scripts\pip install pyinstaller
+
+      - name: Inject version
+        if: inputs.version != ''
+        shell: pwsh
+        run: |
+          $version = "${{ inputs.version }}"
+          (Get-Content src\version.py) -replace '__version__ = ".*"', "__version__ = `"$version`"" | Set-Content src\version.py
+          $actual = (Get-Content src\version.py | Select-String '__version__').ToString()
+          if ($actual -notmatch [regex]::Escape($version)) { Write-Error "Version injection failed: $actual"; exit 1 }
+
+      - name: Build executable
+        run: .venv\Scripts\pyinstaller AuditMagic.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuditMagic-windows-hosted
+          path: dist/AuditMagic.exe
+          retention-days: 7
+
+  build-macos:
+    if: inputs.platform == 'all' || inputs.platform == 'macos'
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Set up virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pyinstaller
+
+      - name: Inject version
+        if: inputs.version != ''
+        run: sed -i '' 's/__version__ = ".*"/__version__ = "${{ inputs.version }}"/' src/version.py
+
+      - name: Build app bundle
+        run: .venv/bin/pyinstaller AuditMagic.spec
+
+      - name: Zip app bundle
+        run: cd dist && zip -r ../AuditMagic-macOS.zip AuditMagic.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuditMagic-macos-hosted
+          path: AuditMagic-macOS.zip
+          retention-days: 7
+
+  build-linux:
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Set up virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pyinstaller
+
+      - name: Inject version
+        if: inputs.version != ''
+        run: sed -i 's/__version__ = ".*"/__version__ = "${{ inputs.version }}"/' src/version.py
+
+      - name: Build executable
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: .venv/bin/pyinstaller AuditMagic.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuditMagic-linux-hosted
+          path: dist/AuditMagic
+          retention-days: 7
