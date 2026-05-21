@@ -853,7 +853,7 @@ class TransactionService:
         """Get transactions for export — no date range constraint.
 
         Args:
-            location_id: Filter by location (OR across all location columns).
+            location_id: Filter by location_id equality.
                          None returns all locations.
             item_type_ids: If given, restrict to these item type IDs only.
 
