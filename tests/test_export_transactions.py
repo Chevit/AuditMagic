@@ -147,6 +147,8 @@ def test_get_for_export_transfer_not_duplicated():
     )
     result_a = TransactionService.get_for_export(location_id=loc_a.id)
     result_b = TransactionService.get_for_export(location_id=loc_b.id)
+    assert len(result_a) >= 1, "expected at least one row for loc_a"
+    assert len(result_b) >= 1, "expected at least one row for loc_b"
     # Every row returned for loc_a must have location_id == loc_a.id
     assert all(t["location_id"] == loc_a.id for t in result_a), (
         "get_for_export returned a row whose location_id != loc_a.id"
