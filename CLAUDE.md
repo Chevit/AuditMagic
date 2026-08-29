@@ -89,6 +89,8 @@ source .venv/bin/activate  # macOS/Linux
 # Install dependencies
 pip install -r requirements.txt
 ```
+Run tools venv-qualified (`.venv/bin/python -m pytest`, `.venv/bin/mypy src`) — they are not on PATH.
+If `.venv` is missing: `python3 -m venv` needs system `python3-venv`/`python3-pip`, and PyQt6 needs system graphics libs (`libEGL1` and friends) or importing `PyQt6.QtWidgets` fails.
 
 ## Running
 ```bash
@@ -102,7 +104,9 @@ python src/main.py
 - PascalCase for classes
 - Private methods: `_method_name`
 - Format with Black
-- Line length 88 (`.flake8`, ignores W503/W504); imports via `isort --profile black`
+- Line length 88 (`.flake8`, ignores E203/W503/W504); imports via `isort --profile black`
+- `alembic/versions/` is excluded from black, isort and flake8 — migrations are historical records; do not reformat them. flake8's config `exclude` does not filter paths passed explicitly, so the pre-commit hook repeats it
+- `src/ui/translations.py` is per-file exempt from E501: rewrapping translated strings risks changing the text
 - Pre-commit hooks configured (`pre-commit install`): black, isort, flake8, mypy, trailing-whitespace, end-of-file-fixer, check-yaml
 - Type check: `mypy src` — currently clean, and enforced by pre-commit. Config in `mypy.ini`; qt_material/alembic/openpyxl/requests/pyi_splash imports ignored. The hook runs on `src` as a whole (mypy resolves modules across the package) with SQLAlchemy and PyQt6 pinned as `additional_dependencies` so it sees the same types you do locally — keep those in step with `requirements-dev.txt`.
 - `src/` has no `__init__.py`: it is a path entry (conftest, PyInstaller `pathex`), not a package. Adding one breaks mypy's module resolution.
@@ -114,6 +118,8 @@ QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt abor
 - `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
 - Test files: `test_repositories.py`, `test_services.py`, `test_stock.py`, `test_ledger.py`, `test_unit_of_work.py`, `test_stock_migration.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`, `test_quantity_dialog.py`
 - `test_quantity_dialog.py` needs Qt's system libraries (libEGL and friends); it skips itself via `importorskip` where they are absent
+- After changing `models.py`, diff the generated DDL before and after (`init_database` on a temp file, then read `sqlite_master`) — tests use `create_all` while users get the schema from Alembic, so the two must agree
+- Migration logic goes in a module-level function in the version file (e.g. `merge_duplicate_bulk_rows`), so tests can import it by path and run it against a DB with the index dropped
 - CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
 
 ## Architecture
@@ -400,6 +406,8 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
+- **CONTEXT.md**: Domain glossary (Stock, StockRef, Movement, ItemType, Item, Location, Transaction) — use these words; it is a glossary, not a spec
+- **docs/adr/**: Architecture decisions and the alternatives rejected. ADR-0001 (stock addressed by `(ItemType, Location)`) governs the write path — read it before changing how stock is addressed or moved
 - **README.md**: Project readme
 - **Instructions/**: Historical implementation guides (incl. `IMPROVEMENTS.md`) — legacy `ui_entities/` paths, do not follow verbatim
 - **docs/HOW-TO.md**: Ukrainian end-user manual (linked from README)
