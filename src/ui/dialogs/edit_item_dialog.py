@@ -4,21 +4,38 @@ from typing import List, Optional
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QFrame,
-                             QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                             QListWidget, QListWidgetItem, QMessageBox,
-                             QPushButton, QTextEdit, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from core.logger import logger
-from core.repositories import LocationRepository
 from core.services import InventoryService
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
-from ui.styles import (Colors, apply_button_style, apply_combo_box_style,
-                       apply_input_style, apply_text_edit_style)
+from ui.styles import (
+    Colors,
+    apply_button_style,
+    apply_input_style,
+    apply_text_edit_style,
+)
 from ui.translations import tr
-from ui.validators import (ItemTypeValidator, SerialNumberValidator,
-                           validate_length, validate_positive_integer,
-                           validate_required_field)
+from ui.validators import (
+    ItemTypeValidator,
+    validate_length,
+    validate_positive_integer,
+    validate_required_field,
+)
 
 
 class EditItemDialog(QDialog):
@@ -143,6 +160,14 @@ class EditItemDialog(QDialog):
                 f"background-color: {Colors.get_bg_disabled()};"
             )
             apply_input_style(self.quantity_input)
+        elif getattr(self._original_item, "is_multi_location", False):
+            # Stock spread across locations has no single quantity to set
+            self.quantity_input = QLineEdit()
+            self.quantity_input.setReadOnly(True)
+            self.quantity_input.setStyleSheet(
+                f"background-color: {Colors.get_bg_disabled()};"
+            )
+            apply_input_style(self.quantity_input)
         else:
             self.quantity_input = QLineEdit()
             self.quantity_input.setPlaceholderText(tr("placeholder.quantity"))
@@ -152,15 +177,10 @@ class EditItemDialog(QDialog):
 
         form_layout.addRow(quantity_label, self.quantity_input)
 
-        # Serial Number - only for non-grouped single serialized items
-        if not self._is_grouped and not self._is_serialized:
+        # A unit's serial number is its identity — shown, never edited here
+        if not self._is_grouped and self._original_item.serial_number:
             serial_label = QLabel(tr("label.serial_number"))
-            self.serial_edit = QLineEdit()
-            self.serial_edit.setPlaceholderText(tr("placeholder.serial_number"))
-            apply_input_style(self.serial_edit)
-            form_layout.addRow(serial_label, self.serial_edit)
-        else:
-            self.serial_edit = None
+            form_layout.addRow(serial_label, QLabel(self._original_item.serial_number))
 
         # Item Details (optional)
         item_details_label = QLabel(tr("label.details"))
@@ -170,18 +190,17 @@ class EditItemDialog(QDialog):
         apply_text_edit_style(self.item_details_edit)
         form_layout.addRow(item_details_label, self.item_details_edit)
 
-        # Location — combo or read-only label for multi-location groups
+        # Location — read-only. Moving stock is a transfer, not an edit;
+        # TransferDialog is the one place that does it, and it does partial
+        # moves properly. See docs/adr/0001.
         loc_label = QLabel(tr("location.title"))
         is_multi = getattr(self._original_item, "is_multi_location", False)
-        if is_multi:
-            self.location_combo = None
-            form_layout.addRow(loc_label, QLabel(tr("location.multiple")))
-        else:
-            self.location_combo = QComboBox()
-            apply_combo_box_style(self.location_combo)
-            for loc in LocationRepository.get_all():
-                self.location_combo.addItem(loc.name, userData=loc.id)
-            form_layout.addRow(loc_label, self.location_combo)
+        location_text = (
+            tr("location.multiple")
+            if is_multi
+            else (self._original_item.location_name or "-")
+        )
+        form_layout.addRow(loc_label, QLabel(location_text))
 
         layout.addLayout(form_layout)
 
@@ -327,8 +346,6 @@ class EditItemDialog(QDialog):
     def _setup_validators(self):
         """Set up input validators for form fields."""
         self.type_edit.setValidator(ItemTypeValidator(self))
-        if self.serial_edit:
-            self.serial_edit.setValidator(SerialNumberValidator(self))
         # Detect serialization conflicts on type/subtype rename — debounced
         self.type_edit.textChanged.connect(self._restart_type_debounce)
         self.subtype_edit.textChanged.connect(self._restart_type_debounce)
@@ -383,19 +400,7 @@ class EditItemDialog(QDialog):
         else:
             self.quantity_input.setText(str(self._original_item.quantity))
 
-        if self.serial_edit:
-            self.serial_edit.setText(self._original_item.serial_number or "")
-
         self.item_details_edit.setPlainText(self._original_item.details or "")
-
-        if (
-            self.location_combo is not None
-            and self._original_item.location_id is not None
-        ):
-            for i in range(self.location_combo.count()):
-                if self.location_combo.itemData(i) == self._original_item.location_id:
-                    self.location_combo.setCurrentIndex(i)
-                    break
 
     def _on_save_clicked(self):
         """Validate and accept the dialog."""
@@ -411,7 +416,6 @@ class EditItemDialog(QDialog):
         item_type = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
         quantity_text = self.quantity_input.text().strip()
-        serial_number = self.serial_edit.text().strip() if self.serial_edit else ""
         item_details = self.item_details_edit.toPlainText().strip()
         edit_reason = self.reason_edit.toPlainText().strip()
 
@@ -445,14 +449,6 @@ class EditItemDialog(QDialog):
                 except ValueError:
                     errors.append(tr("message.quantity_invalid"))
                     logger.warning(f"Invalid quantity value: {quantity_text}")
-
-        # Validate serial number length if provided
-        if serial_number:
-            valid, error = validate_length(
-                serial_number, tr("field.serial_number"), max_length=255
-            )
-            if not valid:
-                errors.append(error)
 
         # Validate item details length if provided
         if item_details:
@@ -508,13 +504,8 @@ class EditItemDialog(QDialog):
             f"Edit form validation passed - saving item with quantity {quantity}"
         )
 
-        if self.location_combo is not None:
-            location_id = self.location_combo.currentData()
-            loc_map = {loc.id: loc.name for loc in LocationRepository.get_all()}
-            location_name = loc_map.get(location_id, "")
-        else:
-            location_id = self._original_item.location_id
-            location_name = self._original_item.location_name
+        location_id = self._original_item.location_id
+        location_name = self._original_item.location_name
 
         self._result_item = InventoryItem(
             id=self._original_item.id,
@@ -523,7 +514,7 @@ class EditItemDialog(QDialog):
             item_sub_type=sub_type,
             is_serialized=self._original_item.is_serialized,
             quantity=quantity,
-            serial_number=serial_number or None,
+            serial_number=self._original_item.serial_number,
             location_id=location_id,
             location_name=location_name,
             condition=self._original_item.condition,

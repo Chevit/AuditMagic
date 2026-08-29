@@ -353,8 +353,9 @@ class ItemTypeRepository:
         sub_type: str = None,
         is_serialized: bool = None,
         details: str = None,
+        edit_reason: str = "",
     ) -> Optional[ItemType]:
-        """Update an item type.
+        """Update an item type, renaming it for every Item that belongs to it.
 
         Args:
             type_id: Type ID
@@ -362,14 +363,37 @@ class ItemTypeRepository:
             sub_type: New sub-type (optional)
             is_serialized: New serialized status (optional)
             details: New details (optional)
+            edit_reason: When given, records an EDIT transaction against the type.
 
         Returns:
             Updated ItemType or None if not found.
+
+        Raises:
+            ValueError: If the new name/sub_type is taken by another type, or if
+                        is_serialized would change while items exist.
         """
         with session_scope() as session:
             item_type = session.query(ItemType).filter(ItemType.id == type_id).first()
             if not item_type:
                 return None
+
+            target_name = name if name is not None else item_type.name
+            target_sub = sub_type if sub_type is not None else item_type.sub_type
+            if (target_name, target_sub) != (item_type.name, item_type.sub_type):
+                taken = (
+                    session.query(ItemType)
+                    .filter(
+                        ItemType.name == target_name,
+                        ItemType.sub_type == (target_sub or ""),
+                        ItemType.id != type_id,
+                    )
+                    .first()
+                )
+                if taken:
+                    raise ValueError(
+                        f"A type named '{target_name}"
+                        f"{(' - ' + target_sub) if target_sub else ''}' already exists"
+                    )
 
             if name is not None:
                 item_type.name = name
@@ -387,6 +411,19 @@ class ItemTypeRepository:
                 item_type.is_serialized = is_serialized
             if details is not None:
                 item_type.details = details
+
+            if edit_reason:
+                # Type-level change: no stock moved, but the audit trail records why.
+                session.add(
+                    Transaction(
+                        item_type_id=type_id,
+                        transaction_type=TransactionType.EDIT,
+                        quantity_change=0,
+                        quantity_before=0,
+                        quantity_after=0,
+                        notes=edit_reason,
+                    )
+                )
 
             session.flush()
             session.refresh(item_type)
@@ -766,84 +803,56 @@ class ItemRepository:
             return _detach(item)
 
     @staticmethod
-    def edit_item(
-        item_id: int,
-        item_type_id: int,
-        quantity: int,
-        serial_number: str,
-        location_id: int,
-        condition: str,
-        edit_reason: str,
-    ) -> Optional[Item]:
-        """Edit an item's properties and quantity, recording all changes as transactions.
+    def set_quantity(item_id: int, quantity: int, edit_reason: str) -> Optional[Item]:
+        """Set a non-serialized row's quantity exactly, recording an EDIT transaction.
 
-        Note: To change type-related fields (name, sub_type, details), first get or create
-        the appropriate ItemType and pass its ID here.
+        The only Item field the edit path changes. Type fields belong to the
+        ItemType (see ItemTypeRepository.update) and moving stock between
+        locations is a transfer — see docs/adr/0001.
 
         Args:
             item_id: The item's ID.
-            item_type_id: New ItemType ID (can change the type).
-            quantity: New quantity.
-            serial_number: New serial number (or empty string for none).
-            location_id: New Location FK.
-            condition: New condition.
-            edit_reason: Reason for the edit (required, stored in transaction notes).
+            quantity: The new quantity (must be positive).
+            edit_reason: Reason for the edit, stored on the transaction.
 
         Returns:
-            The updated Item instance or None if not found.
+            The updated Item, or None if not found.
+
+        Raises:
+            ValueError: If quantity is not positive, or the row is serialized.
         """
+        if quantity <= 0:
+            raise ValueError("Quantity must be positive")
+
         with session_scope() as session:
             item = session.query(Item).filter(Item.id == item_id).first()
             if not item:
                 logger.warning(f"Repository: Item not found for edit: id={item_id}")
                 return None
-
-            # Guard the one-row-per-(ItemType, Location) invariant for
-            # non-serialized stock — see docs/adr/0001. Raising rather than
-            # merging keeps the edit-path design deferred.
-            if not serial_number:
-                collision = (
-                    session.query(Item)
-                    .filter(
-                        Item.item_type_id == item_type_id,
-                        Item.location_id == location_id,
-                        Item.serial_number.is_(None),
-                        Item.id != item_id,
-                    )
-                    .first()
+            if item.serial_number is not None:
+                raise ValueError(
+                    f"Item id={item_id} is serialized; its quantity is always 1"
                 )
-                if collision:
-                    raise ValueError(
-                        "Stock of this type already exists at that location "
-                        f"(item id={collision.id}); transfer or merge it instead"
-                    )
 
             quantity_before = item.quantity
-
-            # Apply field changes
-            item.item_type_id = item_type_id
             item.quantity = quantity
-            item.serial_number = serial_number or None
-            item.location_id = location_id
-            item.condition = condition or ""
 
-            # Record a single EDIT transaction capturing all changes
-            quantity_diff = quantity - quantity_before
-            edit_transaction = Transaction(
-                item_type_id=item_type_id,
-                transaction_type=TransactionType.EDIT,
-                quantity_change=abs(quantity_diff),
-                quantity_before=quantity_before,
-                quantity_after=quantity,
-                notes=edit_reason,
-                location_id=location_id,
+            session.add(
+                Transaction(
+                    item_type_id=item.item_type_id,
+                    transaction_type=TransactionType.EDIT,
+                    quantity_change=abs(quantity - quantity_before),
+                    quantity_before=quantity_before,
+                    quantity_after=quantity,
+                    notes=edit_reason,
+                    location_id=item.location_id,
+                )
             )
-            session.add(edit_transaction)
-
             session.flush()
             session.refresh(item)
             logger.debug(
-                f"Repository: Item edited: id={item_id}, reason='{edit_reason}'"
+                f"Repository: Item quantity set: id={item_id}, "
+                f"{quantity_before} -> {quantity}"
             )
             return _detach(item)
 

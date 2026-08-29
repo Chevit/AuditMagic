@@ -239,6 +239,32 @@ def remove(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
     return _level(ref)
 
 
+def set_quantity(ref: StockRef, quantity: Quantity, notes: str = "") -> StockLevel:
+    """Set the countable stock at a ref to an exact quantity, recording an EDIT.
+
+    The edit path's one stock operation: add and remove express a movement,
+    this expresses a correction.
+
+    Raises:
+        MovementMismatch: If the ItemType is serialized.
+        NoStockAtLocation: If the ref holds nothing.
+    """
+    item_type = _item_type(ref)
+    if item_type.is_serialized:
+        raise MovementMismatch(
+            f"'{item_type.name}' is serialized; its quantity is the serial count"
+        )
+    rows = [row for row in _rows(ref) if row.serial_number is None]
+    if not rows:
+        raise NoStockAtLocation(
+            f"No countable stock of '{item_type.name}' "
+            f"at location id={ref.location_id}"
+        )
+    ItemRepository.set_quantity(rows[0].id, quantity.count, notes)
+    logger.info(f"Stock quantity set at {ref}: {quantity.count}")
+    return _level(ref)
+
+
 def delete(ref: StockRef, notes: str = "") -> int:
     """Remove all stock at a ref.
 

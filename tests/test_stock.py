@@ -248,41 +248,49 @@ def test_stock_errors_are_value_errors():
         assert issubclass(error, ValueError)
 
 
-# ─── The invariant guard on edit_item ─────────────────────────────────────────
+# ─── set_quantity ─────────────────────────────────────────────────────────────
 
 
-def test_edit_item_refuses_a_colliding_location_change():
+def test_set_quantity_corrects_the_count():
+    ref = _ref(_type(), _loc())
+    stock.add(ref, Quantity(5))
+    assert stock.set_quantity(ref, Quantity(9)).quantity == 9
+
+
+def test_set_quantity_records_an_edit_transaction():
     item_type = _type()
-    loc_a, loc_b = _loc("A"), _loc("B")
-    moving = ItemRepository.create(
-        item_type_id=item_type.id, quantity=2, location_id=loc_a.id
-    )
-    ItemRepository.create(item_type_id=item_type.id, quantity=3, location_id=loc_b.id)
-    with pytest.raises(ValueError):
-        ItemRepository.edit_item(
-            item_id=moving.id,
-            item_type_id=item_type.id,
-            quantity=2,
-            serial_number="",
-            location_id=loc_b.id,
-            condition="",
-            edit_reason="move",
-        )
+    ref = _ref(item_type, _loc())
+    stock.add(ref, Quantity(5))
+    stock.set_quantity(ref, Quantity(2), "recount")
+    edits = [
+        tx
+        for tx in TransactionRepository.get_recent(50)
+        if tx.item_type_id == item_type.id
+        and tx.transaction_type == TransactionType.EDIT
+    ]
+    assert len(edits) == 1
+    assert (edits[0].quantity_before, edits[0].quantity_after) == (5, 2)
+    assert edits[0].notes == "recount"
 
 
-def test_edit_item_allows_a_non_colliding_location_change():
+def test_set_quantity_only_touches_the_named_location():
     item_type = _type()
-    loc_a, loc_b = _loc("A"), _loc("B")
-    moving = ItemRepository.create(
-        item_type_id=item_type.id, quantity=2, location_id=loc_a.id
-    )
-    updated = ItemRepository.edit_item(
-        item_id=moving.id,
-        item_type_id=item_type.id,
-        quantity=2,
-        serial_number="",
-        location_id=loc_b.id,
-        condition="",
-        edit_reason="move",
-    )
-    assert updated.location_id == loc_b.id
+    ref_a = _ref(item_type, _loc("A"))
+    ref_b = _ref(item_type, _loc("B"))
+    stock.add(ref_a, Quantity(5))
+    stock.add(ref_b, Quantity(3))
+    stock.set_quantity(ref_a, Quantity(1))
+    assert stock._level(ref_b).quantity == 3
+
+
+def test_set_quantity_on_empty_ref_raises():
+    ref = _ref(_type(), _loc())
+    with pytest.raises(NoStockAtLocation):
+        stock.set_quantity(ref, Quantity(3))
+
+
+def test_set_quantity_on_serialized_type_raises():
+    ref = _ref(_type("Laptop", serialized=True), _loc())
+    stock.add(ref, Serials(["SN-1"]))
+    with pytest.raises(MovementMismatch):
+        stock.set_quantity(ref, Quantity(4))

@@ -472,86 +472,69 @@ class MainWindow(QMainWindow):
             self.all_transactions_btn.clicked.connect(self._on_show_all_transactions)
 
     def _on_edit_item(self, row: int, item):
-        """Handle edit request for an inventory item."""
-        from core.repositories import ItemRepository
+        """Handle edit request for an inventory item.
 
-        is_grouped = isinstance(item, GroupedInventoryItem)
-
+        An edit is three separate changes: the type's fields, which belong to
+        the ItemType and so apply to every item of it; the quantity, which
+        belongs to the stock the user is looking at; and any serial numbers
+        removed. Moving stock is a transfer — see docs/adr/0001.
+        """
         dialog = EditItemDialog(item, self)
-        if dialog.exec():
-            edited_item = dialog.get_item()
-            edit_notes = dialog.get_edit_notes()
-            deleted_serials = dialog.get_deleted_serial_numbers()
+        if not dialog.exec():
+            return
 
-            # Determine the item ID to edit (before any deletions)
-            item_id = None
-            existing_serial = None
-            if is_grouped:
-                if item.is_serialized:
-                    # Pick the first remaining serial (deterministic via sorted list)
-                    remaining_serials = [
-                        sn for sn in item.serial_numbers if sn not in deleted_serials
-                    ]
-                    if remaining_serials:
-                        db_item = ItemRepository.search_by_serial(remaining_serials[0])
-                        if db_item:
-                            item_id = db_item.id
-                            existing_serial = db_item.serial_number
-                else:
-                    item_id = item.item_ids[0] if item.item_ids else None
-            else:
-                item_id = item.id
+        edited = dialog.get_item()
+        reason = dialog.get_edit_notes()
+        deleted_serials = dialog.get_deleted_serial_numbers()
+        if edited is None and not deleted_serials:
+            return
 
-            # Edit the item first (validates at DB level before we delete anything)
-            edit_succeeded = False
-            if edited_item and item_id is not None:
-                serial_to_use = (
-                    existing_serial
-                    if existing_serial
-                    else (edited_item.serial_number or "")
+        try:
+            if edited is not None:
+                InventoryService.rename_item_type(
+                    type_id=item.item_type_id,
+                    name=edited.item_type_name,
+                    sub_type=edited.item_sub_type,
+                    details=edited.details or "",
+                    edit_reason=reason,
                 )
-
-                try:
-                    updated_item = InventoryService.edit_item(
-                        item_id=item_id,
-                        item_type_name=edited_item.item_type_name,
-                        sub_type=edited_item.item_sub_type,
-                        quantity=edited_item.quantity,
-                        is_serialized=edited_item.is_serialized,
-                        serial_number=serial_to_use,
-                        details=edited_item.details or "",
-                        location_id=edited_item.location_id,
-                        condition=edited_item.condition or "",
-                        edit_reason=edit_notes,
+                if not item.is_serialized and edited.quantity != item.quantity:
+                    location_id = self._default_location_id(item)
+                    if location_id is None:
+                        raise ValueError(
+                            "Choose a location before changing the quantity"
+                        )
+                    stock.set_quantity(
+                        StockRef(item.item_type_id, location_id),
+                        Quantity(edited.quantity),
+                        reason,
                     )
-                    if updated_item:
-                        edit_succeeded = True
-                except Exception as e:
-                    logger.error(f"Failed to edit item: {e}")
-                    QMessageBox.warning(
-                        self,
-                        tr("error.generic.title"),
-                        f"{tr('error.generic.message')}\n{e}",
-                    )
-                    return
 
-            # Only delete serial numbers after edit succeeds
             if deleted_serials:
-                try:
-                    deleted_count = InventoryService.delete_items_by_serial_numbers(
-                        deleted_serials, edit_notes
+                held = self._stock_by_location(item.item_type_id)
+                location_of = {
+                    serial: loc_id
+                    for loc_id, (_n, _q, serials) in held.items()
+                    for serial in serials
+                }
+                by_location: dict = {}
+                for serial in deleted_serials:
+                    if serial in location_of:
+                        by_location.setdefault(location_of[serial], []).append(serial)
+                for loc_id, serials in by_location.items():
+                    stock.remove(
+                        StockRef(item.item_type_id, loc_id), Serials(serials), reason
                     )
-                    logger.info(f"Deleted {deleted_count} items with serial numbers")
-                except Exception as e:
-                    logger.error(f"Failed to delete serial numbers: {e}")
-                    QMessageBox.warning(
-                        self,
-                        tr("error.generic.title"),
-                        f"{tr('error.generic.message')}\n{e}",
-                    )
+        except ValueError as e:
+            logger.error(f"Failed to edit item: {e}")
+            QMessageBox.warning(
+                self,
+                tr("error.generic.title"),
+                f"{tr('error.generic.message')}\n{e}",
+            )
+            return
 
-            if edit_succeeded or deleted_serials:
-                self._refresh_item_list()
+        self._refresh_item_list()
 
     def _on_show_details(self, row: int, item):
         """Handle show details request for an inventory item."""

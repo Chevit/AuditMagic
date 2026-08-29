@@ -354,61 +354,40 @@ class InventoryService:
         return InventoryItem.from_db_models(db_item, item_type)
 
     @staticmethod
-    def edit_item(
-        item_id: int,
-        item_type_name: str,
+    def rename_item_type(
+        type_id: int,
+        name: str,
         sub_type: str = "",
-        quantity: int = 1,
-        is_serialized: bool = False,
-        serial_number: str = "",
         details: str = "",
-        location_id: int = None,
-        condition: str = "",
         edit_reason: str = "",
-    ) -> Optional[InventoryItem]:
-        """Edit an item's properties with full transaction logging.
+    ) -> bool:
+        """Rename an ItemType and update its details.
+
+        Type fields belong to the type, so the change applies to every Item of
+        it — the edit dialog edits a type, not one of its rows.
 
         Args:
-            item_id: The item's ID.
-            item_type_name: Type name.
-            sub_type: Sub-type name.
-            quantity: New quantity.
-            is_serialized: Whether type is serialized.
-            serial_number: New serial number.
-            details: Type details/description.
-            location_id: FK to Location.
-            condition: Item condition.
-            edit_reason: Reason for the edit (required).
+            type_id: The ItemType ID.
+            name: New type name.
+            sub_type: New sub-type.
+            details: New description.
+            edit_reason: Reason for the edit (recorded as an EDIT transaction).
 
         Returns:
-            The updated InventoryItem or None if not found.
-        """
-        logger.info(f"Editing item: id={item_id}, reason='{edit_reason}'")
-        try:
-            # Get or create the item type
-            item_type = ItemTypeRepository.get_or_create(
-                name=item_type_name,
-                sub_type=sub_type,
-                is_serialized=is_serialized,
-            )
+            True if the type was found and updated.
 
-            db_item = ItemRepository.edit_item(
-                item_id=item_id,
-                item_type_id=item_type.id,
-                quantity=quantity,
-                serial_number=serial_number,
-                location_id=location_id,
-                condition=condition,
-                edit_reason=edit_reason,
-            )
-            if db_item:
-                logger.info(f"Item edited successfully: id={item_id}")
-                return InventoryItem.from_db_models(db_item, item_type)
-            logger.warning(f"Item not found for edit: id={item_id}")
-            return None
-        except Exception as e:
-            logger.error(f"Failed to edit item: {str(e)}", exc_info=True)
-            raise
+        Raises:
+            ValueError: If the new name/sub_type is already taken.
+        """
+        logger.info(f"Renaming item type id={type_id} to '{name}'")
+        updated = ItemTypeRepository.update(
+            type_id=type_id,
+            name=name,
+            sub_type=sub_type,
+            details=details,
+            edit_reason=edit_reason,
+        )
+        return updated is not None
 
     @staticmethod
     def delete_item_type(type_id: int) -> bool:

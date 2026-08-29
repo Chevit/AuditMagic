@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from core.models import Transaction, TransactionType
-from core.repositories import ItemRepository, ItemTypeRepository, LocationRepository
+from core.repositories import (
+    ItemRepository,
+    ItemTypeRepository,
+    LocationRepository,
+    TransactionRepository,
+)
 from core.services import (
     InventoryService,
     SearchService,
@@ -164,21 +169,47 @@ def test_get_autocomplete_subtypes():
 # ─── InventoryService: mutations ──────────────────────────────────────────────
 
 
-def test_edit_item():
-    loc = _loc()
-    item = _non_ser("OldType", loc_id=loc.id, qty=5)
-    updated = InventoryService.edit_item(
-        item_id=item.id,
-        item_type_name="NewType",
-        sub_type="",
-        quantity=8,
-        is_serialized=False,
-        location_id=loc.id,
-        edit_reason="test edit",
+def test_rename_item_type_applies_to_every_item():
+    loc_a = _loc("A")
+    loc_b = _loc("B")
+    _non_ser("OldType", loc_id=loc_a.id, qty=5)
+    _non_ser("OldType", loc_id=loc_b.id, qty=2)
+    type_id = InventoryService.get_item_type_by_name_subtype("OldType").id
+
+    assert InventoryService.rename_item_type(
+        type_id=type_id, name="NewType", edit_reason="renamed"
     )
-    assert updated is not None
-    assert updated.item_type_name == "NewType"
-    assert updated.quantity == 8
+
+    names = {g.item_type_name for g in InventoryService.get_all_items_grouped()}
+    assert names == {"NewType"}
+
+
+def test_rename_item_type_records_the_reason():
+    loc = _loc()
+    _non_ser("OldType", loc_id=loc.id)
+    type_id = InventoryService.get_item_type_by_name_subtype("OldType").id
+    InventoryService.rename_item_type(
+        type_id=type_id, name="NewType", edit_reason="typo in the name"
+    )
+    edits = [
+        t
+        for t in TransactionRepository.get_recent(50)
+        if t.transaction_type == TransactionType.EDIT
+    ]
+    assert [t.notes for t in edits] == ["typo in the name"]
+
+
+def test_rename_item_type_onto_an_existing_type_raises():
+    loc = _loc()
+    _non_ser("Desk", loc_id=loc.id)
+    _non_ser("Chair", loc_id=loc.id)
+    chair_id = InventoryService.get_item_type_by_name_subtype("Chair").id
+    with pytest.raises(ValueError):
+        InventoryService.rename_item_type(type_id=chair_id, name="Desk")
+
+
+def test_rename_item_type_missing_returns_false():
+    assert InventoryService.rename_item_type(type_id=9999, name="Nope") is False
 
 
 def test_delete_item_type_returns_true():
