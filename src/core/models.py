@@ -2,13 +2,32 @@
 
 import enum
 from datetime import datetime, timezone
+from typing import List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+)
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy import (
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-Base = declarative_base()
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Base(DeclarativeBase):
+    """Declarative base for every model."""
 
 
 class TransactionType(enum.Enum):
@@ -25,18 +44,18 @@ class Location(Base):
 
     __tablename__ = "locations"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False, unique=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, default=_utcnow, onupdate=_utcnow
     )
 
-    items = relationship("Item", back_populates="location_ref")
+    items: Mapped[List["Item"]] = relationship("Item", back_populates="location_ref")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Location(id={self.id}, name='{self.name}')>"
 
 
@@ -49,20 +68,20 @@ class ItemType(Base):
 
     __tablename__ = "item_types"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False, index=True)
-    sub_type = Column(String(255), nullable=True, index=True)
-    is_serialized = Column(Boolean, default=False, nullable=False)
-    details = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    sub_type: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    is_serialized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, default=_utcnow, onupdate=_utcnow
     )
 
     # Relationships
-    items = relationship(
+    items: Mapped[List["Item"]] = relationship(
         "Item", back_populates="item_type", cascade="all, delete-orphan"
     )
 
@@ -71,8 +90,11 @@ class ItemType(Base):
         UniqueConstraint("name", "sub_type", name="uq_item_type_name_subtype"),
     )
 
-    def __repr__(self):
-        return f"<ItemType(id={self.id}, name='{self.name}', sub_type='{self.sub_type}', serialized={self.is_serialized})>"
+    def __repr__(self) -> str:
+        return (
+            f"<ItemType(id={self.id}, name='{self.name}', "
+            f"sub_type='{self.sub_type}', serialized={self.is_serialized})>"
+        )
 
     @property
     def total_quantity(self) -> int:
@@ -85,7 +107,7 @@ class ItemType(Base):
         return sum(item.quantity for item in self.items)
 
     @property
-    def serial_numbers(self) -> list:
+    def serial_numbers(self) -> List[str]:
         """Get all serial numbers for this type (if serialized).
 
         Note: Requires the `items` relationship to be loaded (i.e., valid only
@@ -107,47 +129,51 @@ class ItemType(Base):
 class Item(Base):
     """Represents actual inventory items/units.
 
-    This is an instance of an ItemType (e.g., one specific laptop with serial number ABC123).
-    For non-serialized items, one row can represent multiple units (quantity > 1).
-    For serialized items, one row = one unit (quantity must = 1).
+    This is an instance of an ItemType (e.g., one specific laptop with serial
+    number ABC123). For non-serialized items, one row can represent multiple
+    units (quantity > 1). For serialized items, one row = one unit (quantity
+    must = 1).
     """
 
     __tablename__ = "items"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    item_type_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    item_type_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("item_types.id"), nullable=False, index=True
     )
-    quantity = Column(Integer, nullable=False, default=1)
-    serial_number = Column(String(255), nullable=True, unique=True, index=True)
-    location_id = Column(
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    serial_number: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
+    )
+    # nullable: legacy rows pre-locations; wizard assigns them on startup
+    location_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("locations.id"), nullable=True, index=True
-    )  # nullable: legacy rows pre-locations; wizard assigns them on startup
-    condition = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    condition: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, default=_utcnow, onupdate=_utcnow
     )
 
     # Relationships
-    item_type = relationship("ItemType", back_populates="items")
-    location_ref = relationship(
+    item_type: Mapped["ItemType"] = relationship("ItemType", back_populates="items")
+    location_ref: Mapped[Optional["Location"]] = relationship(
         "Location", foreign_keys=[location_id], back_populates="items"
     )
 
     @property
     def location(self) -> str:
         """Backward-compat property. Always returns '' on detached objects
-        (location_ref is not populated by the repository layer). Use location_id instead.
+        (location_ref is not populated by the repository layer). Use
+        location_id instead.
         """
         return ""
 
     # Constraints: Either bulk (no SN, qty > 0) OR serialized (has SN, qty = 1)
     __table_args__ = (
         CheckConstraint(
-            "(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)",
+            "(serial_number IS NULL AND quantity > 0) OR "
+            "(serial_number IS NOT NULL AND quantity = 1)",
             name="check_serial_or_quantity",
         ),
         # Non-serialized stock: one row per (ItemType, Location). Makes the
@@ -162,8 +188,11 @@ class Item(Base):
         ),
     )
 
-    def __repr__(self):
-        return f"<Item(id={self.id}, type_id={self.item_type_id}, qty={self.quantity}, sn={self.serial_number})>"
+    def __repr__(self) -> str:
+        return (
+            f"<Item(id={self.id}, type_id={self.item_type_id}, "
+            f"qty={self.quantity}, sn={self.serial_number})>"
+        )
 
     @property
     def display_name(self) -> str:
@@ -180,33 +209,51 @@ class Transaction(Base):
 
     __tablename__ = "transactions"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    item_type_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    item_type_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("item_types.id"), nullable=False, index=True
     )
-    transaction_type = Column(SQLEnum(TransactionType), nullable=False)
-    quantity_change = Column(Integer, nullable=False)
-    quantity_before = Column(Integer, nullable=False)
-    quantity_after = Column(Integer, nullable=False)
-    notes = Column(Text, nullable=True)
-    serial_number = Column(String(255), nullable=True)
-    # Location where this transaction occurred (set on ALL types for historical accuracy)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    transaction_type: Mapped[TransactionType] = mapped_column(
+        SQLEnum(TransactionType), nullable=False
+    )
+    quantity_change: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity_after: Mapped[int] = mapped_column(Integer, nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    serial_number: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Location where this transaction occurred (set on ALL types for
+    # historical accuracy)
+    location_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=True
+    )
     # Transfer-specific: source and destination (set only on TRANSFER type)
-    from_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-    to_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    from_location_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=True
+    )
+    to_location_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=True
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, default=_utcnow, index=True
     )
 
     # Relationships
-    item_type = relationship("ItemType")
-    location = relationship("Location", foreign_keys=[location_id])
-    from_location = relationship("Location", foreign_keys=[from_location_id])
-    to_location = relationship("Location", foreign_keys=[to_location_id])
+    item_type: Mapped["ItemType"] = relationship("ItemType")
+    location: Mapped[Optional["Location"]] = relationship(
+        "Location", foreign_keys=[location_id]
+    )
+    from_location: Mapped[Optional["Location"]] = relationship(
+        "Location", foreign_keys=[from_location_id]
+    )
+    to_location: Mapped[Optional["Location"]] = relationship(
+        "Location", foreign_keys=[to_location_id]
+    )
 
-    def __repr__(self):
-        return f"<Transaction(id={self.id}, type_id={self.item_type_id}, type={self.transaction_type.value}, change={self.quantity_change})>"
+    def __repr__(self) -> str:
+        return (
+            f"<Transaction(id={self.id}, type_id={self.item_type_id}, "
+            f"type={self.transaction_type.value}, change={self.quantity_change})>"
+        )
 
 
 class SearchHistory(Base):
@@ -214,12 +261,14 @@ class SearchHistory(Base):
 
     __tablename__ = "search_history"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    search_query = Column(String(255), nullable=False)
-    search_field = Column(
-        String(50), nullable=True
-    )  # 'item_type', 'sub_type', 'details', or None for all
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    search_query: Mapped[str] = mapped_column(String(255), nullable=False)
+    # 'item_type', 'sub_type', 'details', or None for all
+    search_field: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=_utcnow)
 
-    def __repr__(self):
-        return f"<SearchHistory(id={self.id}, query='{self.search_query}', field='{self.search_field}')>"
+    def __repr__(self) -> str:
+        return (
+            f"<SearchHistory(id={self.id}, query='{self.search_query}', "
+            f"field='{self.search_field}')>"
+        )
