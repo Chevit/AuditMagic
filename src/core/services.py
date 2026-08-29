@@ -47,7 +47,8 @@ class InventoryService:
             The created InventoryItem.
         """
         logger.info(
-            f"Creating new item: type='{item_type_name}', sub_type='{item_sub_type}', qty={quantity}"
+            f"Creating new item: type='{item_type_name}', sub_type='{item_sub_type}', "
+            f"qty={quantity}"
         )
         try:
             with unit_of_work():
@@ -266,7 +267,8 @@ class InventoryService:
 
     @staticmethod
     def get_type_items_at_location(item_type_id: int, location_id: int) -> tuple:
-        """Return (total_quantity, sorted_serial_numbers, item_ids) for a type at a location.
+        """Return (total_quantity, sorted_serial_numbers, item_ids) for a type at a
+        location.
 
         Used by TransferDialog to populate serial checkboxes / qty spinner.
         """
@@ -527,7 +529,8 @@ class SearchService:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details',
+            'serial_number', or None for all).
             save_to_history: Whether to save this search to history.
             location_id: Filter results to this location. None = all locations.
 
@@ -562,7 +565,8 @@ class SearchService:
 
         Args:
             prefix: The prefix to search for.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details',
+            'serial_number', or None for all).
 
         Returns:
             List of unique suggestion strings.

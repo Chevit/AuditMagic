@@ -338,7 +338,7 @@ self._result_item = InventoryService.create_item(
 )
 ```
 
-Wait — `create_item()` doesn't accept `transaction_notes` yet. You need to thread it through the service, OR call `create_or_merge_item()` instead which already accepts `transaction_notes`. 
+Wait — `create_item()` doesn't accept `transaction_notes` yet. You need to thread it through the service, OR call `create_or_merge_item()` instead which already accepts `transaction_notes`.
 
 **Preferred approach**: Update `InventoryService.create_item()` to accept an optional `transaction_notes: str = ""` and pass it to `ItemRepository.create()`:
 

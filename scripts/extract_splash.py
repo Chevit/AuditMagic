@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Extract the largest frame from icon.ico and save as splash.png."""
 from pathlib import Path
+
 from PIL import Image
 
 root = Path(__file__).parent.parent

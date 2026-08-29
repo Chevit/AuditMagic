@@ -23,7 +23,8 @@ from ui.validators import PositiveIntValidator
 
 
 class TransferDialog(QDialog):
-    """Dialog for transferring items (or specific serial numbers) to another location."""
+    """Dialog for transferring items (or specific serial numbers) to another "
+    "location."""
 
     def __init__(self, item, current_location_id: Optional[int], parent=None):
         super().__init__(parent)

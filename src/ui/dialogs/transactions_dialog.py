@@ -107,7 +107,8 @@ class TransactionsDialog(QDialog):
         layout.addWidget(filter_group)
 
         # Transactions table
-        # Columns: Date, Type, [Serial], Change, Before, After, Notes, From Location, To Location
+        # Columns: Date, Type, [Serial], Change, Before, After, Notes, From Location, To
+        # Location
         col_count = 9 if self._item_is_serialized else 8
         self.table = QTableWidget()
         self.table.setColumnCount(col_count)

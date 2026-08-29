@@ -1,15 +1,6 @@
-"""Tests for TransactionService.get_for_export."""
+"""Tests for TransactionService.get_for_export — uses conftest's fixtures."""
 
-import os
-import sys
-
-import pytest
-
-os.environ.setdefault("AUDITMAGIC_DB", ":memory:")
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository)
+from core.repositories import ItemTypeRepository, LocationRepository
 from core.services import InventoryService, TransactionService
 
 
@@ -106,7 +97,7 @@ def test_get_for_export_all_locations_when_none():
 def test_get_for_export_filtered_by_type_ids():
     loc = _make_location()
     t1 = _make_type("Laptop")
-    t2 = _make_type("Mouse")
+    _make_type("Mouse")
     InventoryService.create_item(
         item_type_name="Laptop",
         item_sub_type="",
@@ -126,7 +117,8 @@ def test_get_for_export_filtered_by_type_ids():
 
 
 def test_get_for_export_transfer_not_duplicated():
-    """TRANSFER creates two rows; only the row whose location_id matches should be returned."""
+    """TRANSFER creates two rows; only the row whose location_id matches should be "
+    "returned."""
     loc_a = _make_location("TransferA")
     loc_b = _make_location("TransferB")
     # Create a non-serialized item at loc_a
@@ -150,10 +142,10 @@ def test_get_for_export_transfer_not_duplicated():
     assert len(result_a) >= 1, "expected at least one row for loc_a"
     assert len(result_b) >= 1, "expected at least one row for loc_b"
     # Every row returned for loc_a must have location_id == loc_a.id
-    assert all(t["location_id"] == loc_a.id for t in result_a), (
-        "get_for_export returned a row whose location_id != loc_a.id"
-    )
+    assert all(
+        t["location_id"] == loc_a.id for t in result_a
+    ), "get_for_export returned a row whose location_id != loc_a.id"
     # Every row returned for loc_b must have location_id == loc_b.id
-    assert all(t["location_id"] == loc_b.id for t in result_b), (
-        "get_for_export returned a row whose location_id != loc_b.id"
-    )
+    assert all(
+        t["location_id"] == loc_b.id for t in result_b
+    ), "get_for_export returned a row whose location_id != loc_b.id"

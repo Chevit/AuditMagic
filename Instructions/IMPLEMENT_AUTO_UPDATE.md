@@ -102,10 +102,10 @@ import sys
 
 def get_base_path() -> str:
     """Get the base path for resource files.
-    
+
     When running from PyInstaller bundle, files are in sys._MEIPASS.
     When running from source, files are in the script directory.
-    
+
     Returns:
         Base path string.
     """
@@ -116,10 +116,10 @@ def get_base_path() -> str:
 
 def resource_path(relative_path: str) -> str:
     """Get absolute path to a bundled resource file.
-    
+
     Args:
         relative_path: Path relative to project root (e.g., 'ui/MainWindow.ui').
-    
+
     Returns:
         Absolute path that works in both dev and bundled mode.
     """

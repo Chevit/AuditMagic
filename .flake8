@@ -1,3 +1,15 @@
 [flake8]
 max-line-length = 88
-extend-ignore = W503, W504
+
+# black owns formatting and disagrees with pycodestyle on these three
+extend-ignore = E203, W503, W504
+
+# Migrations are historical records — excluded from the formatters too, so
+# holding them to the current style would be a standard they never met
+exclude = .venv,.git,__pycache__,build,dist,alembic/versions
+
+per-file-ignores =
+    # Translated UI strings — reflowing them risks changing the text itself
+    src/ui/translations.py:E501
+    # env.py must put src on the path before importing from the app
+    alembic/env.py:E402

@@ -8,9 +8,8 @@ Run once from the repo root:
 import tempfile
 from pathlib import Path
 
-from PIL import Image
-
 import icnsutil
+from PIL import Image
 
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / "icon.ico"

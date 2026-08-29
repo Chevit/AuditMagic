@@ -322,7 +322,8 @@ class MainWindow(QMainWindow):
         Three cases:
           - Key absent  → first launch or legacy config → default to first location.
           - Key = null  → user explicitly chose "All Locations" → keep None.
-          - Key = int   → validate the location still exists; fall back to first if gone.
+          - Key = int   → validate the location still exists; fall back to first if
+          gone.
         """
         _MISSING = object()
         saved = config.get("ui.last_location_id", _MISSING)
@@ -407,7 +408,8 @@ class MainWindow(QMainWindow):
         self.search_widget.search_cleared.connect(self._on_search_cleared)
 
     def _reapply_all_styles(self):
-        """Re-apply theme-aware styles to all main-window widgets after a theme switch."""
+        """Re-apply theme-aware styles to all main-window widgets after a theme "
+        "switch."""
         # Search widget
         apply_combo_box_style(self.search_widget.field_combo)
         apply_input_style(self.search_widget.search_input)
@@ -444,7 +446,8 @@ class MainWindow(QMainWindow):
                         layout.insertWidget(i, self.location_selector)
                         layout.insertWidget(i + 1, self.search_widget)
                         layout.insertWidget(i + 2, self.inventory_list)
-                        # Reapply styles after adding to layout (in case qt-material overrides)
+                        # Reapply styles after adding to layout (in case qt-material
+                        # overrides)
                         self._reapply_all_styles()
                         break
             else:
@@ -454,7 +457,8 @@ class MainWindow(QMainWindow):
                 self.listView.deleteLater()
 
     def _load_data_from_db(self):
-        """Load inventory items from database (grouped by type, filtered by location)."""
+        """Load inventory items from database (grouped by type, filtered by "
+        "location)."""
         items = InventoryService.get_all_items_grouped(
             location_id=self._current_location_id
         )
@@ -797,8 +801,9 @@ class MainWindow(QMainWindow):
             parent=self,
         )
         loc_id = self._current_location_id
+        by_type_and_dates = TransactionService.get_transactions_by_type_and_date_range
         dialog.set_transactions_callback(
-            lambda type_id, start, end: TransactionService.get_transactions_by_type_and_date_range(
+            lambda type_id, start, end: by_type_and_dates(
                 type_id, start, end, location_id=loc_id
             )
         )
@@ -851,7 +856,8 @@ class MainWindow(QMainWindow):
             self.inventory_model.add_item(item)
 
     def _refresh_item_list(self):
-        """Refresh the item list from database (grouped by type, filtered by location)."""
+        """Refresh the item list from database (grouped by type, filtered by "
+        "location)."""
         self.inventory_model.clear()
         items = InventoryService.get_all_items_grouped(
             location_id=self._current_location_id

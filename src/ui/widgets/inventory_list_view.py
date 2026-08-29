@@ -118,7 +118,8 @@ class InventoryListView(QListView):
         super().mouseDoubleClickEvent(event)
 
     def _get_item_from_index(self, index: QModelIndex):
-        """Get the item (InventoryItem or GroupedInventoryItem) from the model at the given index."""
+        """Get the item (InventoryItem or GroupedInventoryItem) from the model at the "
+        "given index."""
         from ui.models.inventory_model import InventoryItemRole
 
         return index.data(InventoryItemRole.ItemData)

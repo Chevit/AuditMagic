@@ -143,7 +143,8 @@ class EditItemDialog(QDialog):
         self._serialized_value_label.setToolTip(tr("tooltip.serialized_locked"))
         form_layout.addRow(is_serial_label, self._serialized_value_label)
 
-        # Conflict status label — shown in red when type rename conflicts with is_serialized
+        # Conflict status label — shown in red when type rename conflicts with
+        # is_serialized
         self.edit_type_status_label = QLabel("")
         self.edit_type_status_label.setStyleSheet("color: #c62828; font-style: italic;")
         form_layout.addRow("", self.edit_type_status_label)
@@ -357,7 +358,8 @@ class EditItemDialog(QDialog):
         self._type_debounce_timer.start(300)
 
     def _on_edit_type_changed(self):
-        """Warn if the new type name/subtype maps to a type with different is_serialized."""
+        """Warn if the new type name/subtype maps to a type with different "
+        "is_serialized."""
         type_name = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
 

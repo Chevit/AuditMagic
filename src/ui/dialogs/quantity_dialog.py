@@ -281,7 +281,8 @@ class QuantityDialog(QDialog):
         # All validation passed
         quantity = int(text)
         logger.info(
-            f"Quantity validation passed: {'add' if self._is_add else 'remove'} {quantity}"
+            f"Quantity validation passed: {'add' if self._is_add else 'remove'} "
+            f"{quantity}"
         )
         self._result_quantity = quantity
         self._result_notes = notes

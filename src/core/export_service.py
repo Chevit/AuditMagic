@@ -51,12 +51,15 @@ class ExportService:
 
         Args:
             items: List of InventoryItem or GroupedInventoryItem for the Items sheet.
-                Location context is embedded per-row via each item's location_name field.
+                Location context is embedded per-row via each item's location_name
+                field.
             location_name: Accepted for API compatibility; not embedded in the workbook
                 (sheets are named "Майно"/"Транзакції", and each row carries
                 its own location value).
-            transactions: Optional list of transaction dicts (from _transaction_to_dict).
-            loc_map: Optional {location_id: name} for resolving location IDs in transactions.
+            transactions: Optional list of transaction dicts (from
+            _transaction_to_dict).
+            loc_map: Optional {location_id: name} for resolving location IDs in
+            transactions.
             type_map: Optional {item_type_id: display_name} for transaction sheet.
 
         Returns:

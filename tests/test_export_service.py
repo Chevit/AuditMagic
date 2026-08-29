@@ -1,13 +1,6 @@
-"""Tests for ExportService."""
-
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+"""Tests for ExportService — uses the path setup in conftest."""
 
 from datetime import datetime
-
-import pytest
 
 from core.export_service import ExportService
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem

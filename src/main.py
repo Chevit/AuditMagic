@@ -75,7 +75,8 @@ def main():
         theme_manager.apply_theme(theme)
         logger.info(f"Theme applied: {theme.value.name}")
         logger.info(
-            f"Theme dimensions: input_height={theme.value.dimensions.input_height}, button_height={theme.value.dimensions.button_height}"
+            f"Theme dimensions: input_height={theme.value.dimensions.input_height}, "
+            f"button_height={theme.value.dimensions.button_height}"
         )
 
         _splash("Applying migrations...")

@@ -49,7 +49,8 @@ def setup_logger(name: str = "AuditMagic") -> logging.Logger:
         file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - "
+            "%(message)s"
         )
         file_handler.setFormatter(file_formatter)
 

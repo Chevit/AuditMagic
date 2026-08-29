@@ -4,18 +4,25 @@ repos:
     hooks:
       - id: black
         language_version: python3.14
+        # Migrations are historical records; reformatting them churns blame
+        exclude: ^alembic/versions/
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
         args: ["--profile", "black"]
+        exclude: ^alembic/versions/
 
   - repo: https://github.com/PyCQA/flake8
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: ["--max-line-length=88", "--extend-ignore=E203"]
+        # Settings live in .flake8 — inline args here would override the file
+        # rather than add to it, so the hook and a local run would diverge.
+        # The exclude must be repeated here: flake8's own exclude does not
+        # filter paths handed to it explicitly, which is how pre-commit calls it.
+        exclude: ^alembic/versions/
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.20.0

@@ -60,8 +60,6 @@ def test_old_path_is_in_temp():
 
 def test_download_file_success(tmp_path):
     """_download_file writes content and calls progress callback."""
-    from unittest.mock import MagicMock, patch
-
     from auto_updater import _download_file
 
     fake_data = b"x" * 1000
@@ -86,8 +84,6 @@ def test_download_file_success(tmp_path):
 
 def test_download_file_cleans_up_on_failure(tmp_path):
     """_download_file removes partial file on network error."""
-    from unittest.mock import patch
-
     from auto_updater import _download_file
 
     dest = tmp_path / "AuditMagic_update.exe"
@@ -109,9 +105,6 @@ def test_apply_update_raises_outside_frozen():
 
 def test_cleanup_old_update_deletes_file(tmp_path):
     """cleanup_old_update deletes _OLD_PATH if it exists."""
-    from pathlib import Path
-    from unittest.mock import patch
-
     from auto_updater import cleanup_old_update
 
     fake_old = tmp_path / "AuditMagic.old.exe"
@@ -125,9 +118,6 @@ def test_cleanup_old_update_deletes_file(tmp_path):
 
 def test_cleanup_old_update_silent_when_missing(tmp_path):
     """cleanup_old_update does not raise if _OLD_PATH does not exist."""
-    from pathlib import Path
-    from unittest.mock import patch
-
     from auto_updater import cleanup_old_update
 
     missing = tmp_path / "AuditMagic.old.exe"

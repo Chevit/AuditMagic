@@ -142,8 +142,10 @@ class GroupedInventoryItem:
         Args:
             item_type: ItemType model instance
             items: List of Item model instances belonging to this type
-            location_map: Optional dict {location_id: location_name} for name resolution.
-                          When provided, sets location_id, location_name, is_multi_location.
+            location_map: Optional dict {location_id: location_name} for name
+            resolution.
+                          When provided, sets location_id, location_name,
+                          is_multi_location.
 
         Returns:
             GroupedInventoryItem instance.

@@ -120,8 +120,6 @@ def test_get_all_items_grouped_location_filter():
 
 
 def test_get_serialized_items_grouped_only_serialized():
-    from ui.models.inventory_item import GroupedInventoryItem
-
     loc = _loc()
     _ser("Laptop", sn="SN-001", loc_id=loc.id)
     _non_ser("Desk", loc_id=loc.id)
@@ -294,7 +292,7 @@ def test_get_locations_for_type():
     ItemRepository.create_serialized(t.id, "GL-001", loc_a.id)
     ItemRepository.create_serialized(t.id, "GL-002", loc_b.id)
     locs = InventoryService.get_locations_for_type(t.id)
-    loc_ids = {l.id for l in locs}
+    loc_ids = {loc.id for loc in locs}
     assert loc_a.id in loc_ids
     assert loc_b.id in loc_ids
 

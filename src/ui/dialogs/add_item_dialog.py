@@ -437,7 +437,8 @@ class AddItemDialog(QDialog):
         # All validation passed - create item via service
         quantity = int(quantity_text)
         logger.info(
-            f"Form validation passed - creating item: type='{item_type}', qty={quantity}, serialized={is_serialized}"
+            f"Form validation passed - creating item: type='{item_type}', "
+            f"qty={quantity}, serialized={is_serialized}"
         )
 
         location_id = self.location_combo.currentData()

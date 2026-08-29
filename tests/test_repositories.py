@@ -66,7 +66,7 @@ def test_location_get_by_name_missing_returns_none():
 def test_location_get_all_ordered():
     _loc("Zebra")
     _loc("Alpha")
-    names = [l.name for l in LocationRepository.get_all()]
+    names = [loc.name for loc in LocationRepository.get_all()]
     assert names == sorted(names)
 
 

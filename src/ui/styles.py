@@ -168,7 +168,8 @@ class Dimensions:
 
 # StyleSheet Templates
 class Styles:
-    """Pre-defined StyleSheet strings for common widgets with theme-aware colors and dimensions."""
+    """Pre-defined StyleSheet strings for common widgets with theme-aware colors and "
+    "dimensions."""
 
     @staticmethod
     def get_line_edit_style() -> str:

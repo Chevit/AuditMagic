@@ -135,7 +135,8 @@ class ItemDetailsDialog(QDialog):
 
         layout.addLayout(form_layout)
 
-        # Serial numbers section for serialized types (grouped items have the list directly)
+        # Serial numbers section for serialized types (grouped items have the list
+        # directly)
         if self._is_grouped and self._item.serial_numbers:
             self._add_serial_numbers_section_from_list(
                 layout, self._item.serial_numbers

@@ -135,7 +135,8 @@ class LocationRepository:
                 .update({"location_id": location_id}, synchronize_session=False)
             )
             logger.debug(
-                f"Repository: Assigned {count} unassigned items to location_id={location_id}"
+                f"Repository: Assigned {count} unassigned items to "
+                f"location_id={location_id}"
             )
             return count
 
@@ -215,7 +216,8 @@ class ItemTypeRepository:
                     raise ValueError(
                         f"ItemType '{name}' (sub_type='{sub_type}') already exists as "
                         f"{existing_state}. Cannot use it as {requested_state}. "
-                        f"Choose a different name/sub-type or keep the same serialization mode."
+                        f"Choose a different name/sub-type or keep the same "
+                        f"serialization mode."
                     )
                 return _detach(item_type)
 
@@ -445,7 +447,8 @@ class ItemTypeRepository:
             )
             session.flush()
 
-            # 2+3. Delete items + item type (ORM cascade="all, delete-orphan" handles items)
+            # 2+3. Delete items + item type (ORM cascade="all, delete-orphan" handles
+            # items)
             session.delete(item_type)
             logger.debug(
                 f"Repository: ItemType deleted: id={type_id}, name='{item_type.name}'"
@@ -538,7 +541,8 @@ class ItemTypeRepository:
             location_id: Filter items to this location. None = all locations.
 
         Returns:
-            List of tuples (ItemType, List[Item]) for each serialized type that has items.
+            List of tuples (ItemType, List[Item]) for each serialized type that has
+            items.
         """
         with session_scope() as session:
             return ItemTypeRepository._get_types_with_items(
@@ -672,7 +676,8 @@ class ItemRepository:
                 raise ValueError(f"ItemType with id {item_type_id} not found")
             if not item_type.is_serialized:
                 raise ValueError(
-                    f"ItemType '{item_type.name}' is not serialized; use create() instead"
+                    f"ItemType '{item_type.name}' is not serialized; use create() "
+                    f"instead"
                 )
 
             # Count existing items so the transaction reflects the group quantity
@@ -709,7 +714,8 @@ class ItemRepository:
             session.flush()
             session.refresh(item)
             logger.debug(
-                f"Repository: Serialized item created: id={item.id}, sn={serial_number!r}, "
+                f"Repository: Serialized item created: id={item.id}, "
+                f"sn={serial_number!r}, "
                 f"group qty {existing_count} -> {existing_count + 1}"
             )
             return _detach(item)
@@ -751,7 +757,8 @@ class ItemRepository:
         location_id: Optional[int] = None,
         condition: Optional[str] = None,
     ) -> Optional[Item]:
-        """Update an item's properties (not quantity - use add_quantity/remove_quantity).
+        """Update an item's properties (not quantity - use
+        add_quantity/remove_quantity).
 
         Note: To change type-related fields (name, sub_type, details), use edit_item
         which handles ItemType changes properly.
@@ -932,7 +939,8 @@ class ItemRepository:
             session.flush()
             session.refresh(item)
             logger.debug(
-                f"Repository: Added {quantity} to item id={item_id}: {quantity_before} -> {item.quantity}"
+                f"Repository: Added {quantity} to item id={item_id}: {quantity_before} "
+                f"-> {item.quantity}"
             )
             return _detach(item)
 
@@ -966,7 +974,8 @@ class ItemRepository:
 
             if item.quantity < quantity:
                 logger.warning(
-                    f"Repository: Cannot remove {quantity} from item id={item_id}, only {item.quantity} available"
+                    f"Repository: Cannot remove {quantity} from item id={item_id}, "
+                    f"only {item.quantity} available"
                 )
                 raise ValueError(
                     f"Cannot remove {quantity} items. Only {item.quantity} available."
@@ -982,7 +991,8 @@ class ItemRepository:
             session.flush()
             session.refresh(item)
             logger.debug(
-                f"Repository: Removed {quantity} from item id={item_id}: {quantity_before} -> {item.quantity}"
+                f"Repository: Removed {quantity} from item id={item_id}: "
+                f"{quantity_before} -> {item.quantity}"
             )
             return _detach(item)
 
@@ -1022,7 +1032,8 @@ class ItemRepository:
 
         Args:
             query: Search query string.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details',
+            'serial_number', or None for all).
             limit: Maximum number of results to return.
             location_id: Filter to this location. None = all locations.
 
@@ -1086,7 +1097,8 @@ class ItemRepository:
 
         Args:
             prefix: The prefix to search for.
-            field: Field to search in ('item_type', 'sub_type', 'details', 'serial_number', or None for all).
+            field: Field to search in ('item_type', 'sub_type', 'details',
+            'serial_number', or None for all).
             limit: Maximum number of suggestions.
 
         Returns:
@@ -1294,7 +1306,8 @@ class ItemRepository:
             missing = set(serial_numbers) - found_serials
             if missing:
                 raise ValueError(
-                    f"Serial(s) not found at location {from_location_id}: {sorted(missing)}"
+                    f"Serial(s) not found at location {from_location_id}: "
+                    f"{sorted(missing)}"
                 )
             ledger = Ledger(session)
             for item in items:

@@ -30,7 +30,8 @@ class InventoryItemRole:
 class InventoryModel(QAbstractListModel):
     """Model for managing inventory items in a QListView.
 
-    Supports both InventoryItem (individual items) and GroupedInventoryItem (aggregated by type).
+    Supports both InventoryItem (individual items) and GroupedInventoryItem (aggregated
+    by type).
     """
 
     def __init__(self, parent=None):
@@ -114,7 +115,8 @@ class InventoryModel(QAbstractListModel):
         if isinstance(item, InventoryItem):
             if role == InventoryItemRole.Quantity:
                 # InventoryItem is a dataclass, we need to create a new instance
-                # For now, just signal that the data changed (actual edits go through dialogs)
+                # For now, just signal that the data changed (actual edits go through
+                # dialogs)
                 pass
             self.dataChanged.emit(index, index)
             return True

@@ -1,6 +1,6 @@
 # Search Result Location Name Resolution
 
-**Date:** 2026-05-21  
+**Date:** 2026-05-21
 **Status:** Approved
 
 ## Problem

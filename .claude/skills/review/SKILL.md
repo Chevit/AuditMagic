@@ -19,4 +19,3 @@ When reviewing code:
 2\. Look for performance issues
 
 3\. Verify error handling
-

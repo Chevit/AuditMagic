@@ -24,7 +24,7 @@
       "Bash(venv/bin/python -c ' *)",
       "Bash(git -C /Users/che/Documents/Projects/AuditMagic diff 89e94c8..19d6fc7)",
       "Bash(python3 -m pytest*)"
-      
+
     ]
   }
 }

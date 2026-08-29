@@ -1,4 +1,5 @@
-"""Location selector widget — dropdown + manage button shown above the inventory list."""
+"""Location selector widget — dropdown + manage button shown above the inventory "
+"list."""
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
