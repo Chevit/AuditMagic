@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+from core.db import unit_of_work
 from core.logger import logger
 from core.models import Location
 from core.repositories import (
@@ -49,22 +50,24 @@ class InventoryService:
             f"Creating new item: type='{item_type_name}', sub_type='{item_sub_type}', qty={quantity}"
         )
         try:
-            # Get or create item type
-            item_type = ItemTypeRepository.get_or_create(
-                name=item_type_name,
-                sub_type=item_sub_type,
-                is_serialized=is_serialized,
-            )
+            with unit_of_work():
+                # Get or create item type
+                item_type = ItemTypeRepository.get_or_create(
+                    name=item_type_name,
+                    sub_type=item_sub_type,
+                    is_serialized=is_serialized,
+                )
 
-            # Create item instance
-            db_item = ItemRepository.create(
-                item_type_id=item_type.id,
-                quantity=quantity,
-                serial_number=serial_number,
-                location_id=location_id,
-                condition=condition,
-                transaction_notes=transaction_notes or None,
-            )
+                # Create item instance — same transaction, so a failure here
+                # does not leave the ItemType behind
+                db_item = ItemRepository.create(
+                    item_type_id=item_type.id,
+                    quantity=quantity,
+                    serial_number=serial_number,
+                    location_id=location_id,
+                    condition=condition,
+                    transaction_notes=transaction_notes or None,
+                )
 
             logger.info(f"Item created successfully: id={db_item.id}")
             return InventoryItem.from_db_models(db_item, item_type)
@@ -113,19 +116,20 @@ class InventoryService:
             f"Creating serialized item: type='{item_type_name}', sn='{serial_number}'"
         )
         try:
-            item_type = ItemTypeRepository.get_or_create(
-                name=item_type_name,
-                sub_type=item_sub_type,
-                is_serialized=True,
-                details=details,
-            )
-            db_item = ItemRepository.create_serialized(
-                item_type_id=item_type.id,
-                serial_number=serial_number,
-                location_id=location_id,
-                condition=condition,
-                notes=notes,
-            )
+            with unit_of_work():
+                item_type = ItemTypeRepository.get_or_create(
+                    name=item_type_name,
+                    sub_type=item_sub_type,
+                    is_serialized=True,
+                    details=details,
+                )
+                db_item = ItemRepository.create_serialized(
+                    item_type_id=item_type.id,
+                    serial_number=serial_number,
+                    location_id=location_id,
+                    condition=condition,
+                    notes=notes,
+                )
             logger.info(f"Serialized item created: id={db_item.id}")
             return InventoryItem.from_db_models(db_item, item_type)
         except Exception as e:
@@ -461,25 +465,27 @@ class InventoryService:
             from_loc=from_loc.name
         )
 
-        items = ItemRepository.get_items_at_location(from_location_id)
-        for item in items:
-            if item.serial_number:
-                ItemRepository.transfer_serialized_items(
-                    serial_numbers=[item.serial_number],
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                    notes=notes,
-                )
-            else:
-                ItemRepository.transfer_item(
-                    item_id=item.id,
-                    quantity=item.quantity,
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                    notes=notes,
-                )
+        # Every move and the deletion land together, or not at all
+        with unit_of_work():
+            items = ItemRepository.get_items_at_location(from_location_id)
+            for item in items:
+                if item.serial_number:
+                    ItemRepository.transfer_serialized_items(
+                        serial_numbers=[item.serial_number],
+                        from_location_id=from_location_id,
+                        to_location_id=to_location_id,
+                        notes=notes,
+                    )
+                else:
+                    ItemRepository.transfer_item(
+                        item_id=item.id,
+                        quantity=item.quantity,
+                        from_location_id=from_location_id,
+                        to_location_id=to_location_id,
+                        notes=notes,
+                    )
 
-        LocationRepository.delete(from_location_id)
+            LocationRepository.delete(from_location_id)
         logger.info(
             f"Service: Moved all items from location '{from_loc.name}' to "
             f"'{to_loc.name}' and deleted source location"

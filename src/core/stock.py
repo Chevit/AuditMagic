@@ -11,6 +11,7 @@ enforced by the uq_item_type_location_bulk partial unique index.
 from dataclasses import dataclass
 from typing import List, Tuple, Union
 
+from core.db import unit_of_work
 from core.logger import logger
 from core.repositories import ItemRepository, ItemTypeRepository
 
@@ -133,7 +134,9 @@ def add(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
     """Add stock at a ref.
 
     Non-serialized stock merges into the existing row, upholding the one-row
-    invariant; serialized stock adds one row per serial number.
+    invariant; serialized stock adds one row per serial number. The whole
+    movement is one transaction, so a duplicate serial part-way through a batch
+    leaves none of it behind.
 
     Raises:
         MovementMismatch: If the movement kind doesn't match the ItemType.
@@ -147,29 +150,31 @@ def add(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
             raise MovementMismatch(
                 f"'{item_type.name}' is serialized; add serial numbers, not a quantity"
             )
-        rows = [row for row in _rows(ref) if row.serial_number is None]
-        if rows:
-            ItemRepository.add_quantity(rows[0].id, movement.count, notes)
-        else:
-            ItemRepository.create(
-                item_type_id=ref.item_type_id,
-                quantity=movement.count,
-                serial_number=None,
-                location_id=ref.location_id,
-                transaction_notes=notes or None,
-            )
+        with unit_of_work():
+            rows = [row for row in _rows(ref) if row.serial_number is None]
+            if rows:
+                ItemRepository.add_quantity(rows[0].id, movement.count, notes)
+            else:
+                ItemRepository.create(
+                    item_type_id=ref.item_type_id,
+                    quantity=movement.count,
+                    serial_number=None,
+                    location_id=ref.location_id,
+                    transaction_notes=notes or None,
+                )
     elif isinstance(movement, Serials):
         if not item_type.is_serialized:
             raise MovementMismatch(
                 f"'{item_type.name}' is not serialized; add a quantity, not serials"
             )
-        for serial_number in movement.numbers:
-            ItemRepository.create_serialized(
-                item_type_id=ref.item_type_id,
-                serial_number=serial_number,
-                location_id=ref.location_id,
-                notes=notes,
-            )
+        with unit_of_work():
+            for serial_number in movement.numbers:
+                ItemRepository.create_serialized(
+                    item_type_id=ref.item_type_id,
+                    serial_number=serial_number,
+                    location_id=ref.location_id,
+                    notes=notes,
+                )
     else:
         raise TypeError(f"Unsupported movement: {movement!r}")
 
@@ -180,6 +185,9 @@ def add(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
 def remove(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
     """Remove stock from a ref, recording the removal in the audit trail.
 
+    The availability check and the write share one transaction, so what was
+    checked is what is removed.
+
     Raises:
         NoStockAtLocation: If the ref holds nothing.
         InsufficientStock: If the removal exceeds what the ref holds.
@@ -187,53 +195,56 @@ def remove(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
         MovementMismatch: If the movement kind doesn't match the ItemType.
     """
     item_type = _item_type(ref)
-    rows = _rows(ref)
-    if not rows:
-        raise NoStockAtLocation(
-            f"No stock of '{item_type.name}' at location id={ref.location_id}"
-        )
 
-    if isinstance(movement, Quantity):
-        if item_type.is_serialized:
-            raise MovementMismatch(
-                f"'{item_type.name}' is serialized; "
-                "remove serial numbers, not a quantity"
-            )
-        countable = [row for row in rows if row.serial_number is None]
-        available = sum(row.quantity for row in countable)
-        if not countable:
+    with unit_of_work():
+        rows = _rows(ref)
+        if not rows:
             raise NoStockAtLocation(
-                f"No countable stock of '{item_type.name}' "
-                f"at location id={ref.location_id}"
+                f"No stock of '{item_type.name}' at location id={ref.location_id}"
             )
-        if movement.count > available:
-            raise InsufficientStock(
-                f"Cannot remove {movement.count} of '{item_type.name}': "
-                f"only {available} available"
-            )
-        # A row cannot be left at zero — check_serial_or_quantity requires
-        # quantity > 0 — so a row emptied by this removal is deleted, with its
-        # own REMOVE transaction.
-        row = countable[0]
-        if movement.count == row.quantity:
-            ItemRepository.delete_non_serialized(row.id, notes)
+
+        if isinstance(movement, Quantity):
+            if item_type.is_serialized:
+                raise MovementMismatch(
+                    f"'{item_type.name}' is serialized; "
+                    "remove serial numbers, not a quantity"
+                )
+            countable = [row for row in rows if row.serial_number is None]
+            available = sum(row.quantity for row in countable)
+            if not countable:
+                raise NoStockAtLocation(
+                    f"No countable stock of '{item_type.name}' "
+                    f"at location id={ref.location_id}"
+                )
+            if movement.count > available:
+                raise InsufficientStock(
+                    f"Cannot remove {movement.count} of '{item_type.name}': "
+                    f"only {available} available"
+                )
+            # A row cannot be left at zero — check_serial_or_quantity requires
+            # quantity > 0 — so a row emptied by this removal is deleted, with
+            # its own REMOVE transaction.
+            row = countable[0]
+            if movement.count == row.quantity:
+                ItemRepository.delete_non_serialized(row.id, notes)
+            else:
+                ItemRepository.remove_quantity(row.id, movement.count, notes)
+        elif isinstance(movement, Serials):
+            if not item_type.is_serialized:
+                raise MovementMismatch(
+                    f"'{item_type.name}' is not serialized; "
+                    "remove a quantity, not serials"
+                )
+            here = {row.serial_number for row in rows if row.serial_number}
+            missing = [sn for sn in movement.numbers if sn not in here]
+            if missing:
+                raise UnknownSerials(
+                    f"Serial numbers not at location id={ref.location_id}: "
+                    f"{', '.join(missing)}"
+                )
+            ItemRepository.delete_by_serial_numbers(list(movement.numbers), notes)
         else:
-            ItemRepository.remove_quantity(row.id, movement.count, notes)
-    elif isinstance(movement, Serials):
-        if not item_type.is_serialized:
-            raise MovementMismatch(
-                f"'{item_type.name}' is not serialized; remove a quantity, not serials"
-            )
-        here = {row.serial_number for row in rows if row.serial_number}
-        missing = [sn for sn in movement.numbers if sn not in here]
-        if missing:
-            raise UnknownSerials(
-                f"Serial numbers not at location id={ref.location_id}: "
-                f"{', '.join(missing)}"
-            )
-        ItemRepository.delete_by_serial_numbers(list(movement.numbers), notes)
-    else:
-        raise TypeError(f"Unsupported movement: {movement!r}")
+            raise TypeError(f"Unsupported movement: {movement!r}")
 
     logger.info(f"Stock removed at {ref}: {movement}")
     return _level(ref)
@@ -254,13 +265,14 @@ def set_quantity(ref: StockRef, quantity: Quantity, notes: str = "") -> StockLev
         raise MovementMismatch(
             f"'{item_type.name}' is serialized; its quantity is the serial count"
         )
-    rows = [row for row in _rows(ref) if row.serial_number is None]
-    if not rows:
-        raise NoStockAtLocation(
-            f"No countable stock of '{item_type.name}' "
-            f"at location id={ref.location_id}"
-        )
-    ItemRepository.set_quantity(rows[0].id, quantity.count, notes)
+    with unit_of_work():
+        rows = [row for row in _rows(ref) if row.serial_number is None]
+        if not rows:
+            raise NoStockAtLocation(
+                f"No countable stock of '{item_type.name}' "
+                f"at location id={ref.location_id}"
+            )
+        ItemRepository.set_quantity(rows[0].id, quantity.count, notes)
     logger.info(f"Stock quantity set at {ref}: {quantity.count}")
     return _level(ref)
 
@@ -277,19 +289,20 @@ def delete(ref: StockRef, notes: str = "") -> int:
         NoStockAtLocation: If the ref holds nothing.
     """
     item_type = _item_type(ref)
-    rows = _rows(ref)
-    if not rows:
-        raise NoStockAtLocation(
-            f"No stock of '{item_type.name}' at location id={ref.location_id}"
-        )
+    with unit_of_work():
+        rows = _rows(ref)
+        if not rows:
+            raise NoStockAtLocation(
+                f"No stock of '{item_type.name}' at location id={ref.location_id}"
+            )
 
-    removed = 0
-    serials = [row.serial_number for row in rows if row.serial_number]
-    if serials:
-        removed += ItemRepository.delete_by_serial_numbers(serials, notes)
-    for row in rows:
-        if row.serial_number is None:
-            removed += ItemRepository.delete_non_serialized(row.id, notes)
+        removed = 0
+        serials = [row.serial_number for row in rows if row.serial_number]
+        if serials:
+            removed += ItemRepository.delete_by_serial_numbers(serials, notes)
+        for row in rows:
+            if row.serial_number is None:
+                removed += ItemRepository.delete_non_serialized(row.id, notes)
 
     logger.info(f"Stock deleted at {ref}: {removed} units")
     return removed

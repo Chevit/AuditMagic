@@ -2,7 +2,8 @@
 
 import os
 from contextlib import contextmanager
-from typing import Generator
+from contextvars import ContextVar
+from typing import Generator, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,6 +18,12 @@ DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 # Create engine with SQLite
 engine = None
 SessionLocal = None
+
+# The session of the innermost open unit_of_work, if any. Repository calls made
+# inside one join its transaction instead of opening their own.
+_active_session: ContextVar[Optional[Session]] = ContextVar(
+    "auditmagic_active_session", default=None
+)
 
 
 def init_database(db_url: str = None) -> None:
@@ -74,6 +81,10 @@ def get_session() -> Session:
 def session_scope() -> Generator[Session, None, None]:
     """Provide a transactional scope around a series of operations.
 
+    Inside an open unit_of_work this joins that transaction and commits
+    nothing: the outermost scope owns the commit, so a composed write either
+    lands whole or not at all.
+
     Usage:
         with session_scope() as session:
             session.add(item)
@@ -83,6 +94,11 @@ def session_scope() -> Generator[Session, None, None]:
     Yields:
         A SQLAlchemy Session instance.
     """
+    active = _active_session.get()
+    if active is not None:
+        yield active
+        return
+
     session = get_session()
     try:
         yield session
@@ -93,6 +109,43 @@ def session_scope() -> Generator[Session, None, None]:
         logger.error(f"Database transaction failed: {str(e)}", exc_info=True)
         raise
     finally:
+        session.close()
+
+
+@contextmanager
+def unit_of_work() -> Generator[Session, None, None]:
+    """Run several repository calls inside one transaction.
+
+    Repository methods each open their own session_scope, so a service that
+    composes two of them used to produce two transactions — and a failure
+    between them left the first one committed. Wrapping the service in a unit
+    of work makes the whole operation atomic; nested units join the outer one.
+
+    Usage:
+        with unit_of_work():
+            item_type = ItemTypeRepository.get_or_create(...)
+            ItemRepository.create(item_type_id=item_type.id, ...)
+
+    Yields:
+        The session every nested repository call will use.
+    """
+    active = _active_session.get()
+    if active is not None:
+        yield active
+        return
+
+    session = get_session()
+    token = _active_session.set(session)
+    try:
+        yield session
+        session.commit()
+        logger.debug("Unit of work committed successfully")
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Unit of work failed, rolled back: {str(e)}", exc_info=True)
+        raise
+    finally:
+        _active_session.reset(token)
         session.close()
 
 
