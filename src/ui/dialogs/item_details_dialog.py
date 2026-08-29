@@ -1,8 +1,16 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QDialog, QFormLayout, QFrame, QGroupBox,
-                             QHBoxLayout, QLabel, QListWidget, QPushButton,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import ItemRepository
@@ -205,4 +213,5 @@ class ItemDetailsDialog(QDialog):
     @property
     def item(self) -> InventoryItem:
         """Return the item being displayed."""
-        return self._item
+        item: InventoryItem = self._item
+        return item

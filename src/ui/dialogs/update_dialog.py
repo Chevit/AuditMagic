@@ -2,14 +2,27 @@
 
 import sys
 import webbrowser
+from typing import TYPE_CHECKING, Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
-                             QProgressBar, QPushButton, QTextEdit, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from ui.styles import apply_button_style
 from ui.translations import tr
 from update_checker import UpdateInfo
+
+if TYPE_CHECKING:
+    # Imported lazily at call time to keep requests off the startup path
+    from auto_updater import DownloadWorker
 
 
 class UpdateDialog(QDialog):
@@ -18,7 +31,7 @@ class UpdateDialog(QDialog):
     def __init__(self, update_info: UpdateInfo, parent=None):
         super().__init__(parent)
         self._update_info = update_info
-        self._worker = None
+        self._worker: Optional["DownloadWorker"] = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -105,11 +118,12 @@ class UpdateDialog(QDialog):
         self._progress_bar.setValue(0)
         self._progress_bar.show()
 
-        self._worker = DownloadWorker(self._update_info.download_url, self)
-        self._worker.progress.connect(self._progress_bar.setValue)
-        self._worker.error_occurred.connect(self._on_error)
-        self._worker.finished.connect(self._on_download_finished)
-        self._worker.start()
+        worker = DownloadWorker(self._update_info.download_url, self)
+        self._worker = worker
+        worker.progress.connect(self._progress_bar.setValue)
+        worker.error_occurred.connect(self._on_error)
+        worker.finished.connect(self._on_download_finished)
+        worker.start()
 
     def _on_download_finished(self, success: bool) -> None:
         """Called when download completes."""
@@ -124,7 +138,9 @@ class UpdateDialog(QDialog):
             self._on_error(str(e))
             return
 
-        QApplication.instance().quit()
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _on_error(self, message: str) -> None:
         """Show error and re-enable buttons."""

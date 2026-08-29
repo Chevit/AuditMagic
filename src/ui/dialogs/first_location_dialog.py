@@ -4,9 +4,17 @@ Shown when the app starts with no locations in the database.
 Cannot be dismissed without creating a location.
 """
 
+from typing import Optional
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QLineEdit,
-                             QMessageBox, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QVBoxLayout,
+)
 
 from core.repositories import LocationRepository
 from ui.styles import apply_button_style, apply_input_style
@@ -18,7 +26,7 @@ class FirstLocationDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._location_id: int = None
+        self._location_id: Optional[int] = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -72,6 +80,6 @@ class FirstLocationDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, tr("error.generic.title"), str(e))
 
-    def get_location_id(self) -> int:
-        """Return the ID of the newly created location."""
+    def get_location_id(self) -> Optional[int]:
+        """Return the ID of the new location, or None if the user cancelled."""
         return self._location_id

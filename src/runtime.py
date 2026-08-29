@@ -14,7 +14,8 @@ def get_base_path() -> str:
         Base path string.
     """
     if getattr(sys, "frozen", False):
-        return sys._MEIPASS
+        # _MEIPASS exists only inside a PyInstaller bundle
+        return str(getattr(sys, "_MEIPASS"))
     # runtime.py lives at src/runtime.py; project root is two levels up
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

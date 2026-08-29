@@ -3,11 +3,18 @@
 from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QHBoxLayout,
-                             QLineEdit, QPushButton, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QCompleter,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 
 
@@ -125,7 +132,8 @@ class SearchWidget(QWidget):
 
     def get_current_field(self) -> Optional[str]:
         """Get the current search field."""
-        return self.field_combo.currentData()
+        field = self.field_combo.currentData()
+        return str(field) if field is not None else None
 
     def set_all_locations_visible(self, visible: bool) -> None:
         """Show or hide the 'Search all locations' checkbox.

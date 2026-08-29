@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from PyQt6 import uic
 from PyQt6.QtCore import QTimer
@@ -12,7 +12,7 @@ from core.db import init_database
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService, SearchService, TransactionService
-from core.stock import Quantity, Serials, StockRef
+from core.stock import Movement, Quantity, Serials, StockRef
 from runtime import resource_path
 from ui.dialogs.add_item_dialog import AddItemDialog
 from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._restore_window_state()
 
-    def showEvent(self, event: QShowEvent) -> None:
+    def showEvent(self, event: Optional[QShowEvent]) -> None:
         """On first show, defer the first-location wizard to after the splash closes."""
         super().showEvent(event)
         if not self._shown_once:
@@ -111,8 +111,12 @@ class MainWindow(QMainWindow):
 
     def _setup_file_menu(self) -> None:
         """Set up File menu with export action."""
-        file_menu = self.menuBar().addMenu(tr("export.menu.file"))
+        menu_bar = self.menuBar()
+        assert menu_bar is not None
+        file_menu = menu_bar.addMenu(tr("export.menu.file"))
+        assert file_menu is not None
         export_action = file_menu.addAction(tr("export.action"))
+        assert export_action is not None
         export_action.triggered.connect(self._on_export_excel)
 
     def _on_export_excel(self) -> None:
@@ -222,13 +226,17 @@ class MainWindow(QMainWindow):
 
         # Create menu bar if it doesn't exist
         menu_bar = self.menuBar()
+        assert menu_bar is not None
 
         # Create Theme menu
         theme_menu = menu_bar.addMenu("🎨 " + tr("menu.theme"))
+        assert theme_menu is not None
 
         # Get all available themes
         theme_names = Theme.get_all_names()
-        current_theme = get_theme_manager().get_current_theme()
+        theme_manager = get_theme_manager()
+        assert theme_manager is not None
+        current_theme = theme_manager.get_current_theme()
 
         # Create action group for radio button behavior
         theme_action_group = QActionGroup(self)
@@ -590,7 +598,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            if serial_number:
+            if serial_number and scope_location_id is not None:
                 stock.remove(
                     StockRef(item_type_id, scope_location_id), Serials([serial_number])
                 )
@@ -647,7 +655,7 @@ class MainWindow(QMainWindow):
         """Type name with sub-type, for dialog headers."""
         if item.sub_type:
             return f"{item.item_type} - {item.sub_type}"
-        return item.item_type
+        return str(item.item_type)
 
     def _on_add_quantity(self, row: int, item):
         """Handle add quantity request."""
@@ -660,25 +668,25 @@ class MainWindow(QMainWindow):
                 for _name, _quantity, serials in held.values()
                 for serial in serials
             )
-            dialog = AddSerialNumberDialog(
+            serial_dialog = AddSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
                 existing_serials=existing,
                 current_location_id=self._default_location_id(item),
                 parent=self,
             )
-            if not dialog.exec():
+            if not serial_dialog.exec():
                 return
-            ref = StockRef(item_type_id, dialog.get_location_id())
-            movement = Serials([dialog.get_serial_number()])
-            notes = dialog.get_notes()
+            ref = StockRef(item_type_id, serial_dialog.get_location_id())
+            movement: Movement = Serials([serial_dialog.get_serial_number()])
+            notes = serial_dialog.get_notes()
         else:
             # Stock can be added at any location, including one holding none yet
             options = [
                 (loc.id, loc.name, held.get(loc.id, ("", 0, []))[1])
                 for loc in LocationRepository.get_all()
             ]
-            dialog = QuantityDialog(
+            quantity_dialog = QuantityDialog(
                 self._display_name(item),
                 sum(quantity for _n, quantity, _s in held.values()),
                 is_add=True,
@@ -686,11 +694,14 @@ class MainWindow(QMainWindow):
                 locations=options,
                 current_location_id=self._default_location_id(item),
             )
-            if not dialog.exec():
+            if not quantity_dialog.exec():
                 return
-            ref = StockRef(item_type_id, dialog.get_location_id())
-            movement = Quantity(dialog.get_quantity())
-            notes = dialog.get_notes()
+            target_location_id = quantity_dialog.get_location_id()
+            if target_location_id is None:
+                return
+            ref = StockRef(item_type_id, target_location_id)
+            movement = Quantity(quantity_dialog.get_quantity())
+            notes = quantity_dialog.get_notes()
 
         try:
             stock.add(ref, movement, notes)
@@ -722,20 +733,20 @@ class MainWindow(QMainWindow):
                 for loc_id, (_n, _q, serials) in held.items()
                 for serial in serials
             }
-            dialog = RemoveSerialNumberDialog(
+            serial_dialog = RemoveSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
                 serial_numbers=sorted(location_of),
                 parent=self,
             )
-            if not dialog.exec():
+            if not serial_dialog.exec():
                 return
-            notes = dialog.get_notes()
+            notes = serial_dialog.get_notes()
             # Selected serials may sit at different locations
             by_location: dict = {}
-            for serial in dialog.get_selected_serial_numbers():
+            for serial in serial_dialog.get_selected_serial_numbers():
                 by_location.setdefault(location_of[serial], []).append(serial)
-            movements = [
+            movements: List[Tuple[StockRef, Movement]] = [
                 (StockRef(item_type_id, loc_id), Serials(serials))
                 for loc_id, serials in by_location.items()
             ]
@@ -745,7 +756,7 @@ class MainWindow(QMainWindow):
                 for loc_id, (name, quantity, _s) in held.items()
                 if quantity > 0
             ]
-            dialog = QuantityDialog(
+            quantity_dialog = QuantityDialog(
                 self._display_name(item),
                 sum(quantity for _n, quantity, _s in held.values()),
                 is_add=False,
@@ -753,13 +764,16 @@ class MainWindow(QMainWindow):
                 locations=options,
                 current_location_id=self._default_location_id(item),
             )
-            if not dialog.exec():
+            if not quantity_dialog.exec():
                 return
-            notes = dialog.get_notes()
+            location_id = quantity_dialog.get_location_id()
+            if location_id is None:
+                return
+            notes = quantity_dialog.get_notes()
             movements = [
                 (
-                    StockRef(item_type_id, dialog.get_location_id()),
-                    Quantity(dialog.get_quantity()),
+                    StockRef(item_type_id, location_id),
+                    Quantity(quantity_dialog.get_quantity()),
                 )
             ]
 

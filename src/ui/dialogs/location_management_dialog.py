@@ -1,14 +1,23 @@
 """Location management dialog — create, rename, delete locations."""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QHBoxLayout,
-                             QLabel, QLineEdit, QListWidget, QListWidgetItem,
-                             QMessageBox, QPushButton, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 
 
@@ -140,6 +149,8 @@ class LocationManagementDialog(QDialog):
         if not loc_id:
             return
         current_item = self.list_widget.currentItem()
+        if current_item is None:
+            return
         # Extract current name (before the " — " suffix)
         current_name = current_item.text().split("  —  ")[0].strip()
         dlg = _AddRenameDialog(
@@ -234,10 +245,10 @@ class _MoveAndDeleteDialog(QDialog):
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        btns.button(QDialogButtonBox.StandardButton.Ok).setText(
-            tr("location.move_and_delete")
-        )
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "danger")
+        ok_button = btns.button(QDialogButtonBox.StandardButton.Ok)
+        assert ok_button is not None
+        ok_button.setText(tr("location.move_and_delete"))
+        apply_button_style(ok_button, "danger")
         apply_button_style(
             btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
         )
@@ -246,4 +257,4 @@ class _MoveAndDeleteDialog(QDialog):
         layout.addWidget(btns)
 
     def get_destination_id(self) -> int:
-        return self.dest_combo.currentData()
+        return int(self.dest_combo.currentData())

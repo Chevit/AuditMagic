@@ -493,7 +493,7 @@ class AddItemDialog(QDialog):
                     quantity=quantity,
                     is_serialized=False,
                     location_id=location_id,
-                    transaction_notes=initial_notes or None,
+                    transaction_notes=initial_notes or "",
                 )
             logger.info(f"Item created successfully: id={self._result_item.id}")
             self.accept()

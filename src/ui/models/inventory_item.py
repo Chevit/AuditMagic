@@ -22,7 +22,9 @@ class InventoryItem:
     updated_at: datetime
 
     @classmethod
-    def from_db_models(cls, item, item_type, location_name: str = ""):
+    def from_db_models(
+        cls, item, item_type, location_name: str = ""
+    ) -> "InventoryItem":
         """Create InventoryItem from Item and ItemType models.
 
         Args:
@@ -134,7 +136,7 @@ class GroupedInventoryItem:
         item_type,
         items: list,
         location_map: Optional[Dict[int, str]] = None,
-    ):
+    ) -> "GroupedInventoryItem":
         """Create GroupedInventoryItem from ItemType and list of Items.
 
         Args:

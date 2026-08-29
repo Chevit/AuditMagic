@@ -54,7 +54,7 @@ class Ledger:
         item_type_id: int,
         location_id: Optional[int],
         count: int,
-        serial_number: str = None,
+        serial_number: Optional[str] = None,
         notes: str = "",
     ) -> Transaction:
         """Record stock arriving. Call after the rows exist."""
@@ -75,7 +75,7 @@ class Ledger:
         item_type_id: int,
         location_id: Optional[int],
         count: int,
-        serial_number: str = None,
+        serial_number: Optional[str] = None,
         notes: str = "",
     ) -> Transaction:
         """Record stock leaving. Call after the rows are gone."""
@@ -116,7 +116,7 @@ class Ledger:
         from_location_id: int,
         to_location_id: int,
         count: int,
-        serial_number: str = None,
+        serial_number: Optional[str] = None,
         notes: str = "",
     ) -> tuple:
         """Record stock moving between locations. Call after the move.

@@ -1,6 +1,6 @@
 """Input validators for form fields."""
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from PyQt6.QtCore import QRegularExpression
 from PyQt6.QtGui import QIntValidator, QRegularExpressionValidator, QValidator
@@ -19,7 +19,9 @@ class PositiveIntValidator(QIntValidator):
         """
         super().__init__(minimum, maximum, parent)
 
-    def validate(self, input_str: str, pos: int) -> Tuple[QValidator.State, str, int]:
+    def validate(
+        self, input_str: Optional[str], pos: int
+    ) -> Tuple[QValidator.State, str, int]:
         """Validate input string as a positive integer.
 
         Args:

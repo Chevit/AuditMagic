@@ -6,6 +6,7 @@ from contextvars import ContextVar
 from typing import Generator, Optional
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.logger import APP_DATA_DIR, logger
@@ -15,9 +16,9 @@ from core.models import Base
 DATABASE_PATH = os.path.join(APP_DATA_DIR, "inventory.db")
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
-# Create engine with SQLite
-engine = None
-SessionLocal = None
+# Create engine with SQLite; both are populated by init_database()
+engine: Optional[Engine] = None
+SessionLocal: Optional[sessionmaker] = None
 
 # The session of the innermost open unit_of_work, if any. Repository calls made
 # inside one join its transaction instead of opening their own.
@@ -26,7 +27,7 @@ _active_session: ContextVar[Optional[Session]] = ContextVar(
 )
 
 
-def init_database(db_url: str = None) -> None:
+def init_database(db_url: Optional[str] = None) -> None:
     """Initialize the database engine and create all tables.
 
     Args:
@@ -74,7 +75,9 @@ def get_session() -> Session:
     """
     if SessionLocal is None:
         init_database()
-    return SessionLocal()
+    assert SessionLocal is not None
+    session: Session = SessionLocal()
+    return session
 
 
 @contextmanager

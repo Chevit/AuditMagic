@@ -25,10 +25,10 @@ try:
 
 except ImportError:
 
-    def _splash(text: str) -> None:  # type: ignore[misc]
+    def _splash(text: str) -> None:
         pass
 
-    def _splash_close() -> None:  # type: ignore[misc]
+    def _splash_close() -> None:
         pass
 
 

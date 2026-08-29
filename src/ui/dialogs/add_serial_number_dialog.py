@@ -1,14 +1,24 @@
 """Dialog for adding a new serial number to an existing serialized ItemType."""
 
+from typing import Optional
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QFrame,
-                             QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                             QPushButton, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from core.repositories import LocationRepository
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 from ui.validators import SerialNumberValidator
 
@@ -21,7 +31,7 @@ class AddSerialNumberDialog(QDialog):
         item_type_name: str,
         sub_type: str,
         existing_serials: list[str],
-        current_location_id: int = None,
+        current_location_id: Optional[int] = None,
         parent=None,
     ):
         """Initialize the dialog.
@@ -164,7 +174,7 @@ class AddSerialNumberDialog(QDialog):
 
     def get_location_id(self) -> int:
         """Return the selected location ID."""
-        return self.location_combo.currentData()
+        return int(self.location_combo.currentData())
 
     def get_notes(self) -> str:
         """Return the entered notes."""

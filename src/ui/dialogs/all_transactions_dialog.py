@@ -5,9 +5,20 @@ from typing import Optional
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import (QComboBox, QDateEdit, QDialog, QFrame, QGroupBox,
-                             QHBoxLayout, QHeaderView, QLabel, QPushButton,
-                             QTableWidget, QTableWidgetItem, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDateEdit,
+    QDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import LocationRepository
@@ -138,6 +149,7 @@ class AllTransactionsDialog(QDialog):
         self.table.setAlternatingRowColors(True)
 
         header = self.table.horizontalHeader()
+        assert header is not None
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
@@ -198,7 +210,7 @@ class AllTransactionsDialog(QDialog):
             else:
                 color = QColor(192, 0, 0)
 
-            def cell(text: str, col: int, clr: QColor = None):
+            def cell(text: str, col: int, clr: Optional[QColor] = None):
                 item = QTableWidgetItem(text)
                 if clr:
                     item.setForeground(clr)

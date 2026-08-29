@@ -9,7 +9,7 @@ enforced by the uq_item_type_location_bulk partial unique index.
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple, Union
+from typing import List, Sequence, Tuple, Union
 
 from core.db import unit_of_work
 from core.logger import logger
@@ -66,9 +66,13 @@ class Quantity:
 
 @dataclass(frozen=True)
 class Serials:
-    """A Movement of serialized stock, expressed as serial numbers."""
+    """A Movement of serialized stock, expressed as serial numbers.
 
-    numbers: Tuple[str, ...]
+    Accepts any sequence; stores a tuple, so the movement cannot be mutated
+    after the availability check that validated it.
+    """
+
+    numbers: Sequence[str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "numbers", tuple(self.numbers))
