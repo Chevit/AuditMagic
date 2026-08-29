@@ -35,9 +35,11 @@ src/
   core/
     config.py        # Configuration management (JSON, dot-notation)
     logger.py        # Centralized logging system
-    db.py            # Database init, session management, migrations
+    db.py            # Database init, session management (session_scope, unit_of_work), migrations
     models.py        # SQLAlchemy models (ItemType, Item, Transaction, Location, SearchHistory)
     repositories.py  # Data access layer (ItemTypeRepository, ItemRepository, TransactionRepository, LocationRepository, SearchHistoryRepository)
+    stock.py         # Stock writes addressed by StockRef (add/remove/set_quantity/delete/has_stock)
+    ledger.py        # The audit trail: the one place that builds a Transaction
     services.py      # Business logic (InventoryService, SearchService, TransactionService)
     export_service.py # Excel export logic
   ui/
@@ -109,7 +111,8 @@ python src/main.py
 QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt aborts headless without it
 ```
 - `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
-- Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`
+- Test files: `test_repositories.py`, `test_services.py`, `test_stock.py`, `test_ledger.py`, `test_unit_of_work.py`, `test_stock_migration.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`, `test_quantity_dialog.py`
+- `test_quantity_dialog.py` needs Qt's system libraries (libEGL and friends); it skips itself via `importorskip` where they are absent
 - CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
 
 ## Architecture
@@ -343,19 +346,23 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Modal dialogs for all CRUD operations
 - **Location system**: Items belong to a `Location` (FK). `LocationSelectorWidget` above list filters view. "All Locations" (None) shows everything. Config key `ui.last_location_id` persists selection (sentinel pattern: missing key → first location, null → All Locations, int → validate + fallback).
 - **First-launch wizard**: `FirstLocationDialog` loops until at least one location exists. `_ensure_location_exists()` called before any list load.
+- **Stock writes**: every add/remove/correct/delete goes through `core/stock.py`, addressed by `StockRef(item_type_id, location_id)` with a `Quantity(n)` or `Serials([...])` movement — never by `Item.id`. Errors (`NoStockAtLocation`, `InsufficientStock`, `UnknownSerials`, `MovementMismatch`) subclass `ValueError`. See `docs/adr/0001`.
+- **One bulk row per (ItemType, Location)**: enforced by the `uq_item_type_location_bulk` partial unique index (migration `f6g7h`) and by `stock.add` merging rather than creating a second row.
+- **Atomicity**: a service composing several repository calls wraps them in `db.unit_of_work()`; `session_scope()` joins an open unit instead of committing. Without it each repository call is its own transaction.
+- **Edit vs transfer**: an edit changes type fields (renaming the ItemType, so every item follows) and the quantity at one ref. Moving stock is a transfer — `TransferDialog` is the only way, and the only one that does partial moves.
 - **Transfer**: `InventoryService.transfer_item(item_id, qty, to_location_id, notes)` / `transfer_serialized_items(item_ids, to_location_id, notes)`. Creates TRANSFER transaction with `from_location_id` and `to_location_id`.
 - **All Transactions view**: `AllTransactionsDialog` shows cross-type log filterable by location + date range. 10 columns including From/To Location.
 - **`InventoryItem.location_id / location_name`**: replaces old `location: str` field. Backward-compat `.location` property returns `location_name`.
 - **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
 - **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
 - **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction rows via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item rows via ORM cascade from ItemType, (3) ItemType itself.
-- `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
+- `delete_by_serial_numbers` / `delete_non_serialized`: delete the row via direct SQL (`sql_delete`, bypassing ORM cascade), then record the REMOVE. `Transaction` has no FK to `Item`, so nothing cascades and the ledger sees the resulting state.
 - GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`
 - Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
 - **`is_serialized` immutability**: `ItemTypeRepository.get_or_create` raises `ValueError` on conflict; `update` raises if items exist. UI pre-fills and locks the checkbox when the user types an existing type name in AddItemDialog.
 - `ItemTypeRepository.get_by_name_and_subtype` / `InventoryService.get_item_type_by_name_subtype`: live lookup used by dialogs to detect existing types while user types
 - Serialized badge colors: green `#2e7d32` (serialized) / grey `#757575` (non-serialized) — fixed for accessibility, not theme-dependent
-- Serialized item management: serial number listing, deletion in edit dialog
+- Serialized item management: serial number listing, deletion in edit dialog (the serial itself is read-only — it is the unit's identity)
 - Centralized styling with helper functions
 - Theme switching with instant preview
 - Configuration persistence with dot-notation access
