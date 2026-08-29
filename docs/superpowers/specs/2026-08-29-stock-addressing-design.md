@@ -88,9 +88,9 @@ Duplicates are reachable in existing databases via two paths:
 - `InventoryService.create_or_merge_item` with `location_id=None` falls back to
   `find_by_type_and_serial(type, None)`, merging into a serial-less row at *any* Location.
 
-Until the migration lands, `stock` **tolerates** duplicates: it sums across all rows for a
-ref when checking availability, and writes to the lowest-id row. It does not silently
-repair them.
+Migration `f6g7h` merges these into the lowest-id row — a data repair, not a stock
+movement, so no Transaction is recorded — and then adds the partial unique index that makes
+further duplicates impossible.
 
 ---
 
@@ -168,9 +168,8 @@ to `stock.has_stock`. `delete_item_type` stays; it backs the "All Locations" del
 
 - **The edit path.** `_on_edit_item` conflates editing an ItemType with editing an Item and
   picks an arbitrary row to carry both. Deferred; `edit_item` gets only the collision guard.
-- **The Alembic migration** adding a partial unique index on `(item_type_id, location_id)`
-  where `serial_number IS NULL`, and merging existing duplicates. Follows once the module
-  enforces the invariant.
+- ~~**The Alembic migration**~~ — landed as `f6g7h`, which merges existing duplicates and
+  adds the partial unique index. `stock` no longer needs to tolerate duplicates.
 - **The session seam.** Repositories keep opening their own `session_scope`, so a composed
   write is still several transactions.
 - **Transaction construction**, still hand-built at ten sites in `repositories.py`.

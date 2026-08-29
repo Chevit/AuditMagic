@@ -4,9 +4,8 @@ Every change to Stock is addressed by a :class:`StockRef` — never by an ``Item
 Callers name *what stock* they mean; this module decides which Item rows implement it.
 See ``docs/adr/0001-stock-addressed-by-type-and-location.md``.
 
-Non-serialized Stock holds an invariant: at most one Item row per (ItemType, Location).
-Databases predating this module may contain duplicates, so reads sum across every
-row for a ref and writes start at the lowest-id row.
+Non-serialized Stock holds an invariant: at most one Item row per (ItemType, Location),
+enforced by the uq_item_type_location_bulk partial unique index.
 """
 
 from dataclasses import dataclass
@@ -107,8 +106,7 @@ def _item_type(ref: StockRef):
 def _rows(ref: StockRef) -> List:
     """Every Item row implementing this ref, lowest id first.
 
-    Lowest id is the canonical row: writes land there before spilling into any
-    duplicates left over from before the invariant was enforced.
+    A serialized ref has one row per serial; a non-serialized ref has at most one.
     """
     rows = ItemRepository.get_by_type_and_location(ref.item_type_id, ref.location_id)
     return sorted(rows, key=lambda item: item.id)
@@ -213,19 +211,14 @@ def remove(ref: StockRef, movement: Movement, notes: str = "") -> StockLevel:
                 f"Cannot remove {movement.count} of '{item_type.name}': "
                 f"only {available} available"
             )
-        # Spill across rows, lowest id first — a row cannot be left at zero
-        # (check_serial_or_quantity requires quantity > 0), so a row emptied
-        # by this removal is deleted with its own REMOVE transaction.
-        remaining = movement.count
-        for row in countable:
-            if remaining == 0:
-                break
-            take = min(remaining, row.quantity)
-            if take == row.quantity:
-                ItemRepository.delete_non_serialized(row.id, notes)
-            else:
-                ItemRepository.remove_quantity(row.id, take, notes)
-            remaining -= take
+        # A row cannot be left at zero — check_serial_or_quantity requires
+        # quantity > 0 — so a row emptied by this removal is deleted, with its
+        # own REMOVE transaction.
+        row = countable[0]
+        if movement.count == row.quantity:
+            ItemRepository.delete_non_serialized(row.id, notes)
+        else:
+            ItemRepository.remove_quantity(row.id, movement.count, notes)
     elif isinstance(movement, Serials):
         if not item_type.is_serialized:
             raise MovementMismatch(

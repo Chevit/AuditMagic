@@ -8,8 +8,9 @@ which row a user meant: it picked `item_ids[0]`, the oldest row for that type, w
 one on screen.
 
 For this addressing to be unambiguous, non-serialized Stock holds an invariant: **at most
-one Item row per (ItemType, Location)**. It is enforced on every write in `core/stock.py`,
-and later by a partial unique index.
+one Item row per (ItemType, Location)**. It is enforced on every write in `core/stock.py`
+and structurally by the `uq_item_type_location_bulk` partial unique index (migration
+`f6g7h`), which also merged the duplicates existing databases already held.
 
 ## Considered Options
 

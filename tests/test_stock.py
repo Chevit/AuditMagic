@@ -219,52 +219,6 @@ def test_has_stock():
     assert stock.has_stock(ref) is True
 
 
-# ─── Tolerance of pre-existing duplicate rows ─────────────────────────────────
-
-
-def _with_duplicates(qty_a=4, qty_b=6):
-    """A ref implemented by two rows — reachable in databases predating the
-    invariant, via edit_item location changes."""
-    item_type = _type()
-    location = _loc()
-    ref = _ref(item_type, location)
-    ItemRepository.create(
-        item_type_id=item_type.id, quantity=qty_a, location_id=location.id
-    )
-    ItemRepository.create(
-        item_type_id=item_type.id, quantity=qty_b, location_id=location.id
-    )
-    return ref
-
-
-def test_duplicate_rows_are_summed():
-    ref = _with_duplicates(4, 6)
-    assert len(_rows_at(ref)) == 2
-    assert stock.remove(ref, Quantity(1)).quantity == 9
-
-
-def test_removal_spills_across_duplicate_rows():
-    ref = _with_duplicates(4, 6)
-    level = stock.remove(ref, Quantity(7))
-    assert level.quantity == 3
-    assert len(_rows_at(ref)) == 1
-
-
-def test_removal_exceeding_summed_duplicates_raises():
-    ref = _with_duplicates(4, 6)
-    with pytest.raises(InsufficientStock):
-        stock.remove(ref, Quantity(11))
-
-
-def test_add_writes_to_the_lowest_id_row():
-    ref = _with_duplicates(4, 6)
-    rows_before = sorted(_rows_at(ref), key=lambda r: r.id)
-    stock.add(ref, Quantity(2))
-    rows_after = {r.id: r.quantity for r in _rows_at(ref)}
-    assert rows_after[rows_before[0].id] == 6
-    assert rows_after[rows_before[1].id] == 6
-
-
 # ─── Movement value objects ───────────────────────────────────────────────────
 
 

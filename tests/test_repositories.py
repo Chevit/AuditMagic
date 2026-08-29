@@ -471,8 +471,9 @@ def test_transaction_get_by_type_and_date_range_out_of_range():
 def test_transaction_get_recent_limit():
     loc = _loc()
     t = _type()
+    # One bulk row per (type, location) — build history on the single row
+    item = _item(t.id, loc.id, qty=1)
     for _ in range(5):
-        item = _item(t.id, loc.id, qty=1)
         ItemRepository.add_quantity(item.id, 1)
     txs = TransactionRepository.get_recent(limit=3)
     assert len(txs) <= 3

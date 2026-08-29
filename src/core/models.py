@@ -2,9 +2,10 @@
 
 import enum
 from datetime import datetime, timezone
+
 from sqlalchemy import Boolean, CheckConstraint, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -148,6 +149,16 @@ class Item(Base):
         CheckConstraint(
             "(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)",
             name="check_serial_or_quantity",
+        ),
+        # Non-serialized stock: one row per (ItemType, Location). Makes the
+        # StockRef addressing in core.stock unambiguous — see docs/adr/0001.
+        # Serialized rows are excluded; each serial is its own row.
+        Index(
+            "uq_item_type_location_bulk",
+            "item_type_id",
+            "location_id",
+            unique=True,
+            sqlite_where=text("serial_number IS NULL"),
         ),
     )
 
