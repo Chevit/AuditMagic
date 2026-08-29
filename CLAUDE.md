@@ -21,6 +21,9 @@ requirements.txt     # Core dependencies
 requirements-dev.txt # Dev dependencies (pytest, black, mypy, flake8, isort, pyinstaller)
 .github/workflows/
   build.yml          # GitHub Actions: build & release on version tag push
+  test.yml           # Runs pytest on every push/PR
+  build-windows-hosted.yml  # [TEMP] manual workflow_dispatch build on GitHub-hosted runners
+scripts/             # One-off helpers: generate_icons.py, extract_splash.py, fix_imports.py
 alembic/             # Database migration scripts
   versions/          # Migration files
 src/
@@ -28,6 +31,7 @@ src/
   version.py         # Single source of truth for app version (__version__)
   runtime.py         # PyInstaller resource path helpers (resource_path)
   update_checker.py  # GitHub release update checker (check_for_update, UpdateInfo)
+  auto_updater.py    # Download worker + in-process exe swap (apply_update, cleanup_old_update)
   core/
     config.py        # Configuration management (JSON, dot-notation)
     logger.py        # Centralized logging system
@@ -96,6 +100,17 @@ python src/main.py
 - PascalCase for classes
 - Private methods: `_method_name`
 - Format with Black
+- Line length 88 (`.flake8`, ignores W503/W504); imports via `isort --profile black`
+- Pre-commit hooks configured (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml
+- Type check: `mypy src` (config in `mypy.ini`; PyQt6/qt_material/alembic imports ignored)
+
+## Testing
+```bash
+QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt aborts headless without it
+```
+- `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
+- Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`
+- CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
 
 ## Architecture
 - MVC pattern with QAbstractListModel
@@ -161,7 +176,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 ## Translations
 - Primary: Ukrainian
 - Fallback: English
-- Keys defined in `ui_entities/translations.py`
+- Keys defined in `src/ui/translations.py`
 - Hierarchical naming: `app.title`, `button.add`, `field.type`
 
 ## Data Model (Hierarchical Structure)
@@ -372,9 +387,13 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 2. Push: `git push && git push --tags`
 3. GitHub Actions injects the version from the tag, builds `.exe`, and creates a release automatically
 
+> `build.yml`'s Windows job runs on a **`self-hosted`** runner (macOS/Linux jobs are commented out). If it stalls, the runner is offline — use `build-windows-hosted.yml` via workflow_dispatch (GitHub-hosted, Python 3.13 for Windows, takes an optional version input).
+
 > Note: `version.py` holds a `0.0.0-dev` placeholder in source. The real version is injected by CI at build time — do not manually edit `__version__` before tagging.
 
 ## Documentation
 - **CLAUDE.md**: This file - project overview and conventions
 - **README.md**: Project readme
-- **IMPROVEMENTS.md**: Improvement guide with step-by-step instructions
+- **Instructions/**: Historical implementation guides (incl. `IMPROVEMENTS.md`) — legacy `ui_entities/` paths, do not follow verbatim
+- **docs/HOW-TO.md**: Ukrainian end-user manual (linked from README)
+- **docs/superpowers/specs/** + **plans/**: Design specs and plans, dated `YYYY-MM-DD-<feature>-design.md`; convention is `docs: add <x> design spec` committed before the `fix:`/`feat:` that implements it
