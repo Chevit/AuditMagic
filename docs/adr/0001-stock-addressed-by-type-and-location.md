@@ -18,10 +18,11 @@ and structurally by the `uq_item_type_location_bulk` partial unique index (migra
 rule about what a user's "add 5 to this row" means, and it was being made in four untested
 Qt slots. Moving it behind the interface is the point.
 
-**Let `edit_item` merge when a location change collides with existing Stock.** Rejected for
-now: merging on edit is a defensible design, but it decides what editing *means* — a
-question deferred to the edit-path refactor. `edit_item` raises instead. A future reader
-finding that guard should know it is a deliberate holding position, not an oversight.
+**Let `edit_item` merge when a location change collides with existing Stock.** Settled by
+the edit-path refactor: an edit cannot change a location at all. Moving stock is a
+transfer, and `TransferDialog` is the only way to do it — it is also the only one that
+supports partial moves. The collision guard this ADR originally described was a holding
+position and has been removed; nothing can create a colliding location change now.
 
 **Auto-merge duplicate rows when first touched.** Rejected: repairing data as a side effect
 of an unrelated write is not something an audit trail can explain. Duplicates are tolerated
