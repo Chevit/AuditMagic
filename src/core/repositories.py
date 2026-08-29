@@ -9,8 +9,14 @@ from sqlalchemy.orm import make_transient
 
 from core.db import session_scope
 from core.logger import logger
-from core.models import (Item, ItemType, Location, SearchHistory, Transaction,
-                         TransactionType)
+from core.models import (
+    Item,
+    ItemType,
+    Location,
+    SearchHistory,
+    Transaction,
+    TransactionType,
+)
 from ui.translations import tr
 
 
@@ -792,6 +798,26 @@ class ItemRepository:
                 logger.warning(f"Repository: Item not found for edit: id={item_id}")
                 return None
 
+            # Guard the one-row-per-(ItemType, Location) invariant for
+            # non-serialized stock — see docs/adr/0001. Raising rather than
+            # merging keeps the edit-path design deferred.
+            if not serial_number:
+                collision = (
+                    session.query(Item)
+                    .filter(
+                        Item.item_type_id == item_type_id,
+                        Item.location_id == location_id,
+                        Item.serial_number.is_(None),
+                        Item.id != item_id,
+                    )
+                    .first()
+                )
+                if collision:
+                    raise ValueError(
+                        "Stock of this type already exists at that location "
+                        f"(item id={collision.id}); transfer or merge it instead"
+                    )
+
             quantity_before = item.quantity
 
             # Apply field changes
@@ -823,7 +849,11 @@ class ItemRepository:
 
     @staticmethod
     def delete(item_id: int) -> bool:
-        """Delete an item and all its transactions.
+        """Delete an item row, recording nothing.
+
+        Transactions are untouched — they belong to the ItemType, not the Item.
+        This records no REMOVE, so the stock disappears from the audit trail; use
+        delete_non_serialized or delete_by_serial_numbers for stock removals.
 
         Args:
             item_id: The item's ID.
@@ -839,6 +869,58 @@ class ItemRepository:
             session.delete(item)
             logger.debug(f"Repository: Item deleted: id={item_id}")
             return True
+
+    @staticmethod
+    def delete_non_serialized(item_id: int, notes: str = "") -> int:
+        """Delete a non-serialized item row, recording a REMOVE transaction first.
+
+        The counterpart to delete_by_serial_numbers. Needed because a row cannot be
+        left at quantity zero — check_serial_or_quantity requires quantity > 0 for
+        serial-less rows — so emptying stock means deleting the row.
+
+        Args:
+            item_id: The item's ID.
+            notes: Reason/notes for the removal (for audit trail).
+
+        Returns:
+            The quantity removed, or 0 if the item was not found.
+
+        Raises:
+            ValueError: If the item is serialized.
+        """
+        with session_scope() as session:
+            item = session.query(Item).filter(Item.id == item_id).first()
+            if not item:
+                logger.warning(
+                    "Repository: Item not found for "
+                    f"delete_non_serialized: id={item_id}"
+                )
+                return 0
+            if item.serial_number is not None:
+                raise ValueError(
+                    f"Item id={item_id} is serialized; use delete_by_serial_numbers"
+                )
+
+            quantity = item.quantity
+            session.add(
+                Transaction(
+                    item_type_id=item.item_type_id,
+                    transaction_type=TransactionType.REMOVE,
+                    quantity_change=quantity,
+                    quantity_before=quantity,
+                    quantity_after=0,
+                    notes=notes or "",
+                    location_id=item.location_id,
+                )
+            )
+            # Flush the transaction before the row goes, then delete via direct SQL
+            # so the REMOVE record survives as an audit record.
+            session.flush()
+            session.execute(sql_delete(Item).where(Item.id == item_id))
+            logger.debug(
+                f"Repository: Deleted non-serialized item id={item_id}, qty={quantity}"
+            )
+            return quantity
 
     @staticmethod
     def add_quantity(item_id: int, quantity: int, notes: str = None) -> Optional[Item]:
