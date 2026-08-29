@@ -232,3 +232,6 @@ config.json
 # Windows
 *.swp
 *.swo
+
+# Personal notes for Claude Code sessions (machine-local, not team-shared)
+.claude.local.md
