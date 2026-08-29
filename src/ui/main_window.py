@@ -6,11 +6,13 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction, QActionGroup, QShowEvent
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QPushButton
 
+from core import stock
 from core.config import config
 from core.db import init_database
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService, SearchService, TransactionService
+from core.stock import Quantity, Serials, StockRef
 from runtime import resource_path
 from ui.dialogs.add_item_dialog import AddItemDialog
 from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
@@ -25,8 +27,7 @@ from ui.dialogs.transactions_dialog import TransactionsDialog
 from ui.dialogs.transfer_dialog import TransferDialog
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.models.inventory_model import InventoryModel
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.theme_manager import get_theme_manager
 from ui.translations import tr
 from ui.widgets.inventory_list_view import InventoryListView
@@ -340,7 +341,9 @@ class MainWindow(QMainWindow):
         if not locs:
             return
         target_id = self._current_location_id or locs[0].id
-        target_name = next((loc.name for loc in locs if loc.id == target_id), locs[0].name)
+        target_name = next(
+            (loc.name for loc in locs if loc.id == target_id), locs[0].name
+        )
         reply = QMessageBox.question(
             self,
             tr("location.unassigned.title"),
@@ -558,41 +561,70 @@ class MainWindow(QMainWindow):
     def _on_delete_item(self, row: int, item):
         """Handle delete request for an inventory item."""
         is_grouped = isinstance(item, GroupedInventoryItem)
+        item_type_id = item.item_type_id
 
-        # Build confirmation message
+        # What the user selected decides the scope. A grouped row under a
+        # location filter means that location's stock; under "All Locations" it
+        # means the type everywhere; a search hit means that unit.
+        scope_location_id = (
+            self._current_location_id if is_grouped else item.location_id
+        )
+        serial_number = None if is_grouped else item.serial_number
+
+        if serial_number:
+            question = tr("message.confirm_delete_serial").format(serial=serial_number)
+        elif scope_location_id is not None:
+            name = next(
+                (
+                    loc.name
+                    for loc in LocationRepository.get_all()
+                    if loc.id == scope_location_id
+                ),
+                "",
+            )
+            question = tr("message.confirm_delete_at_location").format(location=name)
+        else:
+            question = tr("message.confirm_delete_everywhere")
+
         if is_grouped:
             qty_info = f"{tr('field.quantity')}: {item.total_quantity}"
             if item.serial_numbers:
                 qty_info += f" ({len(item.serial_numbers)} {tr('label.serial_number')})"
         else:
-            qty_info = f"{tr('field.serial_number')}: {item.serial_number if item.serial_number else '-'}"
+            qty_info = f"{tr('field.serial_number')}: {serial_number or '-'}"
 
         reply = QMessageBox.question(
             self,
             tr("dialog.confirm_delete.title"),
-            f"{tr('message.confirm_delete')}\n\n"
+            f"{question}\n\n"
             f"{tr('field.type')}: {item.item_type}\n"
             f"{tr('field.subtype')}: {item.sub_type if item.sub_type else '-'}\n"
             f"{qty_info}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
 
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                if is_grouped:
-                    # Delete the entire ItemType (cascades to all items + transactions)
-                    InventoryService.delete_item_type(item.item_type_id)
-                elif item.id is not None:
-                    InventoryService.delete_item(item.id)
-                self.inventory_model.remove_item(row)
-            except Exception as e:
-                logger.error(f"Failed to delete item: {e}")
-                QMessageBox.warning(
-                    self,
-                    tr("error.generic.title"),
-                    f"{tr('error.generic.message')}\n{e}",
+        try:
+            if serial_number:
+                stock.remove(
+                    StockRef(item_type_id, scope_location_id), Serials([serial_number])
                 )
+            elif scope_location_id is not None:
+                stock.delete(StockRef(item_type_id, scope_location_id))
+            elif is_grouped:
+                InventoryService.delete_item_type(item_type_id)
+            else:
+                raise ValueError("This item has no location; assign one first")
+            self._refresh_item_list()
+        except Exception as e:
+            logger.error(f"Failed to delete item: {e}")
+            QMessageBox.warning(
+                self,
+                tr("error.generic.title"),
+                f"{tr('error.generic.message')}\n{e}",
+            )
 
     def _on_add_clicked(self):
         """Handle add button click - open add item dialog."""
@@ -616,105 +648,148 @@ class MainWindow(QMainWindow):
         # If not found in model (filtered view), refresh the list
         self._refresh_item_list()
 
+    def _stock_by_location(self, item_type_id: int) -> dict:
+        """Return {location_id: (name, quantity, serial_numbers)} for a type."""
+        held = {}
+        for loc in InventoryService.get_locations_for_type(item_type_id):
+            quantity, serials, _ids = InventoryService.get_type_items_at_location(
+                item_type_id, loc.id
+            )
+            held[loc.id] = (loc.name, quantity, serials)
+        return held
+
+    def _default_location_id(self, item) -> Optional[int]:
+        """Location to pre-select: the active filter, else the item's own."""
+        return self._current_location_id or getattr(item, "location_id", None)
+
+    @staticmethod
+    def _display_name(item) -> str:
+        """Type name with sub-type, for dialog headers."""
+        if item.sub_type:
+            return f"{item.item_type} - {item.sub_type}"
+        return item.item_type
+
     def _on_add_quantity(self, row: int, item):
         """Handle add quantity request."""
-        is_grouped = isinstance(item, GroupedInventoryItem)
+        item_type_id = item.item_type_id
+        held = self._stock_by_location(item_type_id)
 
-        # For serialized items, open Add Serial Number dialog
         if item.is_serialized:
-            existing_serials = (
-                item.serial_numbers
-                if is_grouped
-                else ([item.serial_number] if item.serial_number else [])
+            existing = sorted(
+                serial
+                for _name, _quantity, serials in held.values()
+                for serial in serials
             )
             dialog = AddSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
-                existing_serials=existing_serials,
-                current_location_id=self._current_location_id,
+                existing_serials=existing,
+                current_location_id=self._default_location_id(item),
                 parent=self,
             )
-            if dialog.exec():
-                try:
-                    new_item = InventoryService.create_serialized_item(
-                        item_type_name=item.item_type,
-                        item_sub_type=item.sub_type or "",
-                        serial_number=dialog.get_serial_number(),
-                        location_id=dialog.get_location_id(),
-                        notes=dialog.get_notes(),
-                    )
-                    if new_item:
-                        self._refresh_item_list()
-                except ValueError as e:
-                    QMessageBox.warning(self, tr("message.validation_error"), str(e))
-            return
-
-        item_name = (
-            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
-        )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
-        actual_quantity = item.total_quantity if is_grouped else item.quantity
-        dialog = QuantityDialog(item_name, actual_quantity, is_add=True, parent=self)
-        if dialog.exec():
-            quantity = dialog.get_quantity()
+            if not dialog.exec():
+                return
+            ref = StockRef(item_type_id, dialog.get_location_id())
+            movement = Serials([dialog.get_serial_number()])
             notes = dialog.get_notes()
-            if target_item_id is not None:
-                updated_item = InventoryService.add_quantity(
-                    target_item_id, quantity, notes
-                )
-                if updated_item:
-                    self._refresh_item_list()
+        else:
+            # Stock can be added at any location, including one holding none yet
+            options = [
+                (loc.id, loc.name, held.get(loc.id, ("", 0, []))[1])
+                for loc in LocationRepository.get_all()
+            ]
+            dialog = QuantityDialog(
+                self._display_name(item),
+                sum(quantity for _n, quantity, _s in held.values()),
+                is_add=True,
+                parent=self,
+                locations=options,
+                current_location_id=self._default_location_id(item),
+            )
+            if not dialog.exec():
+                return
+            ref = StockRef(item_type_id, dialog.get_location_id())
+            movement = Quantity(dialog.get_quantity())
+            notes = dialog.get_notes()
+
+        try:
+            stock.add(ref, movement, notes)
+        except ValueError as e:
+            QMessageBox.warning(self, tr("message.validation_error"), str(e))
+            return
+        self._refresh_item_list()
 
     def _on_remove_quantity(self, row: int, item):
         """Handle remove quantity request."""
-        is_grouped = isinstance(item, GroupedInventoryItem)
-
-        # For serialized items, open Remove Serial Number dialog
-        if item.is_serialized:
-            serial_numbers = (
-                item.serial_numbers
-                if is_grouped
-                else ([item.serial_number] if item.serial_number else [])
+        item_type_id = item.item_type_id
+        held = self._stock_by_location(item_type_id)
+        # Only stock the user can currently see may be removed
+        if self._current_location_id is not None:
+            held = {
+                loc_id: value
+                for loc_id, value in held.items()
+                if loc_id == self._current_location_id
+            }
+        if not held:
+            QMessageBox.warning(
+                self, tr("message.validation_error"), tr("message.not_enough_quantity")
             )
+            return
+
+        if item.is_serialized:
+            location_of = {
+                serial: loc_id
+                for loc_id, (_n, _q, serials) in held.items()
+                for serial in serials
+            }
             dialog = RemoveSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
-                serial_numbers=serial_numbers,
+                serial_numbers=sorted(location_of),
                 parent=self,
             )
-            if dialog.exec():
-                try:
-                    selected = dialog.get_selected_serial_numbers()
-                    notes = dialog.get_notes()
-                    deleted_count = InventoryService.delete_items_by_serial_numbers(
-                        selected, notes
-                    )
-                    if deleted_count > 0:
-                        self._refresh_item_list()
-                except Exception as e:
-                    QMessageBox.warning(self, tr("message.validation_error"), str(e))
-            return
-
-        item_name = (
-            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
-        )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
-        actual_quantity = item.total_quantity if is_grouped else item.quantity
-        dialog = QuantityDialog(item_name, actual_quantity, is_add=False, parent=self)
-        if dialog.exec():
-            quantity = dialog.get_quantity()
+            if not dialog.exec():
+                return
             notes = dialog.get_notes()
-            if target_item_id is not None:
-                try:
-                    updated_item = InventoryService.remove_quantity(
-                        target_item_id, quantity, notes
-                    )
-                    if updated_item:
-                        self._refresh_item_list()
-                except ValueError as e:
-                    QMessageBox.warning(self, tr("message.validation_error"), str(e))
+            # Selected serials may sit at different locations
+            by_location: dict = {}
+            for serial in dialog.get_selected_serial_numbers():
+                by_location.setdefault(location_of[serial], []).append(serial)
+            movements = [
+                (StockRef(item_type_id, loc_id), Serials(serials))
+                for loc_id, serials in by_location.items()
+            ]
+        else:
+            options = [
+                (loc_id, name, quantity)
+                for loc_id, (name, quantity, _s) in held.items()
+                if quantity > 0
+            ]
+            dialog = QuantityDialog(
+                self._display_name(item),
+                sum(quantity for _n, quantity, _s in held.values()),
+                is_add=False,
+                parent=self,
+                locations=options,
+                current_location_id=self._default_location_id(item),
+            )
+            if not dialog.exec():
+                return
+            notes = dialog.get_notes()
+            movements = [
+                (
+                    StockRef(item_type_id, dialog.get_location_id()),
+                    Quantity(dialog.get_quantity()),
+                )
+            ]
+
+        try:
+            for ref, movement in movements:
+                stock.remove(ref, movement, notes)
+        except ValueError as e:
+            QMessageBox.warning(self, tr("message.validation_error"), str(e))
+            return
+        self._refresh_item_list()
 
     def _on_show_transactions(self, row: int, item):
         """Handle show transactions request."""

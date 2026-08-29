@@ -167,6 +167,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "menu.theme.variant.amber": "Бурштиновий",
         # Messages
         "message.confirm_delete": "Ви впевнені, що хочете видалити цей елемент?",
+        "message.confirm_delete_at_location": "Видалити весь запас цього типу в «{location}»? Тип і історія операцій залишаться.",
+        "message.confirm_delete_everywhere": "Видалити цей тип у всіх місцях? Буде видалено весь запас і всю історію операцій.",
         "message.validation_error": "Помилка валідації",
         "message.fix_errors": "Будь ласка, виправте наступні помилки:",
         "message.type_required": "Тип є обов'язковим",
@@ -404,6 +406,8 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "menu.theme.variant.amber": "Amber",
         # Messages
         "message.confirm_delete": "Are you sure you want to delete this item?",
+        "message.confirm_delete_at_location": 'Delete all stock of this type at "{location}"? The type and its transaction history are kept.',
+        "message.confirm_delete_everywhere": "Delete this type at every location? This removes all stock and the entire transaction history.",
         "message.validation_error": "Validation Error",
         "message.fix_errors": "Please fix the following errors:",
         "message.type_required": "Type is required",

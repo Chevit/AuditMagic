@@ -2,22 +2,43 @@ from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator, QPainter
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QDialog,
-                             QFormLayout, QFrame, QHBoxLayout, QLabel,
-                             QLineEdit, QMessageBox, QPushButton, QTextEdit,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
+from core import stock
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
+from core.stock import Quantity, StockRef
 from ui.models.inventory_item import InventoryItem
-from ui.styles import (Colors, apply_button_style,
-                       apply_combo_box_style, apply_input_style,
-                       apply_text_edit_style)
+from ui.styles import (
+    Colors,
+    apply_button_style,
+    apply_combo_box_style,
+    apply_input_style,
+    apply_text_edit_style,
+)
 from ui.translations import tr
-from ui.validators import (ItemTypeValidator, SerialNumberValidator,
-                           validate_length, validate_positive_integer,
-                           validate_required_field)
+from ui.validators import (
+    ItemTypeValidator,
+    SerialNumberValidator,
+    validate_length,
+    validate_positive_integer,
+    validate_required_field,
+)
 
 
 class _WrappingTextEdit(QTextEdit):
@@ -431,44 +452,48 @@ class AddItemDialog(QDialog):
                     notes=initial_notes or "",
                 )
             else:
-                existing = InventoryService.find_non_serialized_at_location(
-                    type_name=item_type, sub_type=sub_type, location_id=location_id
+                # The prompt is a typo check, not the mechanism that finds the
+                # row — stock.add merges by the one-row-per-(type, location)
+                # invariant either way.
+                existing_type = InventoryService.get_item_type_by_name_subtype(
+                    item_type, sub_type
                 )
-                if existing is not None:
-                    answer = QMessageBox.question(
-                        self,
-                        tr("dialog.add_item.merge.title"),
-                        tr("dialog.add_item.merge.prompt").format(quantity=quantity),
-                    )
-                    if answer == QMessageBox.StandardButton.Yes:
-                        result = InventoryService.add_quantity(
-                            item_id=existing.id,
-                            quantity=quantity,
-                            notes=initial_notes,
-                        )
-                        if result is None:
-                            QMessageBox.warning(
-                                self,
-                                tr("error.generic.title"),
-                                tr("error.generic.message"),
-                            )
-                            logger.warning(
-                                f"Merge failed: item id={existing.id} not found during add_quantity"
-                            )
-                            return
-                        self._result_item = result
-                        logger.info(
-                            f"Merged quantity into existing item: id={existing.id}"
-                        )
-                        self.accept()
-                    else:
-                        QMessageBox.information(
+                if existing_type is not None and not existing_type.is_serialized:
+                    ref = StockRef(existing_type.id, location_id)
+                    if stock.has_stock(ref):
+                        answer = QMessageBox.question(
                             self,
-                            tr("dialog.add_item.duplicate.title"),
-                            tr("dialog.add_item.duplicate.message"),
+                            tr("dialog.add_item.merge.title"),
+                            tr("dialog.add_item.merge.prompt").format(
+                                quantity=quantity
+                            ),
                         )
-                    # Return for both Yes and No — do not fall through to create_item
-                    return
+                        if answer == QMessageBox.StandardButton.Yes:
+                            try:
+                                stock.add(ref, Quantity(quantity), initial_notes or "")
+                            except ValueError as e:
+                                QMessageBox.warning(
+                                    self, tr("error.generic.title"), str(e)
+                                )
+                                logger.warning(f"Merge failed at {ref}: {e}")
+                                return
+                            self._result_item = (
+                                InventoryService.find_non_serialized_at_location(
+                                    type_name=item_type,
+                                    sub_type=sub_type,
+                                    location_id=location_id,
+                                )
+                            )
+                            logger.info(f"Merged quantity into stock at {ref}")
+                            self.accept()
+                        else:
+                            QMessageBox.information(
+                                self,
+                                tr("dialog.add_item.duplicate.title"),
+                                tr("dialog.add_item.duplicate.message"),
+                            )
+                        # Return for both Yes and No — do not fall through
+                        return
                 self._result_item = InventoryService.create_item(
                     item_type_name=item_type,
                     item_sub_type=sub_type,
