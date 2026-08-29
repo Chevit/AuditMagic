@@ -103,8 +103,9 @@ python src/main.py
 - Private methods: `_method_name`
 - Format with Black
 - Line length 88 (`.flake8`, ignores W503/W504); imports via `isort --profile black`
-- Pre-commit hooks configured (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml
-- Type check: `mypy src` (config in `mypy.ini`; PyQt6/qt_material/alembic imports ignored)
+- Pre-commit hooks configured (`pre-commit install`): black, isort, flake8, mypy, trailing-whitespace, end-of-file-fixer, check-yaml
+- Type check: `mypy src` — currently clean, and enforced by pre-commit. Config in `mypy.ini`; qt_material/alembic/openpyxl/requests/pyi_splash imports ignored. The hook runs on `src` as a whole (mypy resolves modules across the package) with SQLAlchemy and PyQt6 pinned as `additional_dependencies` so it sees the same types you do locally — keep those in step with `requirements-dev.txt`.
+- `src/` has no `__init__.py`: it is a path entry (conftest, PyInstaller `pathex`), not a package. Adding one breaks mypy's module resolution.
 
 ## Testing
 ```bash
