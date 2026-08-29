@@ -1215,34 +1215,6 @@ class ItemRepository:
             return [_detach(item) for item in items]
 
     @staticmethod
-    def find_non_serialized_at_location(
-        item_type_id: int, location_id: int
-    ) -> Optional[Item]:
-        """Find a non-serialized item of a given type at a specific location.
-
-        Used by transfer merge logic to check for an existing row at the
-        destination before deciding whether to merge or create a new row.
-
-        Args:
-            item_type_id: ItemType ID.
-            location_id: Location ID to search in.
-
-        Returns:
-            Item instance or None.
-        """
-        with session_scope() as session:
-            item = (
-                session.query(Item)
-                .filter(
-                    Item.item_type_id == item_type_id,
-                    Item.location_id == location_id,
-                    Item.serial_number.is_(None),
-                )
-                .first()
-            )
-            return _detach(item) if item else None
-
-    @staticmethod
     def transfer_item(
         item_id: int,
         quantity: int,

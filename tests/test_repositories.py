@@ -5,8 +5,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from core.models import TransactionType
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository, TransactionRepository)
+from core.repositories import (
+    ItemRepository,
+    ItemTypeRepository,
+    LocationRepository,
+    TransactionRepository,
+)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -418,15 +422,6 @@ def test_item_transfer_serialized_items():
     assert count == 1
     moved = ItemRepository.search("TR-001", field="serial_number")
     assert moved[0].location_id == loc_b.id
-
-
-def test_item_find_non_serialized_at_location():
-    loc = _loc()
-    t = _type()
-    _item(t.id, loc.id, qty=5)
-    found = ItemRepository.find_non_serialized_at_location(t.id, loc.id)
-    assert found is not None
-    assert found.serial_number is None
 
 
 def test_item_search_by_type_name():

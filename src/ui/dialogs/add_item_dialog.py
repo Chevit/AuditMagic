@@ -477,13 +477,6 @@ class AddItemDialog(QDialog):
                                 )
                                 logger.warning(f"Merge failed at {ref}: {e}")
                                 return
-                            self._result_item = (
-                                InventoryService.find_non_serialized_at_location(
-                                    type_name=item_type,
-                                    sub_type=sub_type,
-                                    location_id=location_id,
-                                )
-                            )
                             logger.info(f"Merged quantity into stock at {ref}")
                             self.accept()
                         else:

@@ -632,11 +632,8 @@ class MainWindow(QMainWindow):
             current_location_id=self._current_location_id, parent=self
         )
         if dialog.exec():
-            new_item = dialog.get_item()
-            if new_item:
-                # Item is already saved by the dialog via InventoryService.create_item
-                # Refresh the list to show grouped items correctly
-                self._refresh_item_list()
+            # The dialog saves the stock itself; accepting means something changed
+            self._refresh_item_list()
 
     def _update_item_in_model(self, item: InventoryItem):
         """Update an existing item in the model by ID."""

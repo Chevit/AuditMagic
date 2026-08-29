@@ -5,9 +5,13 @@ from typing import Dict, List, Optional, Tuple
 
 from core.logger import logger
 from core.models import Location
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository, SearchHistoryRepository,
-                               TransactionRepository)
+from core.repositories import (
+    ItemRepository,
+    ItemTypeRepository,
+    LocationRepository,
+    SearchHistoryRepository,
+    TransactionRepository,
+)
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.translations import tr
 
@@ -127,89 +131,6 @@ class InventoryService:
         except Exception as e:
             logger.error(f"Failed to create serialized item: {str(e)}", exc_info=True)
             raise
-
-    @staticmethod
-    def create_or_merge_item(
-        item_type_name: str,
-        quantity: int,
-        sub_type: str = "",
-        is_serialized: bool = False,
-        serial_number: str = "",
-        details: str = "",
-        location_id: int = None,
-        condition: str = "",
-        transaction_notes: str = "",
-    ) -> Tuple[InventoryItem, bool]:
-        """Create a new item or merge with existing item if type+location matches.
-
-        For non-serialized items: If an item with the same type at the same location
-        exists, quantity is added to it (merge).
-        For serialized items: A new item is always created (serial numbers are unique).
-
-        Args:
-            item_type_name: Type name of the item (required)
-            quantity: Quantity to add (required)
-            sub_type: Sub-type of the item (optional)
-            is_serialized: Whether items have serial numbers
-            serial_number: Serial number (required if serialized)
-            details: Type details/description (optional)
-            location_id: FK to Location (optional)
-            condition: Item condition (optional)
-            transaction_notes: Custom notes for the ADD transaction (optional)
-
-        Returns:
-            Tuple of (InventoryItem, was_merged: bool).
-            was_merged is True if quantity was added to an existing item.
-        """
-        # Get or create item type
-        item_type = ItemTypeRepository.get_or_create(
-            name=item_type_name,
-            sub_type=sub_type,
-            is_serialized=is_serialized,
-        )
-
-        # For serialized items, always create new (each serial is unique)
-        if is_serialized or serial_number:
-            db_item = ItemRepository.create(
-                item_type_id=item_type.id,
-                quantity=1,
-                serial_number=serial_number,
-                location_id=location_id,
-                condition=condition,
-                transaction_notes=transaction_notes or None,
-            )
-            return InventoryItem.from_db_models(db_item, item_type), False
-
-        # For non-serialized, check for existing item of same type at same location
-        if location_id is not None:
-            existing = ItemRepository.find_non_serialized_at_location(
-                item_type_id=item_type.id,
-                location_id=location_id,
-            )
-        else:
-            existing = ItemRepository.find_by_type_and_serial(
-                item_type_id=item_type.id,
-                serial_number=None,
-            )
-
-        if existing:
-            # Add quantity to existing item (creates transaction)
-            updated = ItemRepository.add_quantity(
-                item_id=existing.id,
-                quantity=quantity,
-                notes=tr("transaction.notes.merged"),
-            )
-            return InventoryItem.from_db_models(updated, item_type), True
-
-        # Create new item
-        db_item = ItemRepository.create(
-            item_type_id=item_type.id,
-            quantity=quantity,
-            serial_number=None,
-            location_id=location_id,
-            condition=condition,
-        )
-        return InventoryItem.from_db_models(db_item, item_type), False
 
     @staticmethod
     def get_item(item_id: int) -> Optional[InventoryItem]:
@@ -508,24 +429,6 @@ class InventoryService:
         return result
 
     @staticmethod
-    def delete_item(item_id: int) -> bool:
-        """Delete an item.
-
-        Args:
-            item_id: The item's ID.
-
-        Returns:
-            True if deleted, False if not found.
-        """
-        logger.info(f"Attempting to delete item: id={item_id}")
-        result = ItemRepository.delete(item_id)
-        if result:
-            logger.info(f"Item deleted successfully: id={item_id}")
-        else:
-            logger.warning(f"Failed to delete item (not found): id={item_id}")
-        return result
-
-    @staticmethod
     def delete_items_by_serial_numbers(
         serial_numbers: List[str], notes: str = ""
     ) -> int:
@@ -547,51 +450,6 @@ class InventoryService:
             f"Deleted {deleted_count} of {len(serial_numbers)} items by serial numbers"
         )
         return deleted_count
-
-    @staticmethod
-    def add_quantity(
-        item_id: int, quantity: int, notes: str = ""
-    ) -> Optional[InventoryItem]:
-        """Add quantity to an item.
-
-        Args:
-            item_id: The item's ID.
-            quantity: Quantity to add.
-            notes: Transaction notes (optional).
-
-        Returns:
-            The updated InventoryItem or None if not found.
-        """
-        logger.info(f"Adding quantity to item: id={item_id}, quantity={quantity}")
-        db_item = ItemRepository.add_quantity(item_id, quantity, notes)
-        if not db_item:
-            return None
-        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
-        return InventoryItem.from_db_models(db_item, item_type)
-
-    @staticmethod
-    def remove_quantity(
-        item_id: int, quantity: int, notes: str = ""
-    ) -> Optional[InventoryItem]:
-        """Remove quantity from an item.
-
-        Args:
-            item_id: The item's ID.
-            quantity: Quantity to remove.
-            notes: Transaction notes (optional).
-
-        Returns:
-            The updated InventoryItem or None if not found.
-
-        Raises:
-            ValueError: If quantity would go below zero.
-        """
-        logger.info(f"Removing quantity from item: id={item_id}, quantity={quantity}")
-        db_item = ItemRepository.remove_quantity(item_id, quantity, notes)
-        if not db_item:
-            return None
-        item_type = ItemTypeRepository.get_by_id(db_item.item_type_id)
-        return InventoryItem.from_db_models(db_item, item_type)
 
     @staticmethod
     def move_all_items_and_delete(from_location_id: int, to_location_id: int) -> bool:
@@ -666,33 +524,6 @@ class InventoryService:
                 if item.location_id in all_locs:
                     locs.append(all_locs[item.location_id])
         return locs
-
-    @staticmethod
-    def find_non_serialized_at_location(
-        type_name: str, sub_type: str = "", location_id: int = 0
-    ) -> Optional["InventoryItem"]:
-        """Find an existing non-serialized item of the given type at a location.
-
-        Returns None immediately for serialized types, avoiding an unnecessary database query.
-
-        Args:
-            type_name: ItemType name.
-            sub_type: ItemType sub_type (empty string if none).
-            location_id: Location to search in.
-
-        Returns:
-            InventoryItem if a matching non-serialized item exists, else None.
-        """
-        item_type = ItemTypeRepository.get_by_name_and_subtype(type_name, sub_type)
-        if item_type is None or item_type.is_serialized:
-            return None
-        db_item = ItemRepository.find_non_serialized_at_location(
-            item_type_id=item_type.id,
-            location_id=location_id,
-        )
-        if db_item is None:
-            return None
-        return InventoryItem.from_db_models(db_item, item_type)
 
 
 class SearchService:

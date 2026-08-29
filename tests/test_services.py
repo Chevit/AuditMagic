@@ -5,10 +5,13 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from core.models import Transaction, TransactionType
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository)
-from core.services import (InventoryService, SearchService, TransactionService,
-                           _transaction_to_dict)
+from core.repositories import ItemRepository, ItemTypeRepository, LocationRepository
+from core.services import (
+    InventoryService,
+    SearchService,
+    TransactionService,
+    _transaction_to_dict,
+)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,99 +65,6 @@ def test_create_serialized_duplicate_serial_raises():
     _ser(loc_id=loc.id, sn="DUP-001")
     with pytest.raises(Exception):
         _ser(loc_id=loc.id, sn="DUP-001")
-
-
-def test_create_or_merge_new_item_not_merged():
-    loc = _loc()
-    item, merged = InventoryService.create_or_merge_item(
-        item_type_name="Chair",
-        quantity=3,
-        location_id=loc.id,
-    )
-    assert merged is False
-    assert item.quantity == 3
-
-
-def test_create_or_merge_existing_merges():
-    loc = _loc()
-    InventoryService.create_or_merge_item(
-        item_type_name="Chair",
-        quantity=3,
-        location_id=loc.id,
-    )
-    item2, merged = InventoryService.create_or_merge_item(
-        item_type_name="Chair",
-        quantity=4,
-        location_id=loc.id,
-    )
-    assert merged is True
-    assert item2.quantity == 7
-
-
-def test_create_or_merge_serialized_always_new():
-    loc = _loc()
-    item1, m1 = InventoryService.create_or_merge_item(
-        item_type_name="Laptop",
-        quantity=1,
-        is_serialized=True,
-        serial_number="SN-A",
-        location_id=loc.id,
-    )
-    item2, m2 = InventoryService.create_or_merge_item(
-        item_type_name="Laptop",
-        quantity=1,
-        is_serialized=True,
-        serial_number="SN-B",
-        location_id=loc.id,
-    )
-    assert m1 is False
-    assert m2 is False
-    assert item1.serial_number != item2.serial_number
-
-
-# ─── InventoryService: find_non_serialized_at_location ───────────────────────
-
-
-def test_find_non_serialized_at_location_returns_item():
-    loc = _loc("Storage-A")
-    _non_ser("Table", loc_id=loc.id, qty=3)
-    result = InventoryService.find_non_serialized_at_location("Table", "", loc.id)
-    assert result is not None
-    assert result.quantity == 3
-
-
-def test_find_non_serialized_at_location_returns_none_when_no_type():
-    loc = _loc("Storage-B")
-    result = InventoryService.find_non_serialized_at_location("NonExistent", "", loc.id)
-    assert result is None
-
-
-def test_find_non_serialized_at_location_returns_none_wrong_location():
-    loc1 = _loc("Storage-C")
-    loc2 = _loc("Storage-D")
-    _non_ser("Chair", loc_id=loc1.id, qty=5)
-    result = InventoryService.find_non_serialized_at_location("Chair", "", loc2.id)
-    assert result is None
-
-
-def test_find_non_serialized_at_location_returns_none_for_serialized_type():
-    loc = _loc("Storage-E")
-    _ser("Laptop", sn="SN-X01", loc_id=loc.id)
-    result = InventoryService.find_non_serialized_at_location("Laptop", "", loc.id)
-    assert result is None
-
-
-def test_find_non_serialized_at_location_uses_subtype():
-    loc = _loc("Storage-F")
-    InventoryService.create_item(
-        "Monitor", item_sub_type="4K", quantity=2, location_id=loc.id
-    )
-    found = InventoryService.find_non_serialized_at_location("Monitor", "4K", loc.id)
-    not_found = InventoryService.find_non_serialized_at_location(
-        "Monitor", "HD", loc.id
-    )
-    assert found is not None
-    assert not_found is None
 
 
 # ─── InventoryService: query ──────────────────────────────────────────────────
@@ -254,20 +164,6 @@ def test_get_autocomplete_subtypes():
 # ─── InventoryService: mutations ──────────────────────────────────────────────
 
 
-def test_add_quantity():
-    loc = _loc()
-    item = _non_ser(loc_id=loc.id, qty=5)
-    updated = InventoryService.add_quantity(item.id, 3)
-    assert updated.quantity == 8
-
-
-def test_remove_quantity():
-    loc = _loc()
-    item = _non_ser(loc_id=loc.id, qty=10)
-    updated = InventoryService.remove_quantity(item.id, 4)
-    assert updated.quantity == 6
-
-
 def test_edit_item():
     loc = _loc()
     item = _non_ser("OldType", loc_id=loc.id, qty=5)
@@ -283,17 +179,6 @@ def test_edit_item():
     assert updated is not None
     assert updated.item_type_name == "NewType"
     assert updated.quantity == 8
-
-
-def test_delete_item_returns_true():
-    loc = _loc()
-    item = _non_ser(loc_id=loc.id)
-    assert InventoryService.delete_item(item.id) is True
-    assert InventoryService.get_item(item.id) is None
-
-
-def test_delete_item_missing_returns_false():
-    assert InventoryService.delete_item(9999) is False
 
 
 def test_delete_item_type_returns_true():
