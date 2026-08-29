@@ -204,8 +204,7 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT/TRANSFER), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`, `from_location_id` (FK, nullable), `to_location_id` (FK, nullable)
 - Belongs to **ItemType**, not Item — audit trail is preserved even when items are deleted
 - `serial_number` on the transaction identifies the specific serialized unit involved
-- For **serialized items**: `quantity_before/after` reflect the total group count (how many items of that type exist), not the individual item quantity (which is always 1)
-- For **non-serialized items**: `quantity_before/after` reflect the single Item row's quantity
+- `quantity_before/after` are the stock of that ItemType held **at the transaction's location**, before and after the change — one rule for serialized and non-serialized alike, since serialized rows each hold quantity 1. Decided in `core/ledger.py`, never at the call site.
 - For **TRANSFER** transactions: `from_location_id` and `to_location_id` are set; quantity_change = qty moved
 - ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE/TRANSFER)
 
@@ -348,7 +347,7 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - **All Transactions view**: `AllTransactionsDialog` shows cross-type log filterable by location + date range. 10 columns including From/To Location.
 - **`InventoryItem.location_id / location_name`**: replaces old `location: str` field. Backward-compat `.location` property returns `location_name`.
 - **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
-- **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). These count existing items of the type first to set `quantity_before/after` correctly for the grouped view. Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
+- **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
 - **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction rows via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item rows via ORM cascade from ItemType, (3) ItemType itself.
 - `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
 - GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`

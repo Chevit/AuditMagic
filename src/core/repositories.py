@@ -8,15 +8,9 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import make_transient
 
 from core.db import session_scope
+from core.ledger import Ledger
 from core.logger import logger
-from core.models import (
-    Item,
-    ItemType,
-    Location,
-    SearchHistory,
-    Transaction,
-    TransactionType,
-)
+from core.models import Item, ItemType, Location, SearchHistory, Transaction
 from ui.translations import tr
 
 
@@ -413,17 +407,7 @@ class ItemTypeRepository:
                 item_type.details = details
 
             if edit_reason:
-                # Type-level change: no stock moved, but the audit trail records why.
-                session.add(
-                    Transaction(
-                        item_type_id=type_id,
-                        transaction_type=TransactionType.EDIT,
-                        quantity_change=0,
-                        quantity_before=0,
-                        quantity_after=0,
-                        notes=edit_reason,
-                    )
-                )
+                Ledger(session).type_edited(type_id, edit_reason)
 
             session.flush()
             session.refresh(item_type)
@@ -628,17 +612,13 @@ class ItemRepository:
 
             # Create initial transaction
             if quantity > 0:
-                transaction = Transaction(
-                    item_type_id=item_type_id,
-                    transaction_type=TransactionType.ADD,
-                    quantity_change=quantity,
-                    quantity_before=0,
-                    quantity_after=quantity,
+                Ledger(session).added(
+                    item_type_id,
+                    location_id,
+                    quantity,
                     serial_number=serial_number or None,
                     notes=transaction_notes or tr("transaction.notes.initial"),
-                    location_id=location_id,
                 )
-                session.add(transaction)
 
             session.flush()
             session.refresh(item)
@@ -716,17 +696,13 @@ class ItemRepository:
                 else (notes or "")
             )
 
-            transaction = Transaction(
-                item_type_id=item_type_id,
-                transaction_type=TransactionType.ADD,
-                quantity_change=1,
-                quantity_before=existing_count,
-                quantity_after=existing_count + 1,
+            Ledger(session).added(
+                item_type_id,
+                location_id,
+                1,
                 serial_number=serial_number,
                 notes=transaction_notes,
-                location_id=location_id,
             )
-            session.add(transaction)
             session.flush()
             session.refresh(item)
             logger.debug(
@@ -837,16 +813,9 @@ class ItemRepository:
             quantity_before = item.quantity
             item.quantity = quantity
 
-            session.add(
-                Transaction(
-                    item_type_id=item.item_type_id,
-                    transaction_type=TransactionType.EDIT,
-                    quantity_change=abs(quantity - quantity_before),
-                    quantity_before=quantity_before,
-                    quantity_after=quantity,
-                    notes=edit_reason,
-                    location_id=item.location_id,
-                )
+            session.flush()
+            Ledger(session).corrected(
+                item.item_type_id, item.location_id, quantity_before, edit_reason
             )
             session.flush()
             session.refresh(item)
@@ -911,21 +880,15 @@ class ItemRepository:
                 )
 
             quantity = item.quantity
-            session.add(
-                Transaction(
-                    item_type_id=item.item_type_id,
-                    transaction_type=TransactionType.REMOVE,
-                    quantity_change=quantity,
-                    quantity_before=quantity,
-                    quantity_after=0,
-                    notes=notes or "",
-                    location_id=item.location_id,
-                )
-            )
-            # Flush the transaction before the row goes, then delete via direct SQL
-            # so the REMOVE record survives as an audit record.
-            session.flush()
+            item_type_id = item.item_type_id
+            location_id = item.location_id
+            # Direct SQL bypasses the ORM cascade; Transaction has no FK to Item,
+            # so the record is written after the row is already gone.
             session.execute(sql_delete(Item).where(Item.id == item_id))
+            session.flush()
+            Ledger(session).removed(
+                item_type_id, location_id, quantity, notes=notes or ""
+            )
             logger.debug(
                 f"Repository: Deleted non-serialized item id={item_id}, qty={quantity}"
             )
@@ -957,16 +920,10 @@ class ItemRepository:
             quantity_before = item.quantity
             item.quantity += quantity
 
-            transaction = Transaction(
-                item_type_id=item.item_type_id,
-                transaction_type=TransactionType.ADD,
-                quantity_change=quantity,
-                quantity_before=quantity_before,
-                quantity_after=item.quantity,
-                notes=notes or "",
-                location_id=item.location_id,
+            session.flush()
+            Ledger(session).added(
+                item.item_type_id, item.location_id, quantity, notes=notes or ""
             )
-            session.add(transaction)
             session.flush()
             session.refresh(item)
             logger.debug(
@@ -1013,16 +970,10 @@ class ItemRepository:
             quantity_before = item.quantity
             item.quantity -= quantity
 
-            transaction = Transaction(
-                item_type_id=item.item_type_id,
-                transaction_type=TransactionType.REMOVE,
-                quantity_change=quantity,
-                quantity_before=quantity_before,
-                quantity_after=item.quantity,
-                notes=notes or "",
-                location_id=item.location_id,
+            session.flush()
+            Ledger(session).removed(
+                item.item_type_id, item.location_id, quantity, notes=notes or ""
             )
-            session.add(transaction)
             session.flush()
             session.refresh(item)
             logger.debug(
@@ -1254,7 +1205,7 @@ class ItemRepository:
                     f"Cannot transfer {quantity}: only {src.quantity} available"
                 )
 
-            src_qty_before = src.quantity
+            item_type_id = src.item_type_id
             dest = (
                 session.query(Item)
                 .filter(
@@ -1264,7 +1215,6 @@ class ItemRepository:
                 )
                 .first()
             )
-            dest_qty_before = dest.quantity if dest else 0
             is_full = quantity == src.quantity
 
             if is_full and dest is None:
@@ -1291,41 +1241,16 @@ class ItemRepository:
 
             session.flush()
 
-            # Source transaction
-            session.add(
-                Transaction(
-                    item_type_id=src.item_type_id,
-                    transaction_type=TransactionType.TRANSFER,
-                    quantity_change=quantity,
-                    quantity_before=src_qty_before,
-                    quantity_after=(
-                        src_qty_before - quantity
-                        if not (is_full and dest is None)
-                        else 0
-                    ),
-                    notes=notes,
-                    location_id=from_location_id,
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                )
-            )
-            # Destination transaction
-            session.add(
-                Transaction(
-                    item_type_id=src.item_type_id,
-                    transaction_type=TransactionType.TRANSFER,
-                    quantity_change=quantity,
-                    quantity_before=dest_qty_before,
-                    quantity_after=dest_qty_before + quantity,
-                    notes=notes,
-                    location_id=to_location_id,
-                    from_location_id=from_location_id,
-                    to_location_id=to_location_id,
-                )
+            Ledger(session).transferred(
+                item_type_id,
+                from_location_id,
+                to_location_id,
+                quantity,
+                notes=notes,
             )
 
             logger.debug(
-                f"Repository: Transferred {quantity} of type_id={src.item_type_id} "
+                f"Repository: Transferred {quantity} of type_id={item_type_id} "
                 f"from loc={from_location_id} to loc={to_location_id}"
             )
             return True
@@ -1363,60 +1288,19 @@ class ItemRepository:
                 raise ValueError(
                     f"Serial(s) not found at location {from_location_id}: {sorted(missing)}"
                 )
-            # Count existing at source and destination for accurate qty_before/after
-            type_ids = {item.item_type_id for item in items}
-            src_counts: dict = {}
-            dest_counts: dict = {}
-            for tid in type_ids:
-                src_counts[tid] = (
-                    session.query(func.count(Item.id))
-                    .filter(
-                        Item.item_type_id == tid, Item.location_id == from_location_id
-                    )
-                    .scalar()
-                ) or 0
-                dest_counts[tid] = (
-                    session.query(func.count(Item.id))
-                    .filter(
-                        Item.item_type_id == tid, Item.location_id == to_location_id
-                    )
-                    .scalar()
-                ) or 0
-
+            ledger = Ledger(session)
             for item in items:
-                qty_before_src = src_counts[item.item_type_id]
-                qty_before_dest = dest_counts[item.item_type_id]
                 item.location_id = to_location_id
-                session.add(
-                    Transaction(
-                        item_type_id=item.item_type_id,
-                        transaction_type=TransactionType.TRANSFER,
-                        quantity_change=1,
-                        quantity_before=qty_before_src,
-                        quantity_after=qty_before_src - 1,
-                        serial_number=item.serial_number,
-                        notes=notes,
-                        location_id=from_location_id,
-                        from_location_id=from_location_id,
-                        to_location_id=to_location_id,
-                    )
+                # Flush per unit so each record shows its own step
+                session.flush()
+                ledger.transferred(
+                    item.item_type_id,
+                    from_location_id,
+                    to_location_id,
+                    1,
+                    serial_number=item.serial_number,
+                    notes=notes,
                 )
-                session.add(
-                    Transaction(
-                        item_type_id=item.item_type_id,
-                        transaction_type=TransactionType.TRANSFER,
-                        quantity_change=1,
-                        quantity_before=qty_before_dest,
-                        quantity_after=qty_before_dest + 1,
-                        serial_number=item.serial_number,
-                        notes=notes,
-                        location_id=to_location_id,
-                        from_location_id=from_location_id,
-                        to_location_id=to_location_id,
-                    )
-                )
-                src_counts[item.item_type_id] -= 1
-                dest_counts[item.item_type_id] += 1
 
             session.flush()
             logger.debug(
@@ -1485,29 +1369,23 @@ class ItemRepository:
                 session.query(Item).filter(Item.serial_number.in_(serial_numbers)).all()
             )
             count = len(items)
+            ledger = Ledger(session)
 
-            # Create REMOVE transactions first
+            # Direct SQL bypasses the ORM cascade; Transaction has no FK to Item,
+            # so each record is written after its row is already gone.
             for item in items:
-                transaction = Transaction(
-                    item_type_id=item.item_type_id,
-                    transaction_type=TransactionType.REMOVE,
-                    quantity_change=1,
-                    quantity_before=1,
-                    quantity_after=0,
-                    serial_number=item.serial_number,
+                item_type_id = item.item_type_id
+                location_id = item.location_id
+                serial_number = item.serial_number
+                session.execute(sql_delete(Item).where(Item.id == item.id))
+                session.flush()
+                ledger.removed(
+                    item_type_id,
+                    location_id,
+                    1,
+                    serial_number=serial_number,
                     notes=notes,
-                    location_id=item.location_id,
                 )
-                session.add(transaction)
-
-            # Flush transactions into DB before items are deleted
-            session.flush()
-
-            # Delete items via direct SQL to bypass ORM cascade (preserves the
-            # REMOVE transactions we just inserted as audit records)
-            session.execute(
-                sql_delete(Item).where(Item.serial_number.in_(serial_numbers))
-            )
 
             logger.debug(f"Repository: Bulk deleted {count} items by serial numbers")
             return count
