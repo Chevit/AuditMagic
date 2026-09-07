@@ -87,6 +87,7 @@ source .venv/bin/activate  # macOS/Linux
 # Install dependencies
 pip install -r requirements.txt
 ```
+Dev tools are not on PATH — run them venv-qualified (`.venv/bin/mypy`, `.venv/bin/black`, `.venv/bin/flake8`, `.venv/bin/pre-commit`). Only `pytest` resolves globally.
 
 ## Running
 ```bash
@@ -100,9 +101,10 @@ python src/main.py
 - PascalCase for classes
 - Private methods: `_method_name`
 - Format with Black
-- Line length 88 (`.flake8`, ignores W503/W504); imports via `isort --profile black`
-- Pre-commit hooks configured (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml
-- Type check: `mypy src` (config in `mypy.ini`; PyQt6/qt_material/alembic imports ignored)
+- Line length 88; imports via `isort --profile black`
+- flake8: the hook's `--extend-ignore=E203` **overrides** `.flake8`, so bare `flake8` flags E203 on Black-formatted slices while the hook passes. Match the hook: `flake8 --extend-ignore=E203`. (`.flake8`'s W503/W504 are flake8 defaults already — redundant.)
+- Pre-commit hooks (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, check-merge-conflict. **mypy is not a hook.**
+- Type check: `.venv/bin/mypy --explicit-package-bases src` (config in `mypy.ini`; PyQt6/qt_material/alembic imports ignored). Plain `mypy src` aborts with "Source file found twice" — `src/__init__.py` plus `mypy.ini`'s `mypy_path = src` map each file to two module names. Currently ~236 errors. Real fix: delete `src/__init__.py` (`src` is a sys.path entry for conftest/PyInstaller, not a package)
 
 ## Testing
 ```bash
@@ -111,6 +113,7 @@ QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt abor
 - `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
 - Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`
 - CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
+- Baseline: 163 tests pass on `main`
 
 ## Architecture
 - MVC pattern with QAbstractListModel
