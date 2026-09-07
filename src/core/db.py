@@ -2,9 +2,10 @@
 
 import os
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Optional
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.logger import APP_DATA_DIR, logger
@@ -15,11 +16,11 @@ DATABASE_PATH = os.path.join(APP_DATA_DIR, "inventory.db")
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # Create engine with SQLite
-engine = None
-SessionLocal = None
+engine: Optional[Engine] = None
+SessionLocal: Optional["sessionmaker[Session]"] = None
 
 
-def init_database(db_url: str = None) -> None:
+def init_database(db_url: Optional[str] = None) -> None:
     """Initialize the database engine and create all tables.
 
     Args:
@@ -67,6 +68,7 @@ def get_session() -> Session:
     """
     if SessionLocal is None:
         init_database()
+    assert SessionLocal is not None
     return SessionLocal()
 
 

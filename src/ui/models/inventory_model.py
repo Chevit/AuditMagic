@@ -47,7 +47,6 @@ class InventoryModel(QAbstractListModel):
             return None
 
         item = self._items[index.row()]
-        is_grouped = isinstance(item, GroupedInventoryItem)
 
         if role == Qt.ItemDataRole.DisplayRole:
             return item.display_name
@@ -63,13 +62,13 @@ class InventoryModel(QAbstractListModel):
 
         if role == InventoryItemRole.SerialNumber:
             # For grouped items, return comma-separated serial numbers or None
-            if is_grouped:
+            if isinstance(item, GroupedInventoryItem):
                 return ", ".join(item.serial_numbers) if item.serial_numbers else None
             return item.serial_number
 
         if role == InventoryItemRole.SerialNumbers:
             # Return list of serial numbers (only for grouped items)
-            if is_grouped:
+            if isinstance(item, GroupedInventoryItem):
                 return item.serial_numbers
             return [item.serial_number] if item.serial_number else []
 

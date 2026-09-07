@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PyQt6.QtCore import QRect, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
@@ -21,7 +23,9 @@ class InventoryItemDelegate(QStyledItemDelegate):
     def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
         return QSize(option.rect.width(), self.ROW_HEIGHT)
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index):
+    def paint(self, painter: Optional[QPainter], option: QStyleOptionViewItem, index):
+        if painter is None:
+            return
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -67,8 +71,10 @@ class InventoryItemDelegate(QStyledItemDelegate):
 
         # ── Quantity (right column) ──────────────────────────────────────
         qty_x = right - self.QTY_COL_W
-        qty_val = str(len(serial_numbers)) if is_serialized and serial_numbers else (
-            str(quantity) if quantity is not None else "0"
+        qty_val = (
+            str(len(serial_numbers))
+            if is_serialized and serial_numbers
+            else (str(quantity) if quantity is not None else "0")
         )
 
         qty_font = QFont()
@@ -77,14 +83,22 @@ class InventoryItemDelegate(QStyledItemDelegate):
         painter.setFont(qty_font)
         painter.setPen(main_color)
         qty_rect = QRect(qty_x, top + self.PAD_V, self.QTY_COL_W, 22)
-        painter.drawText(qty_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, qty_val)
+        painter.drawText(
+            qty_rect,
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            qty_val,
+        )
 
         unit_font = QFont()
         unit_font.setPointSize(8)
         painter.setFont(unit_font)
         painter.setPen(secondary_color)
         unit_rect = QRect(qty_x, top + self.PAD_V + 24, self.QTY_COL_W, 14)
-        painter.drawText(unit_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, "шт.")
+        painter.drawText(
+            unit_rect,
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            "шт.",
+        )
 
         # ── Type name (left, prominent) ──────────────────────────────────
         text_width = qty_x - 8 - left
@@ -95,9 +109,15 @@ class InventoryItemDelegate(QStyledItemDelegate):
         painter.setFont(type_font)
         painter.setPen(main_color)
         fm_type = QFontMetrics(type_font)
-        elided_type = fm_type.elidedText(item_type, Qt.TextElideMode.ElideRight, text_width)
+        elided_type = fm_type.elidedText(
+            item_type, Qt.TextElideMode.ElideRight, text_width
+        )
         type_rect = QRect(left, top + self.PAD_V, text_width, 22)
-        painter.drawText(type_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided_type)
+        painter.drawText(
+            type_rect,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            elided_type,
+        )
 
         # ── Sub type ─────────────────────────────────────────────────────
         sub_font = QFont()
@@ -106,13 +126,21 @@ class InventoryItemDelegate(QStyledItemDelegate):
         painter.setPen(secondary_color)
         fm_sub = QFontMetrics(sub_font)
         sub_display = sub_type if sub_type else "—"
-        elided_sub = fm_sub.elidedText(sub_display, Qt.TextElideMode.ElideRight, text_width)
+        elided_sub = fm_sub.elidedText(
+            sub_display, Qt.TextElideMode.ElideRight, text_width
+        )
         sub_rect = QRect(left, top + self.PAD_V + 26, text_width, 16)
-        painter.drawText(sub_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided_sub)
+        painter.drawText(
+            sub_rect,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            elided_sub,
+        )
 
         # ── Serialized badge (bottom-right) ──────────────────────────────
         badge_text = (
-            tr("label.serialized_badge") if is_serialized else tr("label.non_serialized_badge")
+            tr("label.serialized_badge")
+            if is_serialized
+            else tr("label.non_serialized_badge")
         )
         badge_color = QColor("#2e7d32") if is_serialized else QColor("#757575")
         badge_font = QFont()
@@ -121,7 +149,9 @@ class InventoryItemDelegate(QStyledItemDelegate):
         fm_badge = QFontMetrics(badge_font)
         badge_w = fm_badge.horizontalAdvance(badge_text) + 10
         badge_h = fm_badge.height() + 4
-        badge_rect = QRect(right - badge_w, rect.bottom() - badge_h - 6, badge_w, badge_h)
+        badge_rect = QRect(
+            right - badge_w, rect.bottom() - badge_h - 6, badge_w, badge_h
+        )
 
         painter.save()
         painter.setFont(badge_font)

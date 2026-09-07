@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -22,7 +22,9 @@ class InventoryItem:
     updated_at: datetime
 
     @classmethod
-    def from_db_models(cls, item, item_type, location_name: str = ""):
+    def from_db_models(
+        cls, item: Any, item_type: Any, location_name: str = ""
+    ) -> "InventoryItem":
         """Create InventoryItem from Item and ItemType models.
 
         Args:

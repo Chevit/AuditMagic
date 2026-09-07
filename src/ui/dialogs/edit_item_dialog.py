@@ -4,21 +4,42 @@ from typing import List, Optional
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QFrame,
-                             QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                             QListWidget, QListWidgetItem, QMessageBox,
-                             QPushButton, QTextEdit, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
-from ui.styles import (Colors, apply_button_style, apply_combo_box_style,
-                       apply_input_style, apply_text_edit_style)
+from ui.styles import (
+    Colors,
+    apply_button_style,
+    apply_combo_box_style,
+    apply_input_style,
+    apply_text_edit_style,
+)
 from ui.translations import tr
-from ui.validators import (ItemTypeValidator, SerialNumberValidator,
-                           validate_length, validate_positive_integer,
-                           validate_required_field)
+from ui.validators import (
+    ItemTypeValidator,
+    SerialNumberValidator,
+    validate_length,
+    validate_positive_integer,
+    validate_required_field,
+)
 
 
 class EditItemDialog(QDialog):
@@ -153,6 +174,7 @@ class EditItemDialog(QDialog):
         form_layout.addRow(quantity_label, self.quantity_input)
 
         # Serial Number - only for non-grouped single serialized items
+        self.serial_edit: Optional[QLineEdit]
         if not self._is_grouped and not self._is_serialized:
             serial_label = QLabel(tr("label.serial_number"))
             self.serial_edit = QLineEdit()

@@ -5,9 +5,13 @@ from typing import Dict, List, Optional, Tuple
 
 from core.logger import logger
 from core.models import Location
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository, SearchHistoryRepository,
-                               TransactionRepository)
+from core.repositories import (
+    ItemRepository,
+    ItemTypeRepository,
+    LocationRepository,
+    SearchHistoryRepository,
+    TransactionRepository,
+)
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.translations import tr
 
@@ -21,8 +25,8 @@ class InventoryService:
         item_sub_type: str = "",
         quantity: int = 1,
         is_serialized: bool = False,
-        serial_number: str = None,
-        location_id: int = None,
+        serial_number: Optional[str] = None,
+        location_id: Optional[int] = None,
         condition: str = "",
         transaction_notes: str = "",
     ) -> InventoryItem:
@@ -73,7 +77,7 @@ class InventoryService:
         item_type_name: str,
         item_sub_type: str = "",
         serial_number: str = "",
-        location_id: int = None,
+        location_id: Optional[int] = None,
         condition: str = "",
         details: str = "",
         notes: str = "",
@@ -136,7 +140,7 @@ class InventoryService:
         is_serialized: bool = False,
         serial_number: str = "",
         details: str = "",
-        location_id: int = None,
+        location_id: Optional[int] = None,
         condition: str = "",
         transaction_notes: str = "",
     ) -> Tuple[InventoryItem, bool]:
@@ -247,7 +251,9 @@ class InventoryService:
         ]
 
     @staticmethod
-    def get_all_items_grouped(location_id: int = None) -> List[GroupedInventoryItem]:
+    def get_all_items_grouped(
+        location_id: Optional[int] = None,
+    ) -> List[GroupedInventoryItem]:
         """Get all inventory items grouped by type, optionally filtered by location.
 
         Builds a location name map once and passes it to GroupedInventoryItem
@@ -277,7 +283,7 @@ class InventoryService:
 
     @staticmethod
     def get_serialized_items_grouped(
-        location_id: int = None,
+        location_id: Optional[int] = None,
     ) -> List[GroupedInventoryItem]:
         """Get serialized inventory items grouped by type.
 
@@ -404,9 +410,9 @@ class InventoryService:
     @staticmethod
     def update_item(
         item_id: int,
-        serial_number: str = None,
-        location_id: int = None,
-        condition: str = None,
+        serial_number: Optional[str] = None,
+        location_id: Optional[int] = None,
+        condition: Optional[str] = None,
     ) -> Optional[InventoryItem]:
         """Update an item's instance properties.
 
@@ -441,7 +447,7 @@ class InventoryService:
         is_serialized: bool = False,
         serial_number: str = "",
         details: str = "",
-        location_id: int = None,
+        location_id: Optional[int] = None,
         condition: str = "",
         edit_reason: str = "",
     ) -> Optional[InventoryItem]:
@@ -701,9 +707,9 @@ class SearchService:
     @staticmethod
     def search(
         query: str,
-        field: str = None,
+        field: Optional[str] = None,
         save_to_history: bool = True,
-        location_id: int = None,
+        location_id: Optional[int] = None,
     ) -> List[InventoryItem]:
         """Search for items and optionally save to history.
 
@@ -730,14 +736,20 @@ class SearchService:
             InventoryItem.from_db_models(
                 item,
                 type_map[item.item_type_id],
-                location_name=loc_map.get(item.location_id, ""),
+                location_name=(
+                    loc_map.get(item.location_id, "")
+                    if item.location_id is not None
+                    else ""
+                ),
             )
             for item in db_items
             if item.item_type_id in type_map
         ]
 
     @staticmethod
-    def get_autocomplete_suggestions(prefix: str, field: str = None) -> List[str]:
+    def get_autocomplete_suggestions(
+        prefix: str, field: Optional[str] = None
+    ) -> List[str]:
         """Get autocomplete suggestions for a search prefix.
 
         Args:
@@ -775,7 +787,7 @@ class TransactionService:
         type_id: int,
         start_date: datetime,
         end_date: datetime,
-        location_id: int = None,
+        location_id: Optional[int] = None,
     ) -> List[dict]:
         """Get transactions for an ItemType within a date range.
 

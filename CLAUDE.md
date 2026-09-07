@@ -104,16 +104,18 @@ python src/main.py
 - Line length 88; imports via `isort --profile black`
 - flake8: the hook's `--extend-ignore=E203` **overrides** `.flake8`, so bare `flake8` flags E203 on Black-formatted slices while the hook passes. Match the hook: `flake8 --extend-ignore=E203`. (`.flake8`'s W503/W504 are flake8 defaults already — redundant.)
 - Pre-commit hooks (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, check-merge-conflict. **mypy is not a hook.**
-- Type check: `.venv/bin/mypy --explicit-package-bases src` (config in `mypy.ini`; PyQt6/qt_material/alembic imports ignored). Plain `mypy src` aborts with "Source file found twice" — `src/__init__.py` plus `mypy.ini`'s `mypy_path = src` map each file to two module names. Currently ~236 errors. Real fix: delete `src/__init__.py` (`src` is a sys.path entry for conftest/PyInstaller, not a package)
+- Type check: `.venv/bin/mypy src` — currently clean. Config in `mypy.ini`; PyQt6/qt_material/alembic/openpyxl/requests/pyi_splash imports ignored
+- `src/` has no `__init__.py`: it is a path entry (conftest, PyInstaller `pathex`), not a package. Adding one makes `mypy_path = src` map every file to two module names and mypy aborts with "Source file found twice" before checking anything
+- Models use SQLAlchemy 2.0 typed style (`Mapped[...]` + `mapped_column`). Tests build the schema with `create_all` while users get theirs from Alembic, so the two must agree — `tests/test_schema_parity.py` runs every migration into a temp DB and compares nullability, defaults, types and uniqueness against `create_all`. It fails on drift; do not weaken it to make a model change pass
 
 ## Testing
 ```bash
 QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt aborts headless without it
 ```
 - `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
-- Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`
+- Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`, `test_schema_parity.py`
 - CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
-- Baseline: 163 tests pass on `main`
+- Baseline: 170 tests pass, and `mypy src` is clean
 
 ## Architecture
 - MVC pattern with QAbstractListModel
@@ -183,6 +185,8 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 - Hierarchical naming: `app.title`, `button.add`, `field.type`
 
 ## Data Model (Hierarchical Structure)
+
+> `alembic/env.py` reads `DATABASE_URL` from `core.db` at import time and has **no override** — not `-x`, not an env var. Every `alembic` command therefore targets the real user DB (`~/.local/share/AuditMagic/inventory.db`). To migrate a throwaway DB, patch `core.db.DATABASE_URL` before invoking `command.upgrade`, as `tests/test_schema_parity.py` does.
 
 ### ItemType (Type Definitions)
 - **ItemType**: `name`, `sub_type`, `is_serialized`, `details`
