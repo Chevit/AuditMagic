@@ -1,7 +1,7 @@
 """Repository layer for database operations."""
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypeVar
 
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import func, or_
@@ -9,9 +9,17 @@ from sqlalchemy.orm import make_transient
 
 from core.db import session_scope
 from core.logger import logger
-from core.models import (Item, ItemType, Location, SearchHistory, Transaction,
-                         TransactionType)
+from core.models import (
+    Item,
+    ItemType,
+    Location,
+    SearchHistory,
+    Transaction,
+    TransactionType,
+)
 from ui.translations import tr
+
+_T = TypeVar("_T")
 
 
 class LocationRepository:
@@ -343,10 +351,10 @@ class ItemTypeRepository:
     @staticmethod
     def update(
         type_id: int,
-        name: str = None,
-        sub_type: str = None,
-        is_serialized: bool = None,
-        details: str = None,
+        name: Optional[str] = None,
+        sub_type: Optional[str] = None,
+        is_serialized: Optional[bool] = None,
+        details: Optional[str] = None,
     ) -> Optional[ItemType]:
         """Update an item type.
 
@@ -486,7 +494,7 @@ class ItemTypeRepository:
         ]
 
     @staticmethod
-    def get_all_with_items(location_id: int = None) -> list:
+    def get_all_with_items(location_id: Optional[int] = None) -> list:
         """Get all item types with their items for grouped display.
 
         Args:
@@ -501,7 +509,7 @@ class ItemTypeRepository:
             )
 
     @staticmethod
-    def get_serialized_with_items(location_id: int = None) -> list:
+    def get_serialized_with_items(location_id: Optional[int] = None) -> list:
         """Get all serialized item types with their items.
 
         Args:
@@ -525,10 +533,10 @@ class ItemRepository:
     def create(
         item_type_id: int,
         quantity: int = 1,
-        serial_number: str = None,
-        location_id: int = None,
-        condition: str = None,
-        transaction_notes: str = None,
+        serial_number: Optional[str] = None,
+        location_id: Optional[int] = None,
+        condition: Optional[str] = None,
+        transaction_notes: Optional[str] = None,
     ) -> Item:
         """Create a new item instance.
 
@@ -606,7 +614,7 @@ class ItemRepository:
     def create_serialized(
         item_type_id: int,
         serial_number: str,
-        location_id: int = None,
+        location_id: Optional[int] = None,
         condition: str = "",
         notes: str = "",
     ) -> Item:
@@ -707,7 +715,7 @@ class ItemRepository:
             return _detach(item) if item else None
 
     @staticmethod
-    def get_all(location_id: int = None) -> List[Item]:
+    def get_all(location_id: Optional[int] = None) -> List[Item]:
         """Get all items, optionally filtered by location.
 
         Args:
@@ -725,9 +733,9 @@ class ItemRepository:
     @staticmethod
     def update(
         item_id: int,
-        serial_number: str = None,
-        location_id: int = None,
-        condition: str = None,
+        serial_number: Optional[str] = None,
+        location_id: Optional[int] = None,
+        condition: Optional[str] = None,
     ) -> Optional[Item]:
         """Update an item's properties (not quantity - use add_quantity/remove_quantity).
 
@@ -765,7 +773,7 @@ class ItemRepository:
         item_type_id: int,
         quantity: int,
         serial_number: str,
-        location_id: int,
+        location_id: Optional[int],
         condition: str,
         edit_reason: str,
     ) -> Optional[Item]:
@@ -841,7 +849,9 @@ class ItemRepository:
             return True
 
     @staticmethod
-    def add_quantity(item_id: int, quantity: int, notes: str = None) -> Optional[Item]:
+    def add_quantity(
+        item_id: int, quantity: int, notes: Optional[str] = None
+    ) -> Optional[Item]:
         """Add quantity to an item and record the transaction.
 
         Args:
@@ -885,7 +895,7 @@ class ItemRepository:
 
     @staticmethod
     def remove_quantity(
-        item_id: int, quantity: int, notes: str = None
+        item_id: int, quantity: int, notes: Optional[str] = None
     ) -> Optional[Item]:
         """Remove quantity from an item and record the transaction.
 
@@ -941,7 +951,7 @@ class ItemRepository:
 
     @staticmethod
     def find_by_type_and_serial(
-        item_type_id: int, serial_number: str = None
+        item_type_id: int, serial_number: Optional[str] = None
     ) -> Optional[Item]:
         """Find an existing item by type ID and serial number.
 
@@ -966,7 +976,10 @@ class ItemRepository:
 
     @staticmethod
     def search(
-        query: str, field: str = None, limit: int = 200, location_id: int = None
+        query: str,
+        field: Optional[str] = None,
+        limit: int = 200,
+        location_id: Optional[int] = None,
     ) -> List[Item]:
         """Search items by query string.
 
@@ -1030,7 +1043,7 @@ class ItemRepository:
 
     @staticmethod
     def get_autocomplete_suggestions(
-        prefix: str, field: str = None, limit: int = 10
+        prefix: str, field: Optional[str] = None, limit: int = 10
     ) -> List[str]:
         """Get autocomplete suggestions for a search prefix.
 
@@ -1043,7 +1056,7 @@ class ItemRepository:
             List of unique suggestion strings.
         """
         with session_scope() as session:
-            suggestions = set()
+            suggestions: set[str] = set()
             search_pattern = f"{prefix}%"
 
             if field == "item_type" or field is None:
@@ -1477,7 +1490,7 @@ class TransactionRepository:
         type_id: int,
         start_date: datetime,
         end_date: datetime,
-        location_id: int = None,
+        location_id: Optional[int] = None,
         limit: int = 1000,
     ) -> List[Transaction]:
         """Get transactions for an ItemType within a date range.
@@ -1629,7 +1642,7 @@ class SearchHistoryRepository:
     MAX_HISTORY = 5
 
     @staticmethod
-    def add(search_query: str, search_field: str = None) -> SearchHistory:
+    def add(search_query: str, search_field: Optional[str] = None) -> SearchHistory:
         """Add a search to history, keeping only the last 5.
 
         Args:
@@ -1712,7 +1725,7 @@ class SearchHistoryRepository:
 # ---------------------------------------------------------------------------
 
 
-def _detach(obj):
+def _detach(obj: _T) -> _T:
     """Detach *obj* from its session so callers can use it after session.close().
 
     All already-loaded column values remain accessible.
@@ -1721,6 +1734,6 @@ def _detach(obj):
     session.merge() to perform updates; that would attempt an INSERT.
     """
     if obj is None:
-        return None
+        return obj
     make_transient(obj)
     return obj

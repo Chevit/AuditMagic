@@ -2,14 +2,26 @@
 
 import sys
 import webbrowser
+from typing import TYPE_CHECKING, Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
-                             QProgressBar, QPushButton, QTextEdit, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from ui.styles import apply_button_style
 from ui.translations import tr
 from update_checker import UpdateInfo
+
+if TYPE_CHECKING:
+    from auto_updater import DownloadWorker
 
 
 class UpdateDialog(QDialog):
@@ -18,7 +30,7 @@ class UpdateDialog(QDialog):
     def __init__(self, update_info: UpdateInfo, parent=None):
         super().__init__(parent)
         self._update_info = update_info
-        self._worker = None
+        self._worker: Optional["DownloadWorker"] = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -124,7 +136,9 @@ class UpdateDialog(QDialog):
             self._on_error(str(e))
             return
 
-        QApplication.instance().quit()
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _on_error(self, message: str) -> None:
         """Show error and re-enable buttons."""

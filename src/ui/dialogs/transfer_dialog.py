@@ -2,14 +2,22 @@
 
 from typing import Optional
 
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                             QHBoxLayout, QLabel, QLineEdit,
-                             QScrollArea, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core.repositories import LocationRepository
 from core.services import InventoryService
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
 from ui.validators import PositiveIntValidator
 
@@ -24,6 +32,7 @@ class TransferDialog(QDialog):
         self._item_type_id = item.item_type_id
 
         # Determine source location
+        self._source_id: Optional[int]
         if current_location_id is not None:
             self._source_id = current_location_id
             self._needs_source_combo = False
@@ -72,7 +81,11 @@ class TransferDialog(QDialog):
             apply_combo_box_style(self.source_combo)
             src_row.addWidget(self.source_combo, stretch=1)
         else:
-            self._source_label = QLabel(self._loc_map.get(self._source_id, ""))
+            self._source_label = QLabel(
+                self._loc_map.get(self._source_id, "")
+                if self._source_id is not None
+                else ""
+            )
             src_row.addWidget(self._source_label, stretch=1)
         layout.addLayout(src_row)
 
@@ -132,11 +145,12 @@ class TransferDialog(QDialog):
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        btns.button(QDialogButtonBox.StandardButton.Ok).setText(tr("transfer.button"))
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(
-            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
-        )
+        ok_button = btns.button(QDialogButtonBox.StandardButton.Ok)
+        cancel_button = btns.button(QDialogButtonBox.StandardButton.Cancel)
+        assert ok_button is not None and cancel_button is not None
+        ok_button.setText(tr("transfer.button"))
+        apply_button_style(ok_button, "primary")
+        apply_button_style(cancel_button, "secondary")
         btns.accepted.connect(self._on_accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
@@ -178,8 +192,9 @@ class TransferDialog(QDialog):
             # Remove old checkboxes (keep the trailing stretch)
             while self._serial_scroll_layout.count() > 1:
                 item = self._serial_scroll_layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
+                widget = item.widget() if item is not None else None
+                if widget is not None:
+                    widget.deleteLater()
             self._checkboxes.clear()
             for sn in serials:
                 cb = QCheckBox(sn)
@@ -221,6 +236,11 @@ class TransferDialog(QDialog):
         dest_id = self.dest_combo.currentData()
         if dest_id is None:
             self.error_label.setText(tr("transfer.error.no_destination"))
+            self.error_label.show()
+            return
+
+        if self._source_id is None:
+            self.error_label.setText(tr("error.generic.message"))
             self.error_label.show()
             return
 

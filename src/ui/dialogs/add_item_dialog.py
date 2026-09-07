@@ -2,22 +2,41 @@ from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer
 from PyQt6.QtGui import QFont, QIntValidator, QPainter
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QDialog,
-                             QFormLayout, QFrame, QHBoxLayout, QLabel,
-                             QLineEdit, QMessageBox, QPushButton, QTextEdit,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
 from ui.models.inventory_item import InventoryItem
-from ui.styles import (Colors, apply_button_style,
-                       apply_combo_box_style, apply_input_style,
-                       apply_text_edit_style)
+from ui.styles import (
+    Colors,
+    apply_button_style,
+    apply_combo_box_style,
+    apply_input_style,
+    apply_text_edit_style,
+)
 from ui.translations import tr
-from ui.validators import (ItemTypeValidator, SerialNumberValidator,
-                           validate_length, validate_positive_integer,
-                           validate_required_field)
+from ui.validators import (
+    ItemTypeValidator,
+    SerialNumberValidator,
+    validate_length,
+    validate_positive_integer,
+    validate_required_field,
+)
 
 
 class _WrappingTextEdit(QTextEdit):
@@ -475,7 +494,7 @@ class AddItemDialog(QDialog):
                     quantity=quantity,
                     is_serialized=False,
                     location_id=location_id,
-                    transaction_notes=initial_notes or None,
+                    transaction_notes=initial_notes or "",
                 )
             logger.info(f"Item created successfully: id={self._result_item.id}")
             self.accept()

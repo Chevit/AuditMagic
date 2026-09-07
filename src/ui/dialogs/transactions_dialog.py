@@ -1,14 +1,23 @@
 """Dialog for viewing transaction history."""
 
 from datetime import datetime
-from typing import List
+from typing import Any, Callable, List, Optional
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import (QDateEdit, QDialog, QFrame,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
-                             QPushButton, QTableWidget, QTableWidgetItem,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDateEdit,
+    QDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import LocationRepository
@@ -29,7 +38,7 @@ class TransactionsDialog(QDialog):
         super().__init__(parent)
         self._item_type_id = item_type_id
         self._item_name = item_name
-        self._transactions_callback = None
+        self._transactions_callback: Optional[Callable[..., List[Any]]] = None
         self._item_is_serialized = item_is_serialized
         self._setup_ui()
 
@@ -123,6 +132,7 @@ class TransactionsDialog(QDialog):
 
         # Set column widths
         header = self.table.horizontalHeader()
+        assert header is not None
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -193,7 +203,7 @@ class TransactionsDialog(QDialog):
                 f"{tr('error.generic.message')}\n{e}",
             )
 
-    def _populate_table(self, transactions: List[dict], loc_map: dict = None):
+    def _populate_table(self, transactions: List[dict], loc_map: Optional[dict] = None):
         """Populate the table with transaction data."""
         if loc_map is None:
             loc_map = {}
@@ -202,7 +212,7 @@ class TransactionsDialog(QDialog):
         for row, trans in enumerate(transactions):
             column = 0
 
-            def cell(text: str, col: int, color: QColor = None):
+            def cell(text: str, col: int, color: Optional[QColor] = None):
                 item = QTableWidgetItem(text)
                 if color:
                     item.setForeground(color)

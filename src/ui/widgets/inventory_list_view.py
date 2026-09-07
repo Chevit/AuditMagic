@@ -103,7 +103,9 @@ class InventoryListView(QListView):
         delete_action.triggered.connect(lambda: self.delete_requested.emit(row, item))
         menu.addAction(delete_action)
 
-        menu.exec(self.viewport().mapToGlobal(position))
+        viewport = self.viewport()
+        assert viewport is not None
+        menu.exec(viewport.mapToGlobal(position))
 
     def mouseDoubleClickEvent(self, event):
         """Handle double-click to open details."""

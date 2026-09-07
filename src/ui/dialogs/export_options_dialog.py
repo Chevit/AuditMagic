@@ -1,8 +1,15 @@
 """Export options dialog — choose transaction scope before exporting to Excel."""
 
-from PyQt6.QtWidgets import (QButtonGroup, QCheckBox, QDialog,
-                             QDialogButtonBox, QLabel, QRadioButton,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ui.styles import apply_button_style
 from ui.translations import tr
@@ -73,11 +80,12 @@ class ExportOptionsDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         ok_text = tr("export.action").rstrip(".")
-        btns.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text)
-        apply_button_style(btns.button(QDialogButtonBox.StandardButton.Ok), "primary")
-        apply_button_style(
-            btns.button(QDialogButtonBox.StandardButton.Cancel), "secondary"
-        )
+        ok_button = btns.button(QDialogButtonBox.StandardButton.Ok)
+        cancel_button = btns.button(QDialogButtonBox.StandardButton.Cancel)
+        assert ok_button is not None and cancel_button is not None
+        ok_button.setText(ok_text)
+        apply_button_style(ok_button, "primary")
+        apply_button_style(cancel_button, "secondary")
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)

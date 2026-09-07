@@ -1,8 +1,18 @@
+from typing import Union
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QDialog, QFormLayout, QFrame, QGroupBox,
-                             QHBoxLayout, QLabel, QListWidget, QPushButton,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from core.logger import logger
 from core.repositories import ItemRepository
@@ -14,7 +24,7 @@ from ui.translations import tr
 class ItemDetailsDialog(QDialog):
     """Dialog for displaying inventory item details."""
 
-    def __init__(self, item, parent=None):
+    def __init__(self, item: Union[InventoryItem, GroupedInventoryItem], parent=None):
         super().__init__(parent)
         self._item = item
         self._is_grouped = isinstance(item, GroupedInventoryItem)
@@ -106,7 +116,7 @@ class ItemDetailsDialog(QDialog):
         # Serial Number (for non-grouped) or count (for grouped)
         serial_label = QLabel(tr("label.serial_number"))
         serial_label.setFont(label_font)
-        if self._is_grouped:
+        if isinstance(self._item, GroupedInventoryItem):
             serial_count = (
                 len(self._item.serial_numbers) if self._item.serial_numbers else 0
             )
@@ -128,7 +138,7 @@ class ItemDetailsDialog(QDialog):
         layout.addLayout(form_layout)
 
         # Serial numbers section for serialized types (grouped items have the list directly)
-        if self._is_grouped and self._item.serial_numbers:
+        if isinstance(self._item, GroupedInventoryItem) and self._item.serial_numbers:
             self._add_serial_numbers_section_from_list(
                 layout, self._item.serial_numbers
             )
@@ -203,6 +213,6 @@ class ItemDetailsDialog(QDialog):
         logger.debug(f"Added serial numbers section with {len(serial_numbers)} items")
 
     @property
-    def item(self) -> InventoryItem:
+    def item(self) -> Union[InventoryItem, GroupedInventoryItem]:
         """Return the item being displayed."""
         return self._item

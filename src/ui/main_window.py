@@ -25,8 +25,7 @@ from ui.dialogs.transactions_dialog import TransactionsDialog
 from ui.dialogs.transfer_dialog import TransferDialog
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.models.inventory_model import InventoryModel
-from ui.styles import (apply_button_style, apply_combo_box_style,
-                       apply_input_style)
+from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.theme_manager import get_theme_manager
 from ui.translations import tr
 from ui.widgets.inventory_list_view import InventoryListView
@@ -72,7 +71,7 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._restore_window_state()
 
-    def showEvent(self, event: QShowEvent) -> None:
+    def showEvent(self, event: Optional[QShowEvent]) -> None:
         """On first show, defer the first-location wizard to after the splash closes."""
         super().showEvent(event)
         if not self._shown_once:
@@ -110,8 +109,12 @@ class MainWindow(QMainWindow):
 
     def _setup_file_menu(self) -> None:
         """Set up File menu with export action."""
-        file_menu = self.menuBar().addMenu(tr("export.menu.file"))
+        menu_bar = self.menuBar()
+        assert menu_bar is not None
+        file_menu = menu_bar.addMenu(tr("export.menu.file"))
+        assert file_menu is not None
         export_action = file_menu.addAction(tr("export.action"))
+        assert export_action is not None
         export_action.triggered.connect(self._on_export_excel)
 
     def _on_export_excel(self) -> None:
@@ -221,13 +224,16 @@ class MainWindow(QMainWindow):
 
         # Create menu bar if it doesn't exist
         menu_bar = self.menuBar()
+        assert menu_bar is not None
 
         # Create Theme menu
         theme_menu = menu_bar.addMenu("🎨 " + tr("menu.theme"))
+        assert theme_menu is not None
 
         # Get all available themes
         theme_names = Theme.get_all_names()
-        current_theme = get_theme_manager().get_current_theme()
+        theme_manager = get_theme_manager()
+        current_theme = theme_manager.get_current_theme() if theme_manager else None
 
         # Create action group for radio button behavior
         theme_action_group = QActionGroup(self)
@@ -244,7 +250,7 @@ class MainWindow(QMainWindow):
             theme_menu.addAction(action)
 
             # Set current theme as checked
-            if theme_name == current_theme.value.name:
+            if current_theme is not None and theme_name == current_theme.value.name:
                 action.setChecked(True)
 
         logger.info("Theme menu created")
@@ -340,7 +346,9 @@ class MainWindow(QMainWindow):
         if not locs:
             return
         target_id = self._current_location_id or locs[0].id
-        target_name = next((loc.name for loc in locs if loc.id == target_id), locs[0].name)
+        target_name = next(
+            (loc.name for loc in locs if loc.id == target_id), locs[0].name
+        )
         reply = QMessageBox.question(
             self,
             tr("location.unassigned.title"),
@@ -655,10 +663,12 @@ class MainWindow(QMainWindow):
         # For grouped items, use the total_quantity already present in the DTO
         target_item_id = item.item_ids[0] if is_grouped else item.id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
-        dialog = QuantityDialog(item_name, actual_quantity, is_add=True, parent=self)
-        if dialog.exec():
-            quantity = dialog.get_quantity()
-            notes = dialog.get_notes()
+        qty_dialog = QuantityDialog(
+            item_name, actual_quantity, is_add=True, parent=self
+        )
+        if qty_dialog.exec():
+            quantity = qty_dialog.get_quantity()
+            notes = qty_dialog.get_notes()
             if target_item_id is not None:
                 updated_item = InventoryService.add_quantity(
                     target_item_id, quantity, notes
@@ -702,10 +712,12 @@ class MainWindow(QMainWindow):
         # For grouped items, use the total_quantity already present in the DTO
         target_item_id = item.item_ids[0] if is_grouped else item.id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
-        dialog = QuantityDialog(item_name, actual_quantity, is_add=False, parent=self)
-        if dialog.exec():
-            quantity = dialog.get_quantity()
-            notes = dialog.get_notes()
+        qty_dialog = QuantityDialog(
+            item_name, actual_quantity, is_add=False, parent=self
+        )
+        if qty_dialog.exec():
+            quantity = qty_dialog.get_quantity()
+            notes = qty_dialog.get_notes()
             if target_item_id is not None:
                 try:
                     updated_item = InventoryService.remove_quantity(
