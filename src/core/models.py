@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -61,13 +61,16 @@ class ItemType(Base):
     sub_type: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, index=True
     )
-    is_serialized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+    is_serialized: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=text("0")
     )
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime,
+        nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
@@ -129,7 +132,9 @@ class Item(Base):
     item_type_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("item_types.id"), nullable=False, index=True
     )
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    quantity: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     serial_number: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, unique=True, index=True
     )
@@ -137,11 +142,12 @@ class Item(Base):
         Integer, ForeignKey("locations.id"), nullable=True, index=True
     )  # nullable: legacy rows pre-locations; wizard assigns them on startup
     condition: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime,
+        nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
