@@ -245,6 +245,15 @@ def test_get_autocomplete_types():
     assert "Keyboard" in results
 
 
+def test_get_autocomplete_types_filtered_by_serialization():
+    ItemTypeRepository.get_or_create("Keyboard", "", False)
+    ItemTypeRepository.get_or_create("KeyFob", "", True)
+    non_serial = InventoryService.get_autocomplete_types("Key", is_serialized=False)
+    serial = InventoryService.get_autocomplete_types("Key", is_serialized=True)
+    assert non_serial == ["Keyboard"]
+    assert serial == ["KeyFob"]
+
+
 def test_get_autocomplete_subtypes():
     ItemTypeRepository.get_or_create("Laptop", "Pro", False)
     results = InventoryService.get_autocomplete_subtypes("Laptop", "P")
