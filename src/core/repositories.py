@@ -302,11 +302,15 @@ class ItemTypeRepository:
             return [_detach(t) for t in types]
 
     @staticmethod
-    def get_autocomplete_names(prefix: str = "", limit: int = 20) -> List[str]:
+    def get_autocomplete_names(
+        prefix: str = "", is_serialized: Optional[bool] = None, limit: int = 20
+    ) -> List[str]:
         """Get autocomplete suggestions for type names.
 
         Args:
             prefix: Search prefix (optional)
+            is_serialized: When given, only suggest types with this serialization
+                state. None (default) suggests across both.
             limit: Maximum number of suggestions
 
         Returns:
@@ -316,6 +320,8 @@ class ItemTypeRepository:
             query = session.query(ItemType.name).distinct()
             if prefix:
                 query = query.filter(ItemType.name.ilike(f"{prefix}%"))
+            if is_serialized is not None:
+                query = query.filter(ItemType.is_serialized == is_serialized)
             query = query.order_by(ItemType.name).limit(limit)
             return [row[0] for row in query.all()]
 
