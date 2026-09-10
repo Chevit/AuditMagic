@@ -1,7 +1,7 @@
 from typing import Optional
 
 from PyQt6.QtCore import QStringListModel, Qt, QTimer
-from PyQt6.QtGui import QFont, QIntValidator, QPainter
+from PyQt6.QtGui import QFont, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -14,7 +14,6 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
 )
 
@@ -22,6 +21,7 @@ from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
 from ui.dialogs.validation_feedback import show_validation_errors
+from ui.dialogs.wrapping_text_edit import WrappingTextEdit
 from ui.form_rules import add_item_rules
 from ui.models.inventory_item import InventoryItem
 from ui.styles import (
@@ -33,20 +33,6 @@ from ui.styles import (
 )
 from ui.translations import tr
 from ui.validators import ItemTypeValidator, SerialNumberValidator
-
-
-class _WrappingTextEdit(QTextEdit):
-    def paintEvent(self, e):
-        super().paintEvent(e)
-        if self.toPlainText() or not self.placeholderText():
-            return
-        viewport = self.viewport()
-        if viewport is None:
-            return
-        painter = QPainter(viewport)
-        painter.setPen(self.palette().placeholderText().color())
-        rect = viewport.rect().adjusted(4, 4, -4, -4)
-        painter.drawText(rect, Qt.TextFlag.TextWordWrap, self.placeholderText())
 
 
 class AddItemDialog(QDialog):
@@ -151,7 +137,7 @@ class AddItemDialog(QDialog):
 
         # Initial notes (optional) — stored as transaction notes on first ADD
         initial_notes_label = QLabel(tr("label.initial_notes"))
-        self.initial_notes_edit = _WrappingTextEdit()
+        self.initial_notes_edit = WrappingTextEdit()
         self.initial_notes_edit.setPlaceholderText(tr("placeholder.initial_notes"))
         self.initial_notes_edit.setMaximumHeight(60)
         apply_text_edit_style(self.initial_notes_edit)
