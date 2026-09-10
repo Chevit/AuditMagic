@@ -89,6 +89,35 @@ def test_inventory_item_details_none_becomes_empty_string():
     assert item.details == ""
 
 
+def test_inventory_item_target_item_id_is_own_id():
+    t = _make_type()
+    i = _make_item(id=42)
+    item = InventoryItem.from_db_models(i, t)
+    assert item.target_item_id == 42
+
+
+def test_inventory_item_target_serial_numbers_single_when_serialized():
+    t = _make_type(is_serialized=True)
+    i = _make_item(sn="SN-001", qty=1)
+    item = InventoryItem.from_db_models(i, t)
+    assert item.target_serial_numbers == ["SN-001"]
+
+
+def test_inventory_item_target_serial_numbers_empty_when_not_serialized():
+    t = _make_type(is_serialized=False)
+    i = _make_item(sn=None)
+    item = InventoryItem.from_db_models(i, t)
+    assert item.target_serial_numbers == []
+
+
+def test_inventory_item_remaining_serial_numbers_filters_deleted():
+    t = _make_type(is_serialized=True)
+    i = _make_item(sn="SN-001", qty=1)
+    item = InventoryItem.from_db_models(i, t)
+    assert item.remaining_serial_numbers(["SN-001"]) == []
+    assert item.remaining_serial_numbers(["SN-999"]) == ["SN-001"]
+
+
 # ─── GroupedInventoryItem ─────────────────────────────────────────────────────
 
 
@@ -185,3 +214,35 @@ def test_grouped_legacy_location_property():
         t, [i], location_map={5: "Closet"}
     )
     assert g.location == "Closet"
+
+
+# ─── Target Item ───────────────────────────────────────────────────────────────
+
+
+def test_grouped_target_item_id_is_first_item_id():
+    t = _make_type()
+    items = [_make_item(id=5), _make_item(id=6)]
+    g = GroupedInventoryItem.from_item_type_and_items(t, items)
+    assert g.target_item_id == 5
+
+
+def test_grouped_target_item_id_none_when_item_ids_empty():
+    t = _make_type()
+    g = GroupedInventoryItem.from_item_type_and_items(t, [_make_item()])
+    g.item_ids = []
+    assert g.target_item_id is None
+
+
+def test_grouped_target_serial_numbers_is_serial_numbers():
+    t = _make_type(is_serialized=True)
+    items = [_make_item(id=1, sn="SN-Z"), _make_item(id=2, sn="SN-A")]
+    g = GroupedInventoryItem.from_item_type_and_items(t, items)
+    assert g.target_serial_numbers == ["SN-A", "SN-Z"]
+
+
+def test_grouped_remaining_serial_numbers_filters_deleted():
+    t = _make_type(is_serialized=True)
+    items = [_make_item(id=1, sn="SN-A"), _make_item(id=2, sn="SN-B")]
+    g = GroupedInventoryItem.from_item_type_and_items(t, items)
+    assert g.remaining_serial_numbers(["SN-A"]) == ["SN-B"]
+    assert g.remaining_serial_numbers([]) == ["SN-A", "SN-B"]
