@@ -238,6 +238,21 @@ def test_itemtype_get_autocomplete_names_filtered_by_serialization():
     assert set(both) == {"Laptop", "LaptopDock"}
 
 
+def test_itemtype_get_autocomplete_subtypes_filtered_by_serialization():
+    _type("Laptop", "Air", serialized=False)
+    _type("Laptop", "Pro", serialized=True)
+    non_serial = ItemTypeRepository.get_autocomplete_subtypes(
+        "Laptop", is_serialized=False
+    )
+    serial = ItemTypeRepository.get_autocomplete_subtypes(
+        "Laptop", is_serialized=True
+    )
+    assert non_serial == ["Air"]
+    assert serial == ["Pro"]
+    both = ItemTypeRepository.get_autocomplete_subtypes("Laptop")
+    assert set(both) == {"Air", "Pro"}
+
+
 def test_itemtype_get_all_with_items():
     loc = _loc()
     t = _type("Laptop")
