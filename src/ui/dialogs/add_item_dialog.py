@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
+from ui.dialogs.validation_feedback import show_validation_errors
+from ui.form_rules import add_item_rules
 from ui.models.inventory_item import InventoryItem
 from ui.styles import (
     Colors,
@@ -30,13 +32,7 @@ from ui.styles import (
     apply_text_edit_style,
 )
 from ui.translations import tr
-from ui.validators import (
-    ItemTypeValidator,
-    SerialNumberValidator,
-    validate_length,
-    validate_positive_integer,
-    validate_required_field,
-)
+from ui.validators import ItemTypeValidator, SerialNumberValidator
 
 
 class _WrappingTextEdit(QTextEdit):
@@ -357,79 +353,25 @@ class AddItemDialog(QDialog):
         initial_notes = self.initial_notes_edit.toPlainText().strip()
         is_serialized = self.serialized_checkbox.isChecked()
 
-        # Validation
-        errors = []
-
-        # Validate item type - required and min length
-        valid, error = validate_required_field(item_type, tr("field.type"))
-        if not valid:
-            errors.append(error)
-        else:
-            valid, error = validate_length(
-                item_type, tr("field.type"), min_length=2, max_length=255
-            )
-            if not valid:
-                errors.append(error)
-
-        # Validate quantity - must not be empty
-        if not quantity_text:
-            errors.append("Please enter a quantity value")
-            logger.warning("Quantity field is empty")
-        else:
-            try:
-                quantity = int(quantity_text)
-                valid, error = validate_positive_integer(
-                    str(quantity), tr("field.quantity"), minimum=1
-                )
-                if not valid:
-                    errors.append(error)
-            except ValueError:
-                errors.append("Quantity must be a valid number")
-                logger.warning(f"Invalid quantity value: {quantity_text}")
-
-        # Validate serial number if serialized
-        if is_serialized:
-            if not serial_number:
-                errors.append(tr("error.serial.required"))
-                logger.warning("Serial number required for serialized item")
-            elif serial_number:
-                valid, error = validate_length(
-                    serial_number, tr("field.serial_number"), max_length=255
-                )
-                if not valid:
-                    errors.append(error)
-        else:
-            # Non-serialized items shouldn't have serial numbers
-            if serial_number:
-                errors.append(tr("error.serial.not_allowed"))
-                logger.warning("Serial number not allowed for non-serialized item")
-
-        # Validate initial notes length if provided
-        if initial_notes:
-            valid, error = validate_length(
-                initial_notes, tr("label.initial_notes"), max_length=1000
-            )
-            if not valid:
-                errors.append(error)
-
-        # Show errors if any
+        errors = add_item_rules(
+            item_type=item_type,
+            quantity_text=quantity_text,
+            serial_number=serial_number,
+            initial_notes=initial_notes,
+            is_serialized=is_serialized,
+        )
         if errors:
-            QMessageBox.warning(
+            show_validation_errors(
                 self,
-                tr("message.validation_error"),
-                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
+                errors,
+                widgets={
+                    "type": self.type_edit,
+                    "quantity": self.quantity_input,
+                    "serial": self.serial_edit,
+                    "notes": self.initial_notes_edit,
+                },
+                log_prefix="Form",
             )
-            logger.warning(f"Form validation failed: {errors}")
-
-            # Focus on the first problematic field
-            if not item_type:
-                self.type_edit.setFocus()
-            elif is_serialized and not serial_number:
-                self.serial_edit.setFocus()
-            elif not quantity_text or quantity_text and not quantity_text.isdigit():
-                self.quantity_input.setFocus()
-                self.quantity_input.selectAll()
-
             return
 
         # All validation passed - create item via service
