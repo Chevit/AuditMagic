@@ -94,6 +94,15 @@ Dev tools are not on PATH — run them venv-qualified (`.venv/bin/mypy`, `.venv/
 python src/main.py
 ```
 
+## Code Intelligence (LSP)
+Requires the `pyright-lsp` plugin installed and `pyright` on PATH.
+
+- **Prefer LSP over grep/Read for symbol navigation**: `goToDefinition`, `findReferences`, `workspaceSymbol`, `documentSymbol`, `hover`, `incomingCalls`/`outgoingCalls`.
+- Before modifying a method's signature or behavior (e.g. `add_quantity()`, `remove_quantity()`, `delete_by_serial_numbers()`, `_detach()`), use `findReferences` first to find every call site across `repositories.py`, `services.py`, and `ui/`.
+- Trust the LSP's results — don't re-open files with Read to double-check a definition or reference list already returned.
+- Use grep/ripgrep only for non-symbol text: strings in `translations.py`, comments, config values, TODOs, or patterns spanning non-Python files (`.ui`, `.json`).
+- After edits, check LSP diagnostics before moving on; fix type errors or missing imports immediately rather than deferring to the next `mypy` run.
+
 ## Code Conventions
 - Type hints on all functions
 - Docstrings for classes and public methods
