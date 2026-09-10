@@ -260,6 +260,17 @@ def test_get_autocomplete_subtypes():
     assert "Pro" in results
 
 
+def test_get_autocomplete_subtypes_filtered_by_serialization():
+    ItemTypeRepository.get_or_create("Laptop", "Air", False)
+    ItemTypeRepository.get_or_create("Laptop", "Pro", True)
+    non_serial = InventoryService.get_autocomplete_subtypes(
+        "Laptop", is_serialized=False
+    )
+    serial = InventoryService.get_autocomplete_subtypes("Laptop", is_serialized=True)
+    assert non_serial == ["Air"]
+    assert serial == ["Pro"]
+
+
 # ─── InventoryService: mutations ──────────────────────────────────────────────
 
 

@@ -401,17 +401,23 @@ class InventoryService:
         )
 
     @staticmethod
-    def get_autocomplete_subtypes(type_name: str, prefix: str = "") -> List[str]:
+    def get_autocomplete_subtypes(
+        type_name: str, prefix: str = "", is_serialized: Optional[bool] = None
+    ) -> List[str]:
         """Get autocomplete suggestions for subtypes.
 
         Args:
             type_name: The type name
             prefix: Search prefix
+            is_serialized: When given, only suggest subtypes of types with this
+                serialization state. None (default) suggests across both.
 
         Returns:
             List of matching subtype names.
         """
-        return ItemTypeRepository.get_autocomplete_subtypes(type_name, prefix)
+        return ItemTypeRepository.get_autocomplete_subtypes(
+            type_name, prefix, is_serialized=is_serialized
+        )
 
     @staticmethod
     def update_item(
