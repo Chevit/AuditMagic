@@ -147,6 +147,17 @@ def test_grouped_legacy_id_property():
     assert g.id == 99
 
 
+def test_grouped_legacy_id_property_empty_item_ids_returns_zero():
+    # Regression: main_window.py used to re-derive this as
+    # `item.item_ids[0] if is_grouped else item.id`, which raises IndexError
+    # on an empty item_ids list. The `.id` property already guards this —
+    # callers should use it instead of re-deriving.
+    t = _make_type()
+    g = GroupedInventoryItem.from_item_type_and_items(t, [_make_item()])
+    g.item_ids = []
+    assert g.id == 0
+
+
 def test_grouped_legacy_quantity_property():
     t = _make_type()
     g = GroupedInventoryItem.from_item_type_and_items(t, [_make_item(qty=12)])

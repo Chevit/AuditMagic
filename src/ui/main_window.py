@@ -660,8 +660,10 @@ class MainWindow(QMainWindow):
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
+        # item.id already resolves correctly for both DTOs: InventoryItem.id is the
+        # real field, GroupedInventoryItem.id guards an empty item_ids and falls back
+        # to 0 (see test_grouped_legacy_id_property_empty_item_ids_returns_zero).
+        target_item_id = item.id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
         qty_dialog = QuantityDialog(
             item_name, actual_quantity, is_add=True, parent=self
@@ -709,8 +711,10 @@ class MainWindow(QMainWindow):
         item_name = (
             f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
         )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
+        # item.id already resolves correctly for both DTOs: InventoryItem.id is the
+        # real field, GroupedInventoryItem.id guards an empty item_ids and falls back
+        # to 0 (see test_grouped_legacy_id_property_empty_item_ids_returns_zero).
+        target_item_id = item.id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
         qty_dialog = QuantityDialog(
             item_name, actual_quantity, is_add=False, parent=self
