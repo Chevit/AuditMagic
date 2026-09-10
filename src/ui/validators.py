@@ -1,4 +1,9 @@
-"""Input validators for form fields."""
+"""Input validators for form fields.
+
+The pure validation helpers (validate_required_field, validate_positive_integer,
+validate_length) live in ui/form_rules.py instead of here — this module imports
+PyQt6, so anything that needs to stay Qt-free can't import from it.
+"""
 
 from typing import Optional, Tuple
 
@@ -78,67 +83,3 @@ class SerialNumberValidator(QRegularExpressionValidator):
         """
         pattern = QRegularExpression(r"^.+$")
         super().__init__(pattern, parent)
-
-
-def validate_required_field(value: str, field_name: str) -> Tuple[bool, str]:
-    """Validate that a required field is not empty.
-
-    Args:
-        value: Field value
-        field_name: Name of field for error message
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    if not value or value.strip() == "":
-        return (False, f"{field_name} is required")
-    return (True, "")
-
-
-def validate_positive_integer(
-    value: str, field_name: str, minimum: int = 1, maximum: int = 999999
-) -> Tuple[bool, str]:
-    """Validate that a value is a positive integer within range.
-
-    Args:
-        value: Value to validate
-        field_name: Name of field for error message
-        minimum: Minimum allowed value (default: 1)
-        maximum: Maximum allowed value (default: 999999)
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    try:
-        int_value = int(value)
-        if int_value < minimum:
-            return (False, f"{field_name} must be at least {minimum}")
-        if int_value > maximum:
-            return (False, f"{field_name} must be at most {maximum}")
-        return (True, "")
-    except (ValueError, TypeError):
-        return (False, f"{field_name} must be a valid number")
-
-
-def validate_length(
-    value: str, field_name: str, min_length: int = 0, max_length: int = 255
-) -> Tuple[bool, str]:
-    """Validate string length.
-
-    Args:
-        value: Value to validate
-        field_name: Name of field for error message
-        min_length: Minimum length (default: 0)
-        max_length: Maximum length (default: 255)
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    length = len(value.strip()) if value else 0
-
-    if length < min_length:
-        return (False, f"{field_name} must be at least {min_length} characters")
-    if length > max_length:
-        return (False, f"{field_name} must be at most {max_length} characters")
-
-    return (True, "")

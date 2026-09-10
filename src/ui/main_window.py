@@ -491,21 +491,18 @@ class MainWindow(QMainWindow):
             # Determine the item ID to edit (before any deletions)
             item_id = None
             existing_serial = None
-            if is_grouped:
-                if item.is_serialized:
-                    # Pick the first remaining serial (deterministic via sorted list)
-                    remaining_serials = [
-                        sn for sn in item.serial_numbers if sn not in deleted_serials
-                    ]
-                    if remaining_serials:
-                        db_item = ItemRepository.search_by_serial(remaining_serials[0])
-                        if db_item:
-                            item_id = db_item.id
-                            existing_serial = db_item.serial_number
-                else:
-                    item_id = item.item_ids[0] if item.item_ids else None
+            if is_grouped and item.is_serialized:
+                # A serialized group's target_item_id doesn't track which serial
+                # survives a deletion — resolve the first remaining serial instead
+                # (deterministic via sorted list).
+                remaining_serials = item.remaining_serial_numbers(deleted_serials)
+                if remaining_serials:
+                    db_item = ItemRepository.search_by_serial(remaining_serials[0])
+                    if db_item:
+                        item_id = db_item.id
+                        existing_serial = db_item.serial_number
             else:
-                item_id = item.id
+                item_id = item.target_item_id
 
             # Edit the item first (validates at DB level before we delete anything)
             edit_succeeded = False
@@ -630,15 +627,10 @@ class MainWindow(QMainWindow):
 
         # For serialized items, open Add Serial Number dialog
         if item.is_serialized:
-            existing_serials = (
-                item.serial_numbers
-                if is_grouped
-                else ([item.serial_number] if item.serial_number else [])
-            )
             dialog = AddSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
-                existing_serials=existing_serials,
+                existing_serials=item.target_serial_numbers,
                 current_location_id=self._current_location_id,
                 parent=self,
             )
@@ -657,11 +649,8 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(self, tr("message.validation_error"), str(e))
             return
 
-        item_name = (
-            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
-        )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
+        item_name = item.display_name
+        target_item_id = item.target_item_id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
         qty_dialog = QuantityDialog(
             item_name, actual_quantity, is_add=True, parent=self
@@ -682,15 +671,10 @@ class MainWindow(QMainWindow):
 
         # For serialized items, open Remove Serial Number dialog
         if item.is_serialized:
-            serial_numbers = (
-                item.serial_numbers
-                if is_grouped
-                else ([item.serial_number] if item.serial_number else [])
-            )
             dialog = RemoveSerialNumberDialog(
                 item_type_name=item.item_type,
                 sub_type=item.sub_type or "",
-                serial_numbers=serial_numbers,
+                serial_numbers=item.target_serial_numbers,
                 parent=self,
             )
             if dialog.exec():
@@ -706,11 +690,8 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(self, tr("message.validation_error"), str(e))
             return
 
-        item_name = (
-            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
-        )
-        # For grouped items, use the total_quantity already present in the DTO
-        target_item_id = item.item_ids[0] if is_grouped else item.id
+        item_name = item.display_name
+        target_item_id = item.target_item_id
         actual_quantity = item.total_quantity if is_grouped else item.quantity
         qty_dialog = QuantityDialog(
             item_name, actual_quantity, is_add=False, parent=self
@@ -730,9 +711,7 @@ class MainWindow(QMainWindow):
 
     def _on_show_transactions(self, row: int, item):
         """Handle show transactions request."""
-        item_name = (
-            f"{item.item_type} - {item.sub_type}" if item.sub_type else item.item_type
-        )
+        item_name = item.display_name
         dialog = TransactionsDialog(
             item_type_id=item.item_type_id,
             item_name=item_name,

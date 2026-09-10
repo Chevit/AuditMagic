@@ -57,6 +57,20 @@ class InventoryItem:
         return self.location_name
 
     @property
+    def target_item_id(self) -> Optional[int]:
+        """The Item an operation acts on. For InventoryItem, that's itself."""
+        return self.id
+
+    @property
+    def target_serial_numbers(self) -> List[str]:
+        """Serial numbers this item covers (one, if serialized; none otherwise)."""
+        return [self.serial_number] if self.serial_number else []
+
+    def remaining_serial_numbers(self, deleted: List[str]) -> List[str]:
+        """target_serial_numbers with the given serials filtered out."""
+        return [sn for sn in self.target_serial_numbers if sn not in deleted]
+
+    @property
     def display_name(self) -> str:
         """Get formatted display name."""
         if self.item_sub_type:
@@ -226,6 +240,24 @@ class GroupedInventoryItem:
     def serial_number(self) -> Optional[str]:
         """Return first serial number for compatibility, or None."""
         return self.serial_numbers[0] if self.serial_numbers else None
+
+    @property
+    def target_item_id(self) -> Optional[int]:
+        """The Item an operation acts on when this group is non-serialized.
+
+        None when the group is empty. Meaningless for a serialized group,
+        where the caller must resolve a specific serial number instead.
+        """
+        return self.item_ids[0] if self.item_ids else None
+
+    @property
+    def target_serial_numbers(self) -> List[str]:
+        """All serial numbers in this group."""
+        return self.serial_numbers
+
+    def remaining_serial_numbers(self, deleted: List[str]) -> List[str]:
+        """target_serial_numbers with the given serials filtered out."""
+        return [sn for sn in self.target_serial_numbers if sn not in deleted]
 
     @property
     def location(self) -> str:

@@ -2,14 +2,23 @@
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIntValidator
-from PyQt6.QtWidgets import (QDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
-                             QLineEdit, QMessageBox, QPushButton, QTextEdit,
-                             QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from core.logger import logger
+from ui.dialogs.validation_feedback import show_validation_errors
+from ui.form_rules import quantity_rules
 from ui.styles import apply_button_style, apply_input_style, apply_text_edit_style
 from ui.translations import tr
-from ui.validators import validate_length
 
 
 class QuantityDialog(QDialog):
@@ -87,7 +96,7 @@ class QuantityDialog(QDialog):
         quantity_label.setFont(label_font)
 
         self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Enter quantity (e.g., 5)...")
+        self.quantity_input.setPlaceholderText(tr("placeholder.quantity"))
 
         # Set validator to only allow positive integers
         validator = QIntValidator(1, 999999, self)
@@ -170,44 +179,19 @@ class QuantityDialog(QDialog):
         text = self.quantity_input.text().strip()
         notes = self.notes_edit.toPlainText().strip()
 
-        errors = []
-
-        # Check if quantity field is empty
-        if not text:
-            errors.append("Please enter a quantity value")
-            logger.warning("Quantity field is empty")
-        else:
-            try:
-                quantity = int(text)
-
-                if quantity < 1:
-                    errors.append(tr("message.quantity_positive"))
-
-                if not self._is_add and quantity > self._current_quantity:
-                    errors.append(
-                        f"{tr('message.not_enough_quantity')}\n"
-                        f"Requested: {quantity}, Available: {self._current_quantity}"
-                    )
-
-            except ValueError:
-                errors.append("Quantity must be a valid number")
-                logger.warning(f"Invalid quantity value: {text}")
-
-        # Validate notes length if provided
-        if notes:
-            valid, error = validate_length(notes, tr("field.notes"), max_length=1000)
-            if not valid:
-                errors.append(error)
-
+        errors = quantity_rules(
+            quantity_text=text,
+            notes=notes,
+            is_add=self._is_add,
+            current_quantity=self._current_quantity,
+        )
         if errors:
-            QMessageBox.warning(
+            show_validation_errors(
                 self,
-                tr("message.validation_error"),
-                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
+                errors,
+                widgets={"quantity": self.quantity_input, "notes": self.notes_edit},
+                log_prefix="Quantity",
             )
-            logger.warning(f"Quantity validation failed: {errors}")
-            self.quantity_input.setFocus()
-            self.quantity_input.selectAll()
             return
 
         # All validation passed

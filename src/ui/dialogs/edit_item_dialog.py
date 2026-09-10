@@ -24,6 +24,8 @@ from PyQt6.QtWidgets import (
 from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService
+from ui.dialogs.validation_feedback import show_validation_errors
+from ui.form_rules import edit_item_rules, has_serialization_conflict
 from ui.models.inventory_item import GroupedInventoryItem, InventoryItem
 from ui.styles import (
     Colors,
@@ -33,13 +35,7 @@ from ui.styles import (
     apply_text_edit_style,
 )
 from ui.translations import tr
-from ui.validators import (
-    ItemTypeValidator,
-    SerialNumberValidator,
-    validate_length,
-    validate_positive_integer,
-    validate_required_field,
-)
+from ui.validators import ItemTypeValidator, SerialNumberValidator
 
 
 class EditItemDialog(QDialog):
@@ -379,7 +375,11 @@ class EditItemDialog(QDialog):
             logger.warning(f"Type lookup in edit dialog failed: {e}")
             return
 
-        if existing is not None and existing.is_serialized != self._is_serialized:
+        self._type_conflict = has_serialization_conflict(
+            existing_is_serialized=existing.is_serialized if existing else None,
+            current_is_serialized=self._is_serialized,
+        )
+        if self._type_conflict:
             conflict_state = (
                 tr("label.serialized_badge")
                 if existing.is_serialized
@@ -390,10 +390,8 @@ class EditItemDialog(QDialog):
                     name=type_name, state=conflict_state
                 )
             )
-            self._type_conflict = True
         else:
             self.edit_type_status_label.setText("")
-            self._type_conflict = False
 
     def _populate_fields(self):
         """Populate form fields with the current item values."""
@@ -437,85 +435,25 @@ class EditItemDialog(QDialog):
         item_details = self.item_details_edit.toPlainText().strip()
         edit_reason = self.reason_edit.toPlainText().strip()
 
-        # Validation
-        errors = []
-
-        # Validate item type - required and min length
-        valid, error = validate_required_field(item_type, tr("field.type"))
-        if not valid:
-            errors.append(error)
-        else:
-            valid, error = validate_length(
-                item_type, tr("field.type"), min_length=2, max_length=255
-            )
-            if not valid:
-                errors.append(error)
-
-        # Validate quantity - must not be empty (for non-serialized)
-        if not self._is_serialized:
-            if not quantity_text:
-                errors.append(tr("message.quantity_required"))
-                logger.warning("Quantity field is empty")
-            else:
-                try:
-                    quantity_val = int(quantity_text)
-                    valid, error = validate_positive_integer(
-                        str(quantity_val), tr("field.quantity"), minimum=1
-                    )
-                    if not valid:
-                        errors.append(error)
-                except ValueError:
-                    errors.append(tr("message.quantity_invalid"))
-                    logger.warning(f"Invalid quantity value: {quantity_text}")
-
-        # Validate serial number length if provided
-        if serial_number:
-            valid, error = validate_length(
-                serial_number, tr("field.serial_number"), max_length=255
-            )
-            if not valid:
-                errors.append(error)
-
-        # Validate item details length if provided
-        if item_details:
-            valid, error = validate_length(
-                item_details, tr("field.details"), max_length=1000
-            )
-            if not valid:
-                errors.append(error)
-
-        # Validate edit reason - required
-        valid, error = validate_required_field(edit_reason, tr("field.edit_reason"))
-        if not valid:
-            errors.append(error)
-        else:
-            valid, error = validate_length(
-                edit_reason, tr("field.edit_reason"), min_length=3, max_length=1000
-            )
-            if not valid:
-                errors.append(error)
-
-        # For serialized items, check that at least one serial number remains
-        if self._is_serialized and len(self._serial_numbers) == 0:
-            errors.append(tr("message.at_least_one_serial"))
-
-        # Show errors if any
+        errors = edit_item_rules(
+            item_type=item_type,
+            quantity_text=quantity_text,
+            serial_number=serial_number,
+            item_details=item_details,
+            edit_reason=edit_reason,
+            is_serialized=self._is_serialized,
+            remaining_serial_count=len(self._serial_numbers),
+        )
         if errors:
-            QMessageBox.warning(
-                self,
-                tr("message.validation_error"),
-                tr("message.fix_errors") + "\n\n" + "\n".join(f"• {e}" for e in errors),
-            )
-            logger.warning(f"Edit form validation failed: {errors}")
-
-            if not item_type:
-                self.type_edit.setFocus()
-            elif not self._is_serialized and (
-                not quantity_text or not quantity_text.isdigit()
-            ):
-                self.quantity_input.setFocus()
-                self.quantity_input.selectAll()
-
+            widgets = {
+                "type": self.type_edit,
+                "quantity": self.quantity_input,
+                "details": self.item_details_edit,
+                "edit_reason": self.reason_edit,
+            }
+            if self.serial_edit is not None:
+                widgets["serial"] = self.serial_edit
+            show_validation_errors(self, errors, widgets, log_prefix="Edit form")
             return
 
         # All validation passed
