@@ -92,7 +92,6 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "field.updated_at": "Оновлено",
         "field.edit_reason": "Причина зміни",
         # Labels with colons
-        "label.id": "ID:",
         "label.type": "Тип:",
         "label.subtype": "Підтип:",
         "label.quantity": "Кількість:",
@@ -338,7 +337,6 @@ _TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "field.updated_at": "Updated At",
         "field.edit_reason": "Reason for change",
         # Labels with colons
-        "label.id": "ID:",
         "label.type": "Type:",
         "label.subtype": "Sub-type:",
         "label.quantity": "Quantity:",

@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from ui.styles import apply_button_style
@@ -20,12 +21,12 @@ from ui.translations import tr
 class AddItemChooserDialog(QDialog):
     """Asks whether the new item is serialized before opening the right form."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._chose_serialized: Optional[bool] = None
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Set up the dialog UI."""
         self.setWindowTitle(tr("dialog.add_item_chooser.title"))
         self.setModal(True)
@@ -74,12 +75,12 @@ class AddItemChooserDialog(QDialog):
         cancel_layout.addWidget(cancel_button)
         layout.addLayout(cancel_layout)
 
-    def _choose_serialized(self):
+    def _choose_serialized(self) -> None:
         """Record the serialized choice and close."""
         self._chose_serialized = True
         self.accept()
 
-    def _choose_non_serialized(self):
+    def _choose_non_serialized(self) -> None:
         """Record the non-serialized choice and close."""
         self._chose_serialized = False
         self.accept()

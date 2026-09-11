@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from core.logger import logger
@@ -38,7 +39,11 @@ from ui.validators import ItemTypeValidator, SerialNumberValidator
 class AddSerializedItemDialog(QDialog):
     """Dialog for adding a new serialized item. Quantity is always 1."""
 
-    def __init__(self, current_location_id: Optional[int] = None, parent=None):
+    def __init__(
+        self,
+        current_location_id: Optional[int] = None,
+        parent: Optional[QWidget] = None,
+    ):
         super().__init__(parent)
         self._current_location_id = current_location_id
         self._result_item: Optional[InventoryItem] = None
@@ -50,7 +55,7 @@ class AddSerializedItemDialog(QDialog):
         self._setup_validators()
         self._setup_autocomplete()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Set up the dialog UI."""
         self.setWindowTitle(tr("dialog.add_serialized_item.title"))
         self.setMinimumWidth(400)
@@ -147,13 +152,13 @@ class AddSerializedItemDialog(QDialog):
 
         self.type_edit.setFocus()
 
-    def _setup_validators(self):
+    def _setup_validators(self) -> None:
         """Set up input validators for form fields."""
         self.type_edit.setValidator(ItemTypeValidator(self))
         self.serial_edit.setValidator(SerialNumberValidator(self))
         logger.debug("Serialized-add form validators configured")
 
-    def _setup_autocomplete(self):
+    def _setup_autocomplete(self) -> None:
         """Setup autocomplete for type/subtype fields, filtered to serialized types."""
         self.type_completer = QCompleter(self)
         self.type_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
@@ -173,7 +178,7 @@ class AddSerializedItemDialog(QDialog):
 
         logger.debug("Serialized-add autocomplete configured")
 
-    def _update_type_autocomplete(self, text: str):
+    def _update_type_autocomplete(self, text: str) -> None:
         """Update autocomplete suggestions for type, serialized types only."""
         try:
             suggestions = InventoryService.get_autocomplete_types(
@@ -183,7 +188,7 @@ class AddSerializedItemDialog(QDialog):
         except Exception as e:
             logger.error(f"Failed to load type autocomplete: {e}")
 
-    def _update_subtype_autocomplete(self, type_text: str):
+    def _update_subtype_autocomplete(self, type_text: str) -> None:
         """Update autocomplete suggestions for subtype, serialized types only."""
         if not type_text:
             return
@@ -195,12 +200,12 @@ class AddSerializedItemDialog(QDialog):
         except Exception as e:
             logger.error(f"Failed to load subtype autocomplete: {e}")
 
-    def _restart_type_debounce(self):
+    def _restart_type_debounce(self) -> None:
         """Restart 300ms debounce timer for the type/subtype conflict lookup."""
         self._type_debounce_timer.stop()
         self._type_debounce_timer.start(300)
 
-    def _on_type_or_subtype_changed(self):
+    def _on_type_or_subtype_changed(self) -> None:
         """Show a conflict warning or an info match for the typed Type/Subtype.
 
         A Serialization Conflict (existing type with a different is_serialized)
@@ -240,7 +245,7 @@ class AddSerializedItemDialog(QDialog):
         else:
             self.type_status_label.setText("")
 
-    def _on_add_clicked(self):
+    def _on_add_clicked(self) -> None:
         """Validate and accept the dialog."""
         if self._type_conflict:
             QMessageBox.warning(
