@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QDialog,
     QFormLayout,
     QFrame,
@@ -98,6 +99,19 @@ class ItemDetailsDialog(QDialog):
         )
         form_layout.addRow(serialized_label, serialized_value)
 
+        # Location
+        location_label = QLabel(tr("label.location"))
+        location_label.setFont(label_font)
+        if self._item.is_multi_location:
+            location_text = tr("location.multiple")
+        else:
+            location_text = (
+                self._item.location_name if self._item.location_name else "-"
+            )
+        location_value = QLabel(location_text)
+        location_value.setFont(value_font)
+        form_layout.addRow(location_label, location_value)
+
         # Quantity
         quantity_label = QLabel(tr("label.quantity"))
         quantity_label.setFont(label_font)
@@ -129,13 +143,21 @@ class ItemDetailsDialog(QDialog):
 
         layout.addLayout(form_layout)
 
-        # Serial numbers section for serialized types (grouped items have the list directly)
+        # Serial numbers section for serialized types (grouped items have list directly)
         if isinstance(self._item, GroupedInventoryItem) and self._item.serial_numbers:
             self._add_serial_numbers_section_from_list(
-                layout, self._item.serial_numbers
+                layout, self._item.serial_numbers, self._item.serial_locations
             )
         elif self._item.is_serialized and not self._is_grouped:
             self._add_serial_numbers_section(layout)
+
+        # Location breakdown for non-serialized groups spanning multiple locations
+        if (
+            isinstance(self._item, GroupedInventoryItem)
+            and not self._item.is_serialized
+            and self._item.location_breakdown
+        ):
+            self._add_location_breakdown_section(layout, self._item.location_breakdown)
 
         # Spacer
         layout.addStretch()
@@ -168,16 +190,28 @@ class ItemDetailsDialog(QDialog):
             logger.error(f"Failed to load serial numbers: {e}", exc_info=True)
 
     def _add_serial_numbers_section_from_list(
-        self, layout: QVBoxLayout, serial_numbers: list
+        self,
+        layout: QVBoxLayout,
+        serial_numbers: List[str],
+        serial_locations: Optional[Dict[str, str]] = None,
     ):
         """Add section showing serial numbers from a provided list.
 
         Args:
             layout: The main layout to add to
             serial_numbers: List of serial number strings
+            serial_locations: Optional {serial_number: location_name} map. When
+                given (multi-location groups only), each row is annotated with
+                its location and rows are ordered by location name, then serial.
         """
         if not serial_numbers:
             return
+
+        display_serials = serial_numbers
+        if serial_locations:
+            display_serials = sorted(
+                serial_numbers, key=lambda sn: (serial_locations.get(sn, ""), sn)
+            )
 
         # Create group box
         serial_group = QGroupBox(tr("dialog.details.serial_numbers"))
@@ -185,7 +219,7 @@ class ItemDetailsDialog(QDialog):
 
         # Count label
         count_label = QLabel(
-            tr("dialog.details.serial_count").format(count=len(serial_numbers))
+            tr("dialog.details.serial_count").format(count=len(display_serials))
         )
         count_font = QFont()
         count_font.setBold(True)
@@ -195,14 +229,57 @@ class ItemDetailsDialog(QDialog):
         # List widget
         serial_list = QListWidget()
         serial_list.setMaximumHeight(150)
-        for sn in serial_numbers:
-            serial_list.addItem(sn)
+        serial_list.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        serial_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        for sn in display_serials:
+            loc_name = (serial_locations or {}).get(sn)
+            item_text = f"{sn} — {loc_name}" if loc_name else sn
+            serial_list.addItem(item_text)
         serial_layout.addWidget(serial_list)
 
         serial_group.setLayout(serial_layout)
         layout.addWidget(serial_group)
 
-        logger.debug(f"Added serial numbers section with {len(serial_numbers)} items")
+        logger.debug(f"Added serial numbers section with {len(display_serials)} items")
+
+    def _add_location_breakdown_section(
+        self, layout: QVBoxLayout, location_breakdown: List[Tuple[str, int]]
+    ):
+        """Add section showing per-location quantities for a multi-location group.
+
+        Args:
+            layout: The main layout to add to
+            location_breakdown: [(location_name, quantity), ...], already sorted
+                alphabetically by location name
+        """
+        if not location_breakdown:
+            return
+
+        location_group = QGroupBox(tr("location.title"))
+        location_layout = QVBoxLayout()
+
+        count_label = QLabel(
+            tr("dialog.details.location_count").format(count=len(location_breakdown))
+        )
+        count_font = QFont()
+        count_font.setBold(True)
+        count_label.setFont(count_font)
+        location_layout.addWidget(count_label)
+
+        location_list = QListWidget()
+        location_list.setMaximumHeight(150)
+        location_list.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        location_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        for loc_name, qty in location_breakdown:
+            location_list.addItem(f"{loc_name} — {qty} шт.")
+        location_layout.addWidget(location_list)
+
+        location_group.setLayout(location_layout)
+        layout.addWidget(location_group)
+
+        logger.debug(
+            f"Added location breakdown section with {len(location_breakdown)} locations"
+        )
 
     @property
     def item(self) -> Union[InventoryItem, GroupedInventoryItem]:
