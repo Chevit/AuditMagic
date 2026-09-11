@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -55,6 +55,11 @@ class InventoryItem:
     def location(self) -> str:
         """Backward-compat property. Returns location_name."""
         return self.location_name
+
+    @property
+    def is_multi_location(self) -> bool:
+        """A single InventoryItem always has exactly one location."""
+        return False
 
     @property
     def target_item_id(self) -> Optional[int]:
@@ -143,6 +148,13 @@ class GroupedInventoryItem:
     )
     location_name: str = ""  # Name of single location; "" if multi or unresolved
     is_multi_location: bool = False  # True when items span 2+ locations
+    # Per-location breakdown, populated only when is_multi_location is True.
+    location_breakdown: List[Tuple[str, int]] = field(
+        default_factory=list
+    )  # [(location_name, quantity)], sorted alphabetically by name
+    serial_locations: Dict[str, str] = field(
+        default_factory=dict
+    )  # {serial_number: location_name}, for serialized multi-location groups
 
     @classmethod
     def from_item_type_and_items(
@@ -185,6 +197,26 @@ class GroupedInventoryItem:
             loc_id = None
             loc_name = ""
 
+        # Per-location breakdown, only needed when items span multiple locations.
+        location_breakdown: List[Tuple[str, int]] = []
+        serial_locations: Dict[str, str] = {}
+        if is_multi:
+            qty_by_location: Dict[str, int] = {}
+            for item in items:
+                item_loc_name = (
+                    (location_map or {}).get(item.location_id, "")
+                    if item.location_id
+                    else ""
+                )
+                if not item_loc_name:
+                    continue
+                qty_by_location[item_loc_name] = (
+                    qty_by_location.get(item_loc_name, 0) + item.quantity
+                )
+                if item.serial_number:
+                    serial_locations[item.serial_number] = item_loc_name
+            location_breakdown = sorted(qty_by_location.items())
+
         return cls(
             item_type_id=item_type.id,
             item_type_name=item_type.name,
@@ -200,6 +232,8 @@ class GroupedInventoryItem:
             location_id=loc_id,
             location_name=loc_name,
             is_multi_location=is_multi,
+            location_breakdown=location_breakdown,
+            serial_locations=serial_locations,
         )
 
     @property
@@ -284,6 +318,8 @@ class GroupedInventoryItem:
             "location_id": self.location_id,
             "location_name": self.location_name,
             "is_multi_location": self.is_multi_location,
+            "location_breakdown": self.location_breakdown,
+            "serial_locations": self.serial_locations,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
