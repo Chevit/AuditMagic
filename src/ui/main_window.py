@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, Union
 
 from PyQt6 import uic
 from PyQt6.QtCore import QTimer
@@ -12,8 +12,10 @@ from core.logger import logger
 from core.repositories import LocationRepository
 from core.services import InventoryService, SearchService, TransactionService
 from runtime import resource_path
-from ui.dialogs.add_item_dialog import AddItemDialog
+from ui.dialogs.add_item_chooser_dialog import AddItemChooserDialog
+from ui.dialogs.add_non_serialized_item_dialog import AddNonSerializedItemDialog
 from ui.dialogs.add_serial_number_dialog import AddSerialNumberDialog
+from ui.dialogs.add_serialized_item_dialog import AddSerializedItemDialog
 from ui.dialogs.all_transactions_dialog import AllTransactionsDialog
 from ui.dialogs.edit_item_dialog import EditItemDialog
 from ui.dialogs.first_location_dialog import FirstLocationDialog
@@ -600,14 +602,25 @@ class MainWindow(QMainWindow):
                 )
 
     def _on_add_clicked(self):
-        """Handle add button click - open add item dialog."""
-        dialog = AddItemDialog(
-            current_location_id=self._current_location_id, parent=self
-        )
+        """Handle add button click - choose serialized/non-serialized, open dialog."""
+        chooser = AddItemChooserDialog(parent=self)
+        if not chooser.exec():
+            return
+
+        dialog: Union[AddSerializedItemDialog, AddNonSerializedItemDialog]
+        if chooser.is_serialized_chosen():
+            dialog = AddSerializedItemDialog(
+                current_location_id=self._current_location_id, parent=self
+            )
+        else:
+            dialog = AddNonSerializedItemDialog(
+                current_location_id=self._current_location_id, parent=self
+            )
+
         if dialog.exec():
             new_item = dialog.get_item()
             if new_item:
-                # Item is already saved by the dialog via InventoryService.create_item
+                # Item is already saved by the dialog via InventoryService
                 # Refresh the list to show grouped items correctly
                 self._refresh_item_list()
 
