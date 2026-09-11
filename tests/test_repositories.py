@@ -244,9 +244,7 @@ def test_itemtype_get_autocomplete_subtypes_filtered_by_serialization():
     non_serial = ItemTypeRepository.get_autocomplete_subtypes(
         "Laptop", is_serialized=False
     )
-    serial = ItemTypeRepository.get_autocomplete_subtypes(
-        "Laptop", is_serialized=True
-    )
+    serial = ItemTypeRepository.get_autocomplete_subtypes("Laptop", is_serialized=True)
     assert non_serial == ["Air"]
     assert serial == ["Pro"]
     both = ItemTypeRepository.get_autocomplete_subtypes("Laptop")
