@@ -50,7 +50,9 @@ src/
     forms/
       MainWindow.ui  # Qt Designer main window layout
     dialogs/
-      add_item_dialog.py           # Add item form with optional "Initial Notes" field
+      add_item_chooser_dialog.py       # "With/Without Serial Number" chooser shown by "Add New Item"
+      add_serialized_item_dialog.py    # Add serialized item form (type, subtype, serial number, notes, location)
+      add_non_serialized_item_dialog.py # Add non-serialized item form (type, subtype, quantity, notes, location)
       edit_item_dialog.py          # Edit item form; read-only serialized badge; conflict detection
       add_serial_number_dialog.py  # Add serial number to existing type
       remove_serial_number_dialog.py # Remove serial numbers from group

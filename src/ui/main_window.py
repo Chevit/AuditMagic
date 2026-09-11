@@ -602,7 +602,7 @@ class MainWindow(QMainWindow):
                 )
 
     def _on_add_clicked(self):
-        """Handle add button click - choose serialized/non-serialized, open dialog."""
+        """Handle add button click: ask serialized vs. non-serialized, then open the matching dialog."""
         chooser = AddItemChooserDialog(parent=self)
         if not chooser.exec():
             return
