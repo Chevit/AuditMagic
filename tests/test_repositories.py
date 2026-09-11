@@ -5,8 +5,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from core.models import TransactionType
-from core.repositories import (ItemRepository, ItemTypeRepository,
-                               LocationRepository, TransactionRepository)
+from core.repositories import (
+    ItemRepository,
+    ItemTypeRepository,
+    LocationRepository,
+    TransactionRepository,
+)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -216,6 +220,35 @@ def test_itemtype_get_autocomplete_names():
     assert "Laptop" in names
     assert "LaptopPro" in names
     assert "Monitor" not in names
+
+
+def test_itemtype_get_autocomplete_names_filtered_by_serialization():
+    _type("Laptop", serialized=False)
+    _type("LaptopDock", serialized=True)
+    non_serial_names = ItemTypeRepository.get_autocomplete_names(
+        prefix="Lap", is_serialized=False
+    )
+    serial_names = ItemTypeRepository.get_autocomplete_names(
+        prefix="Lap", is_serialized=True
+    )
+    assert non_serial_names == ["Laptop"]
+    assert serial_names == ["LaptopDock"]
+    # No filter (default) still returns both, unchanged behavior
+    both = ItemTypeRepository.get_autocomplete_names(prefix="Lap")
+    assert set(both) == {"Laptop", "LaptopDock"}
+
+
+def test_itemtype_get_autocomplete_subtypes_filtered_by_serialization():
+    _type("Laptop", "Air", serialized=False)
+    _type("Laptop", "Pro", serialized=True)
+    non_serial = ItemTypeRepository.get_autocomplete_subtypes(
+        "Laptop", is_serialized=False
+    )
+    serial = ItemTypeRepository.get_autocomplete_subtypes("Laptop", is_serialized=True)
+    assert non_serial == ["Air"]
+    assert serial == ["Pro"]
+    both = ItemTypeRepository.get_autocomplete_subtypes("Laptop")
+    assert set(both) == {"Air", "Pro"}
 
 
 def test_itemtype_get_all_with_items():

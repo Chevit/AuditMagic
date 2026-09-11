@@ -28,3 +28,20 @@ def test_serialized_feature_translation_keys_present():
     ]
     for key in keys:
         assert tr(key) != key, f"Translation key missing: {key!r}"
+
+
+def test_add_item_split_translation_keys_present():
+    from ui.translations import tr
+
+    keys = [
+        "dialog.add_item_chooser.title",
+        "dialog.add_item_chooser.header",
+        "button.add_item_chooser.with_serial",
+        "button.add_item_chooser.without_serial",
+        "dialog.add_serialized_item.title",
+        "dialog.add_serialized_item.header",
+        "dialog.add_non_serialized_item.title",
+        "dialog.add_non_serialized_item.header",
+    ]
+    for key in keys:
+        assert tr(key) != key, f"Translation key missing: {key!r}"

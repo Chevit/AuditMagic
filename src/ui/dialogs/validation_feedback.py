@@ -2,8 +2,9 @@
 
 Pairs with ui/form_rules.py, which computes the errors without touching Qt.
 This module is the one place that turns them into a QMessageBox and a
-focused widget — replacing what used to be three near-identical blocks in
-add_item_dialog.py, edit_item_dialog.py and quantity_dialog.py.
+focused widget — replacing what used to be near-identical blocks in
+add_serialized_item_dialog.py, add_non_serialized_item_dialog.py,
+edit_item_dialog.py and quantity_dialog.py.
 """
 
 from typing import Dict, List

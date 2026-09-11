@@ -302,11 +302,15 @@ class ItemTypeRepository:
             return [_detach(t) for t in types]
 
     @staticmethod
-    def get_autocomplete_names(prefix: str = "", limit: int = 20) -> List[str]:
+    def get_autocomplete_names(
+        prefix: str = "", is_serialized: Optional[bool] = None, limit: int = 20
+    ) -> List[str]:
         """Get autocomplete suggestions for type names.
 
         Args:
             prefix: Search prefix (optional)
+            is_serialized: When given, only suggest types with this serialization
+                state. None (default) suggests across both.
             limit: Maximum number of suggestions
 
         Returns:
@@ -316,18 +320,25 @@ class ItemTypeRepository:
             query = session.query(ItemType.name).distinct()
             if prefix:
                 query = query.filter(ItemType.name.ilike(f"{prefix}%"))
+            if is_serialized is not None:
+                query = query.filter(ItemType.is_serialized == is_serialized)
             query = query.order_by(ItemType.name).limit(limit)
             return [row[0] for row in query.all()]
 
     @staticmethod
     def get_autocomplete_subtypes(
-        type_name: str, prefix: str = "", limit: int = 20
+        type_name: str,
+        prefix: str = "",
+        is_serialized: Optional[bool] = None,
+        limit: int = 20,
     ) -> List[str]:
         """Get autocomplete suggestions for subtypes given a type name.
 
         Args:
             type_name: The type name to filter by
             prefix: Search prefix for subtype (optional)
+            is_serialized: When given, only suggest subtypes of types with this
+                serialization state. None (default) suggests across both.
             limit: Maximum number of suggestions
 
         Returns:
@@ -345,6 +356,8 @@ class ItemTypeRepository:
             )
             if prefix:
                 query = query.filter(ItemType.sub_type.ilike(f"{prefix}%"))
+            if is_serialized is not None:
+                query = query.filter(ItemType.is_serialized == is_serialized)
             query = query.order_by(ItemType.sub_type).limit(limit)
             return [row[0] for row in query.all() if row[0]]
 

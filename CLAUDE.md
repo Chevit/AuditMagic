@@ -1,13 +1,13 @@
 # AuditMagic
 
-PyQt6 desktop inventory management application with Material Design theming.
+PyQt6 desktop app for inventory. Have Material Design theme.
 
 ## Tech Stack
 - Python 3.14+
 - PyQt6 (GUI framework)
 - SQLAlchemy + SQLite (database)
 - Alembic (database migrations)
-- qt-material (Material Design themes with light/dark mode)
+- qt-material (Material Design themes, light/dark mode)
 - Black formatter
 - IDE: PyCharm
 - Virtual environment: `.venv`
@@ -50,7 +50,10 @@ src/
     forms/
       MainWindow.ui  # Qt Designer main window layout
     dialogs/
-      add_item_dialog.py           # Add item form with optional "Initial Notes" field
+      add_item_chooser_dialog.py       # "With/Without Serial Number" chooser shown by "Add New Item"
+      add_serialized_item_dialog.py    # Add serialized item form (type, subtype, serial number, notes, location)
+      add_non_serialized_item_dialog.py # Add non-serialized item form (type, subtype, quantity, notes, location)
+      wrapping_text_edit.py            # Shared WrappingTextEdit (word-wraps placeholder text); used by dialogs
       edit_item_dialog.py          # Edit item form; read-only serialized badge; conflict detection
       add_serial_number_dialog.py  # Add serial number to existing type
       remove_serial_number_dialog.py # Remove serial numbers from group
@@ -87,7 +90,7 @@ source .venv/bin/activate  # macOS/Linux
 # Install dependencies
 pip install -r requirements.txt
 ```
-Dev tools are not on PATH — run them venv-qualified (`.venv/bin/mypy`, `.venv/bin/black`, `.venv/bin/flake8`, `.venv/bin/pre-commit`). Only `pytest` resolves globally.
+Dev tools not on PATH — run venv-qualified (`.venv/bin/mypy`, `.venv/bin/black`, `.venv/bin/flake8`, `.venv/bin/pre-commit`). Only `pytest` work globally.
 
 ## Running
 ```bash
@@ -95,13 +98,13 @@ python src/main.py
 ```
 
 ## Code Intelligence (LSP)
-Requires the `pyright-lsp` plugin installed and `pyright` on PATH.
+Need `pyright-lsp` plugin installed and `pyright` on PATH.
 
-- **Prefer LSP over grep/Read for symbol navigation**: `goToDefinition`, `findReferences`, `workspaceSymbol`, `documentSymbol`, `hover`, `incomingCalls`/`outgoingCalls`.
-- Before modifying a method's signature or behavior (e.g. `add_quantity()`, `remove_quantity()`, `delete_by_serial_numbers()`, `_detach()`), use `findReferences` first to find every call site across `repositories.py`, `services.py`, and `ui/`.
-- Trust the LSP's results — don't re-open files with Read to double-check a definition or reference list already returned.
-- Use grep/ripgrep only for non-symbol text: strings in `translations.py`, comments, config values, TODOs, or patterns spanning non-Python files (`.ui`, `.json`).
-- After edits, check LSP diagnostics before moving on; fix type errors or missing imports immediately rather than deferring to the next `mypy` run.
+- **LSP better than grep/Read for symbol hunt**: `goToDefinition`, `findReferences`, `workspaceSymbol`, `documentSymbol`, `hover`, `incomingCalls`/`outgoingCalls`.
+- Before touch method signature or behavior (e.g. `add_quantity()`, `remove_quantity()`, `delete_by_serial_numbers()`, `_detach()`), use `findReferences` first, find every call site across `repositories.py`, `services.py`, `ui/`.
+- Trust LSP result — no need re-open file with Read to double-check def or reference list already given.
+- Use grep/ripgrep only for non-symbol text: strings in `translations.py`, comments, config values, TODOs, patterns spanning non-Python files (`.ui`, `.json`).
+- After edit, check LSP diagnostics before move on; fix type error or missing import right away, don't wait for next `mypy` run.
 
 ## Code Conventions
 - Type hints on all functions
@@ -111,72 +114,72 @@ Requires the `pyright-lsp` plugin installed and `pyright` on PATH.
 - Private methods: `_method_name`
 - Format with Black
 - Line length 88; imports via `isort --profile black`
-- flake8: the hook's `--extend-ignore=E203` **overrides** `.flake8`, so bare `flake8` flags E203 on Black-formatted slices while the hook passes. Match the hook: `flake8 --extend-ignore=E203`. (`.flake8`'s W503/W504 are flake8 defaults already — redundant.)
-- Pre-commit hooks (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, check-merge-conflict. **mypy is not a hook.**
-- Type check: `.venv/bin/mypy src` — currently clean. Config in `mypy.ini`; PyQt6/qt_material/alembic/openpyxl/requests/pyi_splash imports ignored
-- `src/` has no `__init__.py`: it is a path entry (conftest, PyInstaller `pathex`), not a package. Adding one makes `mypy_path = src` map every file to two module names and mypy aborts with "Source file found twice" before checking anything
-- Models use SQLAlchemy 2.0 typed style (`Mapped[...]` + `mapped_column`). Tests build the schema with `create_all` while users get theirs from Alembic, so the two must agree — `tests/test_schema_parity.py` runs every migration into a temp DB and compares nullability, defaults, types and uniqueness against `create_all`. It fails on drift; do not weaken it to make a model change pass
+- flake8: hook's `--extend-ignore=E203` **override** `.flake8`, so bare `flake8` flag E203 on Black-formatted slices while hook pass fine. Match hook: `flake8 --extend-ignore=E203`. (`.flake8`'s W503/W504 already flake8 default — redundant.)
+- Pre-commit hooks (`pre-commit install`): black, isort, flake8, trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, check-merge-conflict. **mypy not a hook.**
+- Type check: `.venv/bin/mypy src` — clean right now. Config in `mypy.ini`; PyQt6/qt_material/alembic/openpyxl/requests/pyi_splash imports ignored
+- `src/` got no `__init__.py`: it a path entry (conftest, PyInstaller `pathex`), not package. Add one and `mypy_path = src` map every file to two module names, mypy abort "Source file found twice" before check anything
+- Models use SQLAlchemy 2.0 typed style (`Mapped[...]` + `mapped_column`). Tests build schema with `create_all` while users get theirs from Alembic, so two must agree — `tests/test_schema_parity.py` run every migration into temp DB, compare nullability, defaults, types, uniqueness against `create_all`. Fail on drift; don't weaken it to force model change pass
 
 ## Testing
 ```bash
 QT_QPA_PLATFORM=offscreen pytest tests/ -v   # offscreen is REQUIRED — Qt aborts headless without it
 ```
-- `tests/conftest.py` sets `AUDITMAGIC_DB=:memory:` and an autouse `fresh_db` fixture that calls `init_database(":memory:")` before every test — no DB setup needed in test bodies
+- `tests/conftest.py` set `AUDITMAGIC_DB=:memory:` and autouse `fresh_db` fixture call `init_database(":memory:")` before every test — no DB setup needed in test body
 - Test files: `test_repositories.py`, `test_services.py`, `test_dto_models.py`, `test_export_service.py`, `test_export_transactions.py`, `test_serialized_feature.py`, `test_auto_updater.py`, `test_translations.py`, `test_schema_parity.py`
-- CI (`.github/workflows/test.yml`) runs on every push/PR — Ubuntu, Python 3.14, same offscreen env
-- Baseline: 170 tests pass, and `mypy src` is clean
+- CI (`.github/workflows/test.yml`) run on every push/PR — Ubuntu, Python 3.14, same offscreen env
+- Baseline: 170 test pass, `mypy src` clean
 
 ## Architecture
 - MVC pattern with QAbstractListModel
-- Repository → Service → UI layered architecture
-- Custom delegates for list item rendering
-- Custom QListView (InventoryListView) with context menu and signal-based actions
-- pyqtSignal for component communication
-- Python dataclasses for data models (InventoryItem and GroupedInventoryItem as DTOs)
-- SQLAlchemy ORM with detached object pattern (copy before returning from session)
-- Alembic migrations with batch mode for SQLite compatibility
-- uic.loadUi() for .ui file loading
-- QValidator subclasses for real-time input filtering
-- **Theme System**: Enum-based configuration in theme_config.py with qt-material integration
-- **Centralized Styling**: Helper functions for consistent widget styling with theme-aware colors/dimensions
+- Repository → Service → UI layer stack
+- Custom delegates for list item render
+- Custom QListView (InventoryListView) with context menu, signal-based action
+- pyqtSignal for component talk
+- Python dataclasses for data model (InventoryItem, GroupedInventoryItem as DTO)
+- SQLAlchemy ORM with detached object pattern (copy before return from session)
+- Alembic migration with batch mode for SQLite compat
+- uic.loadUi() for .ui file load
+- QValidator subclass for real-time input filter
+- **Theme System**: Enum-based config in theme_config.py with qt-material tie-in
+- **Centralized Styling**: Helper function for consistent widget style with theme-aware color/dimension
 
 ## UI Components
 
 ### InventoryListView
-Custom QListView widget providing enhanced inventory list functionality:
-- **Built-in context menu** with actions: Edit, Details, Add/Remove Quantity, Transactions, Delete
-- **Signal-based architecture** for loose coupling with main window
-- **Double-click support** for quick access to item details
-- **Custom delegate** (InventoryItemDelegate) for rich item rendering
+Custom QListView widget give enhanced inventory list function:
+- **Built-in context menu** with action: Edit, Details, Add/Remove Quantity, Transactions, Delete
+- **Signal-based architecture** for loose couple with main window
+- **Double-click support** for quick jump to item details
+- **Custom delegate** (InventoryItemDelegate) for rich item render
 - **Signals**: `edit_requested`, `details_requested`, `delete_requested`, `add_quantity_requested`, `remove_quantity_requested`, `transactions_requested`
 
 ### EditItemDialog
-Enhanced edit dialog with serialized item support:
-- **Serial number management**: Lists all serial numbers for serialized items with delete capability
-- **Type-aware UI**: Read-only quantity for serialized items, editable for non-serialized
-- **Bulk serial deletion**: Track deleted serial numbers via `get_deleted_serial_numbers()`
-- **Edit reason**: Required notes field for audit trail
-- **Serialized badge**: Read-only green/grey badge shows the type's serialization state
-- **Conflict detection**: Renaming to an existing type with different `is_serialized` shows a red label and blocks save
+Enhanced edit dialog, serialized item support:
+- **Serial number management**: List all serial number for serialized item, with delete
+- **Type-aware UI**: Read-only quantity for serialized item, editable for non-serialized
+- **Bulk serial deletion**: Track deleted serial number via `get_deleted_serial_numbers()`
+- **Edit reason**: Required note field for audit trail
+- **Serialized badge**: Read-only green/grey badge show type's serialization state
+- **Conflict detection**: Rename to existing type with different `is_serialized` show red label, block save
 
 ### AddSerialNumberDialog
-Streamlined dialog for adding a new serialized item to an existing ItemType:
-- **Serial number field**: Required, validated for uniqueness against existing serials
-- **Notes field**: Optional; passed as transaction notes for non-first items
-- Caller (`main_window`) invokes `InventoryService.create_serialized_item` on accept
+Streamlined dialog, add new serialized item to existing ItemType:
+- **Serial number field**: Required, validate for uniqueness against existing serial
+- **Notes field**: Optional; pass as transaction note for non-first item
+- Caller (`main_window`) call `InventoryService.create_serialized_item` on accept
 
 ### RemoveSerialNumberDialog
-Dialog for selecting serial numbers to delete from a grouped serialized item:
-- **Scrollable checkbox list** of all serial numbers in the group
-- **Dynamic counter**: "Selected: X of Y" updates as checkboxes are toggled
+Dialog for pick serial number to delete from grouped serialized item:
+- **Scrollable checkbox list** of all serial number in group
+- **Dynamic counter**: "Selected: X of Y" update as checkbox toggle
 - **Required notes field** for audit trail
-- **Validation**: At least one must be selected; cannot select all (use "Delete" instead)
-- Creates REMOVE transaction records for each deleted serial
+- **Validation**: At least one must pick; can't pick all (use "Delete" instead)
+- Make REMOVE transaction record for each deleted serial
 
 ### GroupedInventoryItem
-Aggregated DTO that groups all items of the same ItemType into a single list row:
-- Stores `item_ids`, `serial_numbers`, `total_quantity`, `item_count`
-- Legacy compatibility properties (`id`, `quantity`, `serial_number`) for uniform handling with InventoryItem
+Aggregated DTO that group all item of same ItemType into single list row:
+- Store `item_ids`, `serial_numbers`, `total_quantity`, `item_count`
+- Legacy compat property (`id`, `quantity`, `serial_number`) for uniform handle with InventoryItem
 
 ### Usage Pattern
 ```python
@@ -195,55 +198,55 @@ self.inventory_list.details_requested.connect(self._on_details_item)
 
 ## Data Model (Hierarchical Structure)
 
-> `alembic/env.py` reads `DATABASE_URL` from `core.db` at import time and has **no override** — not `-x`, not an env var. Every `alembic` command therefore targets the real user DB (`~/.local/share/AuditMagic/inventory.db`). To migrate a throwaway DB, patch `core.db.DATABASE_URL` before invoking `command.upgrade`, as `tests/test_schema_parity.py` does.
+> `alembic/env.py` read `DATABASE_URL` from `core.db` at import time, got **no override** — not `-x`, not env var. Every `alembic` command therefore hit real user DB (`~/.local/share/AuditMagic/inventory.db`). To migrate throwaway DB, patch `core.db.DATABASE_URL` before call `command.upgrade`, like `tests/test_schema_parity.py` do.
 
 ### ItemType (Type Definitions)
 - **ItemType**: `name`, `sub_type`, `is_serialized`, `details`
-- Represents a category/template for items (e.g., "Laptop - ThinkPad X1")
-- One ItemType can have many Items
-- `is_serialized`: **immutable** once the type has any items — enforced in `get_or_create` (conflict guard) and `update` (item-count guard)
+- Represent category/template for item (e.g., "Laptop - ThinkPad X1")
+- One ItemType can have many Item
+- `is_serialized`: **immutable** once type has any item — enforced in `get_or_create` (conflict guard), `update` (item-count guard)
 
 ### Location
 - **Location**: `id`, `name` (unique, max 100 chars)
-- Required: at least one location must exist at all times (enforced by first-launch wizard)
-- Items FK to `location_id` (nullable for legacy data; auto-assign wizard on startup handles NULL rows)
+- Required: at least one location must exist always (enforced by first-launch wizard)
+- Item FK to `location_id` (nullable for legacy data; auto-assign wizard on startup handle NULL row)
 - `LocationRepository.get_count()`, `get_all()`, `get_by_id()`, `get_unassigned_item_count()`, `assign_all_unassigned()`
 
 ### Item (Inventory Instances)
 - **Item**: `item_type_id` (FK), `quantity`, `serial_number`, `location_id` (FK to Location), `condition`
-- Represents actual inventory units
+- Represent actual inventory unit
 - If serialized: quantity=1, serial_number required and unique
 - If not serialized: quantity>0, no serial_number allowed
-- Database constraint enforces: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
+- Database constraint enforce: `(serial_number IS NULL AND quantity > 0) OR (serial_number IS NOT NULL AND quantity = 1)`
 
 ### Transaction
 - **Transaction**: `item_type_id` (FK, NOT NULL), `transaction_type` (ADD/REMOVE/EDIT/TRANSFER), `quantity_change`, `quantity_before`, `quantity_after`, `notes`, `serial_number`, `from_location_id` (FK, nullable), `to_location_id` (FK, nullable)
-- Belongs to **ItemType**, not Item — audit trail is preserved even when items are deleted
-- `serial_number` on the transaction identifies the specific serialized unit involved
-- For **serialized items**: `quantity_before/after` reflect the total group count (how many items of that type exist), not the individual item quantity (which is always 1)
-- For **non-serialized items**: `quantity_before/after` reflect the single Item row's quantity
-- For **TRANSFER** transactions: `from_location_id` and `to_location_id` are set; quantity_change = qty moved
+- Belong to **ItemType**, not Item — audit trail keep even when item deleted
+- `serial_number` on transaction mark which serialized unit involved
+- For **serialized item**: `quantity_before/after` reflect total group count (how many item of that type exist), not single item quantity (always 1)
+- For **non-serialized item**: `quantity_before/after` reflect single Item row's quantity
+- For **TRANSFER** transaction: `from_location_id`, `to_location_id` set; quantity_change = qty moved
 - ItemType `details` = type description; Transaction `notes` = reason for change (required for EDIT, optional for ADD/REMOVE/TRANSFER)
 
 ## Theme System 🎨
 
 ### Overview
-AuditMagic uses **qt-material** for Material Design theming with an **enum-based configuration system** for centralized theme management.
+AuditMagic use **qt-material** for Material Design theme with **enum-based config system** for centralized theme manage.
 
 ### Available Themes
 - **Light** (Blue) - `light_blue.xml`
 - **Dark** (Blue) - `dark_blue.xml`
 
-All theme parameters (colors, dimensions, qt-material theme file) are stored in `Theme` enum values in `theme_config.py`.
+All theme param (color, dimension, qt-material theme file) stored in `Theme` enum value in `theme_config.py`.
 
 ### Theme Architecture
-- **theme_config.py**: Enum-based theme configuration with ThemeParameters dataclass
+- **theme_config.py**: Enum-based theme config with ThemeParameters dataclass
   - `ThemeColors`: Color palette (main, secondary, borders, backgrounds, text)
-  - `ThemeDimensions`: UI dimensions (input height, button height, padding, font sizes)
-  - `Theme` enum: Light and Dark theme definitions
-- **theme_manager.py**: Theme application logic with qt-material integration
-- **styles.py**: Theme-aware styling helpers that fetch colors/dimensions from current theme
-- Themes saved to user config and persist between sessions
+  - `ThemeDimensions`: UI dimension (input height, button height, padding, font size)
+  - `Theme` enum: Light and Dark theme definition
+- **theme_manager.py**: Theme apply logic with qt-material tie-in
+- **styles.py**: Theme-aware style helper that fetch color/dimension from current theme
+- Theme saved to user config, persist between session
 - Access via **🎨 Theme** menu in main window
 
 ### Theme Configuration Structure
@@ -287,14 +290,14 @@ tm.toggle_theme()               # Switch between light/dark
 ```
 
 ### Styling System
-- **qt-material**: Provides base Material Design theme
-- **theme_config.py**: Centralized theme parameters in enum values
-- **styles.py**: Theme-aware helpers that fetch from current theme
+- **qt-material**: Give base Material Design theme
+- **theme_config.py**: Centralized theme param in enum value
+- **styles.py**: Theme-aware helper fetch from current theme
 - **Helper functions**: `apply_input_style()`, `apply_button_style()`, `apply_text_edit_style()`, `apply_combo_box_style()`
-- **Utility classes**: `Colors` (theme-aware color access), `Dimensions` (theme-aware dimension access), `Styles` (stylesheet generators)
-- **Dynamic dimensions**: All widgets retrieve sizes from `get_theme_dimensions()`
-- **Dynamic colors**: All widgets retrieve colors from `get_theme_colors()`
-- **Action button colors**: Constant (green, red, blue) with theme-aware disabled states
+- **Utility classes**: `Colors` (theme-aware color access), `Dimensions` (theme-aware dimension access), `Styles` (stylesheet generator)
+- **Dynamic dimensions**: All widget get size from `get_theme_dimensions()`
+- **Dynamic colors**: All widget get color from `get_theme_colors()`
+- **Action button colors**: Constant (green, red, blue) with theme-aware disabled state
 
 ### Theme-Aware Color and Dimension Access
 ```python
@@ -326,7 +329,7 @@ apply_button_style(other_button, "secondary") # Outline
 ```
 
 ## Configuration
-User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%LOCALAPPDATA%\AuditMagic\config.json` (Windows):
+User prefs stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%LOCALAPPDATA%\AuditMagic\config.json` (Windows):
 
 ```json
 {
@@ -344,7 +347,7 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 }
 ```
 
-**Note**: Theme is now stored as a simple string name (e.g., "Light", "Dark") matching the `Theme` enum values.
+**Note**: Theme now stored as simple string name (e.g., "Light", "Dark") matching `Theme` enum value.
 
 ## Logging
 - Centralized logging via `logger.py`
@@ -353,63 +356,63 @@ User preferences stored in `~/.local/share/AuditMagic/config.json` (Linux) or `%
 - Levels: DEBUG (file), WARNING+ (console)
 
 ## Key Patterns
-- Form validation with QMessageBox feedback and QValidator subclasses
-- Custom InventoryListView widget with built-in context menus and signals
-- Context menu actions: Edit, Details, Add/Remove Quantity, Transactions, Transfer, Delete
-- Double-click opens details dialog
-- Modal dialogs for all CRUD operations
-- **Location system**: Items belong to a `Location` (FK). `LocationSelectorWidget` above list filters view. "All Locations" (None) shows everything. Config key `ui.last_location_id` persists selection (sentinel pattern: missing key → first location, null → All Locations, int → validate + fallback).
-- **First-launch wizard**: `FirstLocationDialog` loops until at least one location exists. `_ensure_location_exists()` called before any list load.
-- **Transfer**: `InventoryService.transfer_item(item_id, qty, to_location_id, notes)` / `transfer_serialized_items(item_ids, to_location_id, notes)`. Creates TRANSFER transaction with `from_location_id` and `to_location_id`.
-- **All Transactions view**: `AllTransactionsDialog` shows cross-type log filterable by location + date range. 10 columns including From/To Location.
-- **`InventoryItem.location_id / location_name`**: replaces old `location: str` field. Backward-compat `.location` property returns `location_name`.
-- **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is the sole FK — no item_id. Audit trail survives item deletion. `serial_number` on the transaction record identifies the specific unit.
-- **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not the generic `create`). These count existing items of the type first to set `quantity_before/after` correctly for the grouped view. Notes policy: first item gets `tr("transaction.notes.initial")` regardless of caller input; subsequent items use caller-supplied notes or `""`.
-- **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction rows via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item rows via ORM cascade from ItemType, (3) ItemType itself.
-- `delete_by_serial_numbers`: flushes REMOVE transactions first, then deletes items via direct SQL (`sql_delete`) to bypass ORM cascade, preserving audit records
-- GroupedInventoryItem aggregation: items grouped by ItemType in list view; both `InventoryItem` and `GroupedInventoryItem` expose `item_type_id`
-- Shared private helpers in repositories to avoid query duplication (e.g., `_get_types_with_items`)
-- **`is_serialized` immutability**: `ItemTypeRepository.get_or_create` raises `ValueError` on conflict; `update` raises if items exist. UI pre-fills and locks the checkbox when the user types an existing type name in AddItemDialog.
-- `ItemTypeRepository.get_by_name_and_subtype` / `InventoryService.get_item_type_by_name_subtype`: live lookup used by dialogs to detect existing types while user types
+- Form validation with QMessageBox feedback, QValidator subclass
+- Custom InventoryListView widget with built-in context menu, signal
+- Context menu action: Edit, Details, Add/Remove Quantity, Transactions, Transfer, Delete
+- Double-click open details dialog
+- Modal dialog for all CRUD op
+- **Location system**: Item belong to a `Location` (FK). `LocationSelectorWidget` above list filter view. "All Locations" (None) show everything. Config key `ui.last_location_id` persist selection (sentinel pattern: missing key → first location, null → All Locations, int → validate + fallback).
+- **First-launch wizard**: `FirstLocationDialog` loop until at least one location exist. `_ensure_location_exists()` call before any list load.
+- **Transfer**: `InventoryService.transfer_item(item_id, qty, to_location_id, notes)` / `transfer_serialized_items(item_ids, to_location_id, notes)`. Make TRANSFER transaction with `from_location_id`, `to_location_id`.
+- **All Transactions view**: `AllTransactionsDialog` show cross-type log, filter by location + date range. 10 column including From/To Location.
+- **`InventoryItem.location_id / location_name`**: replace old `location: str` field. Backward-compat `.location` property return `location_name`.
+- **Type-centric transactions**: Transaction.item_type_id (NOT NULL) is sole FK — no item_id. Audit trail survive item deletion. `serial_number` on transaction record mark specific unit.
+- **Serialized item creation**: use `ItemRepository.create_serialized` / `InventoryService.create_serialized_item` (not generic `create`). These count existing item of type first, set `quantity_before/after` right for grouped view. Notes policy: first item get `tr("transaction.notes.initial")` no matter caller input; later items use caller-given note or `""`.
+- **ItemType deletion**: `InventoryService.delete_item_type` → `ItemTypeRepository.delete`. Deletion order: (1) Transaction row via `sql_delete` (FK NOT NULL, no ORM cascade), (2) Item row via ORM cascade from ItemType, (3) ItemType itself.
+- `delete_by_serial_numbers`: flush REMOVE transaction first, then delete item via direct SQL (`sql_delete`) to skip ORM cascade, keep audit record
+- GroupedInventoryItem aggregation: item grouped by ItemType in list view; both `InventoryItem`, `GroupedInventoryItem` expose `item_type_id`
+- Shared private helper in repository to avoid query duplicate (e.g., `_get_types_with_items`)
+- **`is_serialized` immutability**: `ItemTypeRepository.get_or_create` raise `ValueError` on conflict; `update` raise if item exist. UI pre-fill, lock checkbox when user type existing type name in AddItemDialog.
+- `ItemTypeRepository.get_by_name_and_subtype` / `InventoryService.get_item_type_by_name_subtype`: live lookup used by dialog to spot existing type while user type
 - Serialized badge colors: green `#2e7d32` (serialized) / grey `#757575` (non-serialized) — fixed for accessibility, not theme-dependent
-- Serialized item management: serial number listing, deletion in edit dialog
-- Centralized styling with helper functions
-- Theme switching with instant preview
-- Configuration persistence with dot-notation access
-- Enum-based theme configuration for maintainability
+- Serialized item management: serial number list, delete in edit dialog
+- Centralized style with helper function
+- Theme switch with instant preview
+- Config persist with dot-notation access
+- Enum-based theme config for maintainability
 
 ## Auto-Update System
 
 ### Version Management
 - Version defined in `version.py` (`__version__`)
-- Displayed in main window title bar as `"<title> v<version>"`
-- Compared against GitHub Releases API on every startup
+- Show in main window title bar as `"<title> v<version>"`
+- Compared against GitHub Releases API every startup
 
 ### Packaging (PyInstaller)
 - Spec file: `AuditMagic.spec`
 - Bundled data: `ui/MainWindow.ui`, `alembic/`, `alembic.ini`, `qt_material`
-- Resource paths resolved via `runtime.resource_path()` (handles both dev and bundled modes)
+- Resource path resolved via `runtime.resource_path()` (handle both dev, bundled mode)
 - Build: `pyinstaller AuditMagic.spec`
 - Output: `dist/AuditMagic.exe`
 
 ### Update Checker
-- Checks `https://api.github.com/repos/Chevit/AuditMagic/releases/latest`
-- Runs in `UpdateCheckWorker(QThread)` on startup — non-blocking
-- Shows `UpdateDialog` with download/skip buttons if newer version found
-- Uses `urllib` (stdlib only — no extra dependencies)
+- Check `https://api.github.com/repos/Chevit/AuditMagic/releases/latest`
+- Run in `UpdateCheckWorker(QThread)` on startup — non-blocking
+- Show `UpdateDialog` with download/skip button if newer version found
+- Use `urllib` (stdlib only — no extra dependency)
 
 ### Release Process
 1. Tag: `git tag vX.Y.Z`
 2. Push: `git push && git push --tags`
-3. GitHub Actions injects the version from the tag, builds `.exe`, and creates a release automatically
+3. GitHub Actions inject version from tag, build `.exe`, make release auto
 
-> `build.yml`'s Windows job runs on a **`self-hosted`** runner (macOS/Linux jobs are commented out). If it stalls, the runner is offline — use `build-windows-hosted.yml` via workflow_dispatch (GitHub-hosted, Python 3.13 for Windows, takes an optional version input).
+> `build.yml`'s Windows job run on a **`self-hosted`** runner (macOS/Linux job commented out). If stall, runner offline — use `build-windows-hosted.yml` via workflow_dispatch (GitHub-hosted, Python 3.13 for Windows, take optional version input).
 
-> Note: `version.py` holds a `0.0.0-dev` placeholder in source. The real version is injected by CI at build time — do not manually edit `__version__` before tagging.
+> Note: `version.py` hold `0.0.0-dev` placeholder in source. Real version inject by CI at build time — don't hand-edit `__version__` before tag.
 
 ## Documentation
-- **CLAUDE.md**: This file - project overview and conventions
+- **CLAUDE.md**: This file - project overview, convention
 - **README.md**: Project readme
-- **Instructions/**: Historical implementation guides (incl. `IMPROVEMENTS.md`) — legacy `ui_entities/` paths, do not follow verbatim
+- **Instructions/**: Historical implementation guide (incl. `IMPROVEMENTS.md`) — legacy `ui_entities/` path, don't follow word-for-word
 - **docs/HOW-TO.md**: Ukrainian end-user manual (linked from README)
-- **docs/superpowers/specs/** + **plans/**: Design specs and plans, dated `YYYY-MM-DD-<feature>-design.md`; convention is `docs: add <x> design spec` committed before the `fix:`/`feat:` that implements it
+- **docs/superpowers/specs/** + **plans/**: Design spec, plan, dated `YYYY-MM-DD-<feature>-design.md`; convention is `docs: add <x> design spec` committed before the `fix:`/`feat:` that build it

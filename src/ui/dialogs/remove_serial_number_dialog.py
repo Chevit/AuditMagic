@@ -2,9 +2,20 @@
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QCheckBox, QDialog, QFormLayout, QFrame,
-                             QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                             QPushButton, QScrollArea, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ui.styles import apply_button_style, apply_input_style
 from ui.translations import tr
