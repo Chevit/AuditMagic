@@ -34,6 +34,7 @@ from ui.styles import (
 )
 from ui.translations import tr
 from ui.validators import ItemTypeValidator
+from ui.widgets.completer_utils import hide_popup, install_selection_hiding
 
 
 class AddNonSerializedItemDialog(QDialog):
@@ -163,11 +164,18 @@ class AddNonSerializedItemDialog(QDialog):
         self.type_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.type_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.type_edit.setCompleter(self.type_completer)
+        type_guard = install_selection_hiding(self.type_completer, self.type_edit)
+        self._consume_type_suppressed = type_guard.consume_refetch_guard
+        self._consume_type_recent_selection = type_guard.consume_recent_selection
 
         self.subtype_completer = QCompleter(self)
         self.subtype_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.subtype_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.subtype_edit.setCompleter(self.subtype_completer)
+        subtype_guard = install_selection_hiding(
+            self.subtype_completer, self.subtype_edit
+        )
+        self._consume_subtype_recent_selection = subtype_guard.consume_recent_selection
 
         self.type_edit.textChanged.connect(self._update_type_autocomplete)
         self.type_edit.textChanged.connect(self._update_subtype_autocomplete)
@@ -179,6 +187,8 @@ class AddNonSerializedItemDialog(QDialog):
 
     def _update_type_autocomplete(self, text: str) -> None:
         """Update autocomplete suggestions for type, non-serialized types only."""
+        if self._consume_type_suppressed():
+            return  # text just came from picking a suggestion, not typing
         try:
             suggestions = InventoryService.get_autocomplete_types(
                 text, is_serialized=False
@@ -211,6 +221,15 @@ class AddNonSerializedItemDialog(QDialog):
         blocks the save — see _on_add_clicked. A matching existing type is only
         informational.
         """
+        # This debounced call can itself resize the dialog (the status
+        # label below goes from empty to populated), which can leave a
+        # completer popup visible again after a selection that set the
+        # Type/Subtype text just before this fired. Force it closed if so.
+        if self._consume_type_recent_selection():
+            hide_popup(self.type_completer)
+        if self._consume_subtype_recent_selection():
+            hide_popup(self.subtype_completer)
+
         type_name = self.type_edit.text().strip()
         sub_type = self.subtype_edit.text().strip()
 

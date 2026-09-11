@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 
 from ui.styles import apply_button_style, apply_combo_box_style, apply_input_style
 from ui.translations import tr
+from ui.widgets.completer_utils import install_selection_hiding
 
 
 class SearchWidget(QWidget):
@@ -68,6 +69,9 @@ class SearchWidget(QWidget):
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.search_input.setCompleter(self.completer)
+        self._consume_search_suppressed = install_selection_hiding(
+            self.completer, self.search_input
+        ).consume_refetch_guard
 
         # Search button
         self.search_button = QPushButton(tr("button.search"))
@@ -104,6 +108,8 @@ class SearchWidget(QWidget):
 
     def _on_debounce_timeout(self):
         """Handle debounce timeout - fetch autocomplete suggestions."""
+        if self._consume_search_suppressed():
+            return  # text just came from picking a suggestion, not typing
         text = self.search_input.text()
         if self._autocomplete_callback and len(text) >= 1:
             field = self.field_combo.currentData()
