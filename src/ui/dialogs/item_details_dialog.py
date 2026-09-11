@@ -68,14 +68,6 @@ class ItemDetailsDialog(QDialog):
         value_font = QFont()
         value_font.setPointSize(10)
 
-        # ID
-        if self._item.id is not None:
-            id_label = QLabel(tr("label.id"))
-            id_label.setFont(label_font)
-            id_value = QLabel(str(self._item.id))
-            id_value.setFont(value_font)
-            form_layout.addRow(id_label, id_value)
-
         # Type
         type_label = QLabel(tr("label.type"))
         type_label.setFont(label_font)
