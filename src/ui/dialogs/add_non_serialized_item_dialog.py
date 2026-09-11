@@ -94,6 +94,7 @@ class AddNonSerializedItemDialog(QDialog):
         form_layout.addRow(subtype_label, self.subtype_edit)
 
         self.type_status_label = QLabel("")
+        self.type_status_label.setWordWrap(True)
         form_layout.addRow("", self.type_status_label)
 
         quantity_label = QLabel(tr("label.quantity"))

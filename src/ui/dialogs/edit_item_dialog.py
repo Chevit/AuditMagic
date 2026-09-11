@@ -145,6 +145,7 @@ class EditItemDialog(QDialog):
 
         # Conflict status label — shown in red when type rename conflicts with is_serialized
         self.edit_type_status_label = QLabel("")
+        self.edit_type_status_label.setWordWrap(True)
         self.edit_type_status_label.setStyleSheet("color: #c62828; font-style: italic;")
         form_layout.addRow("", self.edit_type_status_label)
 

@@ -96,6 +96,7 @@ class AddSerializedItemDialog(QDialog):
         # Conflict/info status label — red for a serialization conflict,
         # italic secondary color for a plain "type already exists" match.
         self.type_status_label = QLabel("")
+        self.type_status_label.setWordWrap(True)
         form_layout.addRow("", self.type_status_label)
 
         serial_label = QLabel(tr("label.serial_number"))
